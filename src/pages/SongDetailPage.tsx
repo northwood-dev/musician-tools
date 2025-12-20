@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { songService, type Song, type CreateSongDTO } from '../services/songService';
-import { fromSlug } from '../utils/slug';
+import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
 function SongDetailPage() {
@@ -33,11 +33,9 @@ function SongDetailPage() {
       setLoading(true);
       setError(null);
       const songs = await songService.getAllSongs();
-      const decodedArtist = fromSlug(artist);
-      const decodedTitle = fromSlug(title);
       const found = songs.find(
-        s => s.artist.toLowerCase() === decodedArtist.toLowerCase() &&
-             s.title.toLowerCase() === decodedTitle.toLowerCase()
+        s => toSlug(s.artist) === artist &&
+             toSlug(s.title) === title
       );
       
       if (found) {
