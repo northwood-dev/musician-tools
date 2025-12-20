@@ -1,0 +1,62 @@
+import React from 'react';
+
+interface ConfirmDialogProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm: () => void | Promise<void>;
+  onCancel: () => void;
+  isDangerous?: boolean;
+}
+
+export function ConfirmDialog({
+  isOpen,
+  title,
+  message,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  onConfirm,
+  onCancel,
+  isDangerous = false,
+}: ConfirmDialogProps) {
+  if (!isOpen) return null;
+
+  const handleConfirmClick = async () => {
+    try {
+      await onConfirm();
+    } catch (err) {
+      console.error('Error in confirm callback:', err);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onCancel}>
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">{title}</h2>
+        <p className="text-gray-700 mb-6">{message}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            type="button"
+            className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-4 py-2 hover:bg-gray-200"
+            onClick={onCancel}
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className={`inline-flex items-center rounded-md text-white px-4 py-2 ${
+              isDangerous
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-brand-500 hover:bg-brand-600'
+            }`}
+            onClick={handleConfirmClick}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

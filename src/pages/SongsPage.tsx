@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
 import { useAuth } from '../contexts/AuthContext';
+import { toSlug } from '../utils/slug';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -14,13 +17,21 @@ const initialSong: CreateSongDTO = {
 };
 
 function SongsPage() {
+  const navigate = useNavigate();
   const [songs, setSongs] = useState<Song[]>([]);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [sortByLastPlayed, setSortByLastPlayed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState<'list' | 'form'>('list');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedSongs, setSelectedSongs] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'single' | 'multiple' | null>(null);
+  const [deleteUid, setDeleteUid] = useState<string | null>(null);
   const { user, logout } = useAuth();
 
   useEffect(() => {
@@ -50,6 +61,31 @@ function SongsPage() {
     } catch (err) {
       setError('Error while updating');
       console.error(err);
+    }
+  };
+
+  const handleMarkSelectedAsPlayedNow = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const now = new Date().toISOString();
+      
+      await Promise.all(
+        Array.from(selectedSongs).map(uid =>
+          songService.updateSong(uid, { lastPlayed: now })
+        )
+      );
+      
+      const updatedSongs = songs.map(song =>
+        selectedSongs.has(song.uid) ? { ...song, lastPlayed: now } : song
+      );
+      setSongs(updatedSongs);
+      setSelectedSongs(new Set());
+    } catch (err) {
+      setError('Error while updating songs');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -93,25 +129,77 @@ function SongsPage() {
   };
 
   const handleDelete = async (uid: string) => {
-    if (!confirm('Are you sure you want to delete this song?')) {
-      return;
-    }
+    setDeleteDialogOpen(true);
+    setDeleteMode('single');
+    setDeleteUid(uid);
+  };
 
+  const handleConfirmDelete = async (uidToDelete: string) => {
     try {
       setLoading(true);
       setError(null);
-      await songService.deleteSong(uid);
-      setSongs(songs.filter(song => song.uid !== uid));
-
-      if (editingUid === uid) {
-        setForm(initialSong);
-        setEditingUid(null);
-      }
+      await songService.deleteSong(uidToDelete);
+      setSongs(songs.filter(song => song.uid !== uidToDelete));
+      setDeleteDialogOpen(false);
+      setDeleteUid(null);
+      setDeleteMode(null);
     } catch (err) {
       setError('Error while deleting');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    setDeleteDialogOpen(true);
+    setDeleteMode('multiple');
+  };
+
+  const handleConfirmDeleteSelected = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await Promise.all(Array.from(selectedSongs).map(uid => songService.deleteSong(uid)));
+      
+      setSongs(songs.filter(song => !selectedSongs.has(song.uid)));
+      setSelectedSongs(new Set());
+      setDeleteDialogOpen(false);
+      setDeleteMode(null);
+    } catch (err) {
+      setError('Error while deleting songs');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelectSong = (uid: string) => {
+    setSelectedSongs(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllSongs = () => {
+    setSelectedSongs(new Set(displayedSongs.map(song => song.uid)));
+  };
+
+  const deselectAllSongs = () => {
+    setSelectedSongs(new Set());
+  };
+
+  const toggleSelectAll = () => {
+    if (displayedSongs.every(song => selectedSongs.has(song.uid))) {
+      deselectAllSongs();
+    } else {
+      selectAllSongs();
     }
   };
 
@@ -124,8 +212,108 @@ function SongsPage() {
       })
     : songs;
 
+  const filteredSongs = sortedSongs.filter(song => {
+    const query = searchQuery.toLowerCase();
+    return (
+      song.title.toLowerCase().includes(query) ||
+      (song.artist && song.artist.toLowerCase().includes(query))
+    );
+  });
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortByColumnFunc = (items: Song[]) => {
+    if (!sortColumn) return items;
+
+    return [...items].sort((a, b) => {
+      let aVal: any = (a as any)[sortColumn];
+      let bVal: any = (b as any)[sortColumn];
+
+      if (aVal === null || aVal === undefined) aVal = '';
+      if (bVal === null || bVal === undefined) bVal = '';
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+
+      if (typeof aVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      return 0;
+    });
+  };
+
+  const displayedSongs = sortByColumnFunc(filteredSongs);
+
+  const allDisplayedSelected = displayedSongs.length > 0 && displayedSongs.every(song => selectedSongs.has(song.uid));
+
+  const formatLastPlayed = (dateString: string | undefined) => {
+    if (!dateString) return '-';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const SortHeader = ({ column, label }: { column: string; label: string }) => (
+    <th
+      className="text-left p-2 border-b cursor-pointer hover:bg-gray-100"
+      onClick={() => handleSort(column)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortColumn === column && (
+          <span className="text-sm">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+        )}
+      </div>
+    </th>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        title="Delete song(s)"
+        message={deleteMode === 'single' ? 'Are you sure you want to delete this song?' : `Are you sure you want to delete ${selectedSongs.size} song(s)?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous
+        onConfirm={() => {
+          if (deleteMode === 'single' && deleteUid) {
+            handleConfirmDelete(deleteUid);
+          } else if (deleteMode === 'multiple') {
+            handleConfirmDeleteSelected();
+          }
+        }}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setDeleteMode(null);
+          setDeleteUid(null);
+        }}
+      />
+
       {error && (
         <div className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
           <span>{error}</span>
@@ -139,7 +327,7 @@ function SongsPage() {
         <>
           <div className="container mx-auto px-4 py-8">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-semibold">Musician Tools</h1>
+              <Link to="/" className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition">Musician Tools</Link>
               <div className="flex items-center gap-3">
                 {user && <span className="text-sm text-gray-600">Hello, {user.name}</span>}
                 <button
@@ -166,77 +354,97 @@ function SongsPage() {
               </div>
             </div>
             <div className="mb-4">
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                <input className="h-4 w-4" type="checkbox" checked={sortByLastPlayed} onChange={e => setSortByLastPlayed(e.target.checked)} />
-                Sort by last played date
-              </label>
+              <input
+                type="text"
+                placeholder="Search by song title or artist..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
             </div>
+            {selectedSongs.size > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-blue-900">{selectedSongs.size} song(s) selected</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex items-center rounded-md bg-green-600 text-white px-3 py-1.5 text-sm hover:bg-green-700 disabled:opacity-50"
+                      onClick={handleMarkSelectedAsPlayedNow}
+                      disabled={loading}
+                    >
+                      Mark as played now
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 disabled:opacity-50"
+                      onClick={handleDeleteSelected}
+                      disabled={loading}
+                    >
+                      Delete selected
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <h2 className="text-lg font-medium mb-2">Song list</h2>
             {loading ? (
               <p>Loading...</p>
-            ) : sortedSongs.length === 0 ? (
-              <p>No songs saved.</p>
+            ) : filteredSongs.length === 0 ? (
+              <p>{searchQuery ? 'No songs match your search.' : 'No songs saved.'}</p>
             ) : (
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr>
-                    <th className="text-left p-2 border-b">Artist</th>
-                    <th className="text-left p-2 border-b">Title</th>
-                    <th className="text-left p-2 border-b">BPM</th>
-                    <th className="text-left p-2 border-b">Key</th>
-                    <th className="text-left p-2 border-b">Instrument</th>
-                    <th className="text-left p-2 border-b">Chord chart</th>
-                    <th className="text-left p-2 border-b">Tabs</th>
+                    <th className="text-left p-2 border-b w-10">
+                      <button
+                        type="button"
+                        className="text-xs rounded px-1.5 py-0.5 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+                        onClick={toggleSelectAll}
+                        disabled={loading}
+                        title={allDisplayedSelected ? "Deselect all" : "Select all"}
+                      >
+                        {allDisplayedSelected ? 'None' : 'All'}
+                      </button>
+                    </th>
+                    <SortHeader column="artist" label="Artist" />
+                    <SortHeader column="title" label="Title" />
+                    <SortHeader column="bpm" label="BPM" />
+                    <SortHeader column="key" label="Key" />
+                    <SortHeader column="instrument" label="Instrument" />
+                    <SortHeader column="lastPlayed" label="Last played" />
                     <th className="text-left p-2 border-b">Actions</th>
-                    <th className="text-left p-2 border-b">Last played</th>
-                    <th className="text-left p-2 border-b">Play now</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedSongs.map(song => (
-                    <tr key={song.uid} className="border-b">
-                      <td className="p-2 align-top">{song.artist}</td>
-                      <td className="p-2 align-top">{song.title}</td>
-                      <td className="p-2 align-top">{song.bpm}</td>
-                      <td className="p-2 align-top">{song.key}</td>
-                      <td className="p-2 align-top">{song.instrument}</td>
-                      <td className="p-2 align-top">
-                        <pre className="whitespace-pre-wrap text-xs">{song.chords}</pre>
+                  {displayedSongs.map(song => (
+                    <tr key={song.uid} className={`border-b cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-100 hover:bg-blue-200' : 'hover:bg-gray-100'}`} onClick={() => toggleSelectSong(song.uid)}>
+                      <td className="p-2 align-top w-10" onClick={e => e.stopPropagation()}>
+                        <input
+                          className="h-4 w-4 cursor-pointer"
+                          type="checkbox"
+                          checked={selectedSongs.has(song.uid)}
+                          onChange={() => toggleSelectSong(song.uid)}
+                          disabled={loading}
+                        />
                       </td>
-                      <td className="p-2 align-top">
-                        <pre className="whitespace-pre-wrap text-xs">{song.tabs}</pre>
-                      </td>
+                      <td className="p-2 align-top max-w-xs truncate" title={song.artist}>{song.artist}</td>
+                      <td className="p-2 align-top max-w-sm truncate" title={song.title}>{song.title}</td>
+                      <td className="p-2 align-top max-w-16">{song.bpm}</td>
+                      <td className="p-2 align-top max-w-20 truncate" title={song.key}>{song.key}</td>
+                      <td className="p-2 align-top max-w-24 truncate" title={song.instrument}>{song.instrument}</td>
+                      <td className="p-2 align-top max-w-32">{formatLastPlayed(song.lastPlayed)}</td>
                       <td className="p-2 align-top">
                         <button
                           type="button"
                           className="inline-flex items-center rounded-md bg-blue-600 text-white px-2 py-1 hover:bg-blue-700 disabled:opacity-50"
                           onClick={() => {
-                            handleEdit(song.uid);
-                            setPage('form');
+                            navigate(`/song/${toSlug(song.artist)}/${toSlug(song.title)}`);
                           }}
                           disabled={loading}
                         >
                           Edit
                         </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-red-600 text-white px-2 py-1 hover:bg-red-700 disabled:opacity-50 ml-2"
-                          onClick={() => handleDelete(song.uid)}
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                      <td className="p-2 align-top">{song.lastPlayed ? new Date(song.lastPlayed).toLocaleString() : '-'}</td>
-                      <td className="p-2 align-top">
-                        <input
-                          className="h-4 w-4"
-                          type="checkbox"
-                          checked={false}
-                          onChange={() => markPlayedNow(song.uid)}
-                          title="Mark as played now"
-                          disabled={loading}
-                        />
                       </td>
                     </tr>
                   ))}
@@ -248,7 +456,7 @@ function SongsPage() {
       ) : (
         <div className="max-w-2xl mx-auto p-6">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold">Musician Tools</h1>
+            <Link to="/" className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition">Musician Tools</Link>
             <p className="text-sm text-gray-600">{editingUid ? 'Edit a song' : 'Add a song'}</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -329,14 +537,29 @@ function SongsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Tabs</label>
-              <textarea
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                name="tabs"
-                value={form.tabs}
-                onChange={handleChange}
-                rows={2}
-                disabled={loading}
-              />
+              <div className="mt-1 flex gap-2">
+                <input
+                  className="block flex-1 rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  type="url"
+                  name="tabs"
+                  placeholder="https://example.com/tabs"
+                  value={form.tabs}
+                  onChange={handleChange}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-2 hover:bg-brand-600 disabled:opacity-50"
+                  onClick={() => {
+                    if (form.tabs && (form.tabs.startsWith('http://') || form.tabs.startsWith('https://'))) {
+                      window.open(form.tabs, '_blank');
+                    }
+                  }}
+                  disabled={loading || !form.tabs || (!form.tabs.startsWith('http://') && !form.tabs.startsWith('https://'))}
+                >
+                  Visit
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -358,6 +581,16 @@ function SongsPage() {
               >
                 Cancel
               </button>
+              {editingUid && (
+                <button
+                  type="button"
+                  className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-2 hover:bg-red-700 disabled:opacity-50"
+                  onClick={() => handleDelete(editingUid)}
+                  disabled={loading}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           </form>
         </div>
