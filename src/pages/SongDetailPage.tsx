@@ -18,6 +18,7 @@ function SongDetailPage() {
     instrument: '',
     artist: '',
     album: '',
+    pitchStandard: 440,
     tunning: '',
     lastPlayed: undefined,
   });
@@ -110,6 +111,45 @@ function SongDetailPage() {
     }
   };
 
+  const handleMarkAsPlayedNow = async () => {
+    if (!song) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      const now = new Date().toISOString();
+      const updatedSong = await songService.updateSong(song.uid, { lastPlayed: now });
+      setSong(updatedSong);
+      const { uid: _uid, createdAt, updatedAt, ...rest } = updatedSong;
+      setForm(rest);
+    } catch (err) {
+      setError('Error while marking as played');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatLastPlayed = (dateString: string | undefined) => {
+    if (!dateString) return '-';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMinutes < 1) return 'just now';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   if (loading && !song) {
     return (
       <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -164,6 +204,22 @@ function SongDetailPage() {
         <div className="mb-6">
           <Link to="/" className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition">Musician Tools</Link>
           <p className="text-sm text-gray-600">Edit song</p>
+        </div>
+
+        <div className="mb-4 flex items-center gap-4">
+          <button
+            type="button"
+            className="inline-flex items-center rounded-md bg-green-600 text-white px-3 py-2 hover:bg-green-700 disabled:opacity-50"
+            onClick={handleMarkAsPlayedNow}
+            disabled={loading}
+          >
+            Mark as played now
+          </button>
+          {song && (
+            <div className="text-sm text-gray-600">
+              Last played: <span className="font-medium">{formatLastPlayed(song.lastPlayed)}</span>
+            </div>
+          )}
         </div>
 
         <SongForm

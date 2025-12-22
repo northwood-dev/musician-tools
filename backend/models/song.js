@@ -43,6 +43,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
+    pitchStandard: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 440,
+      field: 'pitch_standard'
+    },
     tunning: {
       type: DataTypes.STRING,
       allowNull: true

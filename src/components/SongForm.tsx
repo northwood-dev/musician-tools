@@ -97,20 +97,36 @@ export function SongForm({ mode, form, loading, onChange, onToggleInstrument, on
           </select>
         </div>
       </div>
-      <div>
-        <label htmlFor="song-tuning" className="block text-sm font-medium text-gray-700">Tuning</label>
-        <select
-          id="song-tuning"
-          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
-          name="tunning"
-          value={typeof form.tunning === 'string' ? form.tunning : ''}
-          onChange={onChange}
-          disabled={loading}
-        >
-          {tuningOptions.map(t => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
-        </select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="song-tuning" className="block text-sm font-medium text-gray-700">Tuning</label>
+          <select
+            id="song-tuning"
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            name="tunning"
+            value={typeof form.tunning === 'string' ? form.tunning : ''}
+            onChange={onChange}
+            disabled={loading}
+          >
+            {tuningOptions.map(t => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="song-pitch-standard" className="block text-sm font-medium text-gray-700">Pitch Standard (Hz)</label>
+          <input
+            id="song-pitch-standard"
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            name="pitchStandard"
+            type="number"
+            value={form.pitchStandard ?? 440}
+            onChange={onChange}
+            min={400}
+            max={500}
+            disabled={loading}
+          />
+        </div>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Instruments</label>

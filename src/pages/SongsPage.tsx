@@ -15,6 +15,7 @@ const initialSong: CreateSongDTO = {
   instrument: '',
   artist: '',
   album: '',
+  pitchStandard: 440,
   tunning: '',
   lastPlayed: undefined,
 };
@@ -51,6 +52,8 @@ function SongsPage() {
   const [keyAccordionOpen, setKeyAccordionOpen] = useState<boolean>(true);
   const [bpmMinFilter, setBpmMinFilter] = useState<string>('');
   const [bpmMaxFilter, setBpmMaxFilter] = useState<string>('');
+  const [pitchStandardMinFilter, setPitchStandardMinFilter] = useState<string>('');
+  const [pitchStandardMaxFilter, setPitchStandardMaxFilter] = useState<string>('');
   const { user, logout } = useAuth();
 
   const toggleInstrumentFilter = (instrument: string) => {
@@ -291,7 +294,14 @@ function SongsPage() {
       (min === undefined || (typeof bpm === 'number' && bpm >= min)) &&
       (max === undefined || (typeof bpm === 'number' && bpm <= max))
     );
-    return passesSearch && passesInstrument && passesTunning && passesKey && passesBpm;
+    const pitchMin = pitchStandardMinFilter ? parseInt(pitchStandardMinFilter, 10) : undefined;
+    const pitchMax = pitchStandardMaxFilter ? parseInt(pitchStandardMaxFilter, 10) : undefined;
+    const pitch = song.pitchStandard;
+    const passesPitch = (
+      (pitchMin === undefined || (typeof pitch === 'number' && pitch >= pitchMin)) &&
+      (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
+    );
+    return passesSearch && passesInstrument && passesTunning && passesKey && passesBpm && passesPitch;
   });
 
   const handleSort = (column: string) => {
@@ -624,6 +634,48 @@ function SongsPage() {
                               className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                               value={bpmMaxFilter}
                               onChange={e => setBpmMaxFilter(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="border border-gray-200 rounded-md mt-3">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                        aria-expanded={true}
+                        onClick={() => {}}
+                      >
+                        <span>Pitch standard filters</span>
+                        <span>▾</span>
+                      </button>
+                      <div className="p-3 border-t">
+                        <div className="text-xs font-semibold text-gray-700 mb-2">Filter by pitch standard (Hz)</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label htmlFor="pitch-min" className="block text-xs text-gray-700">Min</label>
+                            <input
+                              id="pitch-min"
+                              type="number"
+                              min={400}
+                              max={500}
+                              placeholder="e.g. 440"
+                              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              value={pitchStandardMinFilter}
+                              onChange={e => setPitchStandardMinFilter(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="pitch-max" className="block text-xs text-gray-700">Max</label>
+                            <input
+                              id="pitch-max"
+                              type="number"
+                              min={400}
+                              max={500}
+                              placeholder="e.g. 452"
+                              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              value={pitchStandardMaxFilter}
+                              onChange={e => setPitchStandardMaxFilter(e.target.value)}
                             />
                           </div>
                         </div>
