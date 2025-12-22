@@ -26,7 +26,6 @@ function SongsPage() {
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [sortByLastPlayed, setSortByLastPlayed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState<'list' | 'form'>('list');
@@ -40,20 +39,45 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSidebarExpanded') : null;
     return saved === 'false' ? false : true; // default to expanded unless persisted false
   });
-  const [instrumentFilters, setInstrumentFilters] = useState<Set<string>>(new Set());
+  const [instrumentFilters, setInstrumentFilters] = useState<Set<string>>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsInstrumentFilters') : null;
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
   const [instrumentMatchMode, setInstrumentMatchMode] = useState<'any' | 'all'>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsInstrumentMatchMode') : null;
     return saved === 'any' ? 'any' : 'all'; // default to 'all' for exclusive filtering
   });
-  const [tunningFilter, setTunningFilter] = useState<string>('');
-  const [keyFilter, setKeyFilter] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSearchQuery') : null;
+    return saved || '';
+  });
+  const [tunningFilter, setTunningFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTunningFilter') : null;
+    return saved || '';
+  });
+  const [keyFilter, setKeyFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsKeyFilter') : null;
+    return saved || '';
+  });
+  const [bpmMinFilter, setBpmMinFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsBpmMinFilter') : null;
+    return saved || '';
+  });
+  const [bpmMaxFilter, setBpmMaxFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsBpmMaxFilter') : null;
+    return saved || '';
+  });
+  const [pitchStandardMinFilter, setPitchStandardMinFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPitchStandardMinFilter') : null;
+    return saved || '';
+  });
+  const [pitchStandardMaxFilter, setPitchStandardMaxFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPitchStandardMaxFilter') : null;
+    return saved || '';
+  });
   const [filtersAccordionOpen, setFiltersAccordionOpen] = useState<boolean>(true);
   const [tunningAccordionOpen, setTunningAccordionOpen] = useState<boolean>(true);
   const [keyAccordionOpen, setKeyAccordionOpen] = useState<boolean>(true);
-  const [bpmMinFilter, setBpmMinFilter] = useState<string>('');
-  const [bpmMaxFilter, setBpmMaxFilter] = useState<string>('');
-  const [pitchStandardMinFilter, setPitchStandardMinFilter] = useState<string>('');
-  const [pitchStandardMaxFilter, setPitchStandardMaxFilter] = useState<string>('');
   const { user, logout } = useAuth();
 
   const toggleInstrumentFilter = (instrument: string) => {
@@ -82,6 +106,54 @@ function SongsPage() {
       window.localStorage.setItem('songsInstrumentMatchMode', instrumentMatchMode);
     } catch {}
   }, [instrumentMatchMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsInstrumentFilters', JSON.stringify(Array.from(instrumentFilters)));
+    } catch {}
+  }, [instrumentFilters]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsSearchQuery', searchQuery);
+    } catch {}
+  }, [searchQuery]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsTunningFilter', tunningFilter);
+    } catch {}
+  }, [tunningFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsKeyFilter', keyFilter);
+    } catch {}
+  }, [keyFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsBpmMinFilter', bpmMinFilter);
+    } catch {}
+  }, [bpmMinFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsBpmMaxFilter', bpmMaxFilter);
+    } catch {}
+  }, [bpmMaxFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsPitchStandardMinFilter', pitchStandardMinFilter);
+    } catch {}
+  }, [pitchStandardMinFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsPitchStandardMaxFilter', pitchStandardMaxFilter);
+    } catch {}
+  }, [pitchStandardMaxFilter]);
 
   const loadSongs = async () => {
     try {
