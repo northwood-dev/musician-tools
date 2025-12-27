@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 var songsRouter = require('./songs');
 var authRouter = require('./auth');
+var instrumentsRouter = require('./instruments');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -17,5 +18,8 @@ router.use('/auth', authRouter);
 
 // Songs routes
 router.use('/songs', songsRouter);
+
+// Instruments routes
+router.use('/instruments', instrumentsRouter);
 
 module.exports = router;

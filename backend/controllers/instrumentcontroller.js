@@ -1,0 +1,114 @@
+const { Instrument } = require('../models');
+const createError = require('http-errors');
+const logger = require('../logger');
+
+// GET all instruments for logged-in user
+const getAllInstruments = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const instruments = await Instrument.findAll({
+      where: { userUid: userId },
+      order: [['createdAt', 'DESC']]
+    });
+    res.json(instruments);
+  } catch (error) {
+    logger.error('Error fetching instruments:', error);
+    next(createError(500, 'Error fetching instruments'));
+  }
+};
+
+// POST create new instrument
+const createInstrument = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const { name, type, brand, model, notes } = req.body;
+    if (!name) {
+      return next(createError(400, 'Name is required'));
+    }
+
+    const instrument = await Instrument.create({
+      userUid: userId,
+      name,
+      type,
+      brand,
+      model,
+      notes
+    });
+
+    res.status(201).json(instrument);
+  } catch (error) {
+    logger.error('Error creating instrument:', error);
+    next(createError(500, 'Error creating instrument'));
+  }
+};
+
+// PUT update instrument
+const updateInstrument = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const instrument = await Instrument.findByPk(req.params.uid);
+    if (!instrument) {
+      return next(createError(404, 'Instrument not found'));
+    }
+    if (instrument.userUid !== userId) {
+      return next(createError(403, 'Forbidden'));
+    }
+
+    const { name, type, brand, model, notes } = req.body;
+    await instrument.update({
+      name: name !== undefined ? name : instrument.name,
+      type: type !== undefined ? type : instrument.type,
+      brand: brand !== undefined ? brand : instrument.brand,
+      model: model !== undefined ? model : instrument.model,
+      notes: notes !== undefined ? notes : instrument.notes,
+    });
+
+    res.json(instrument);
+  } catch (error) {
+    logger.error('Error updating instrument:', error);
+    next(createError(500, 'Error updating instrument'));
+  }
+};
+
+// DELETE instrument
+const deleteInstrument = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const instrument = await Instrument.findByPk(req.params.uid);
+    if (!instrument) {
+      return next(createError(404, 'Instrument not found'));
+    }
+    if (instrument.userUid !== userId) {
+      return next(createError(403, 'Forbidden'));
+    }
+
+    await instrument.destroy();
+    res.json({ message: 'Instrument deleted successfully' });
+  } catch (error) {
+    logger.error('Error deleting instrument:', error);
+    next(createError(500, 'Error deleting instrument'));
+  }
+};
+
+module.exports = {
+  getAllInstruments,
+  createInstrument,
+  updateInstrument,
+  deleteInstrument,
+};

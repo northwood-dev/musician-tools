@@ -4,6 +4,7 @@ import SongsPage from './pages/SongsPage';
 import SongDetailPage from './pages/SongDetailPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import MyInstrumentsPage from './pages/MyInstrumentsPage';
 
 function HomePage() {
   const { isAuthenticated, logout } = useAuth();
@@ -15,7 +16,7 @@ function HomePage() {
         <p className="text-gray-700">
           Manage your songs, tempos, keys, and last played dates. Open your list to add or edit tracks.
         </p>
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-4 flex-wrap">
           {isAuthenticated ? (
             <>
               <Link
@@ -23,6 +24,12 @@ function HomePage() {
                 className="inline-flex items-center rounded-md bg-brand-500 text-white px-4 py-2 hover:bg-brand-600"
               >
                 Go to songs
+              </Link>
+              <Link
+                to="/my-instruments"
+                className="inline-flex items-center rounded-md bg-blue-500 text-white px-4 py-2 hover:bg-blue-600"
+              >
+                My instruments
               </Link>
               <button
                 onClick={async () => {
@@ -73,6 +80,10 @@ function App() {
       <Route
         path="/songs"
         element={isAuthenticated ? <SongsPage /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/my-instruments"
+        element={isAuthenticated ? <MyInstrumentsPage /> : <Navigate to="/login" replace />}
       />
       <Route
         path="/song/:artist/:title"
