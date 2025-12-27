@@ -7,7 +7,7 @@ import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { useAuth } from '../contexts/AuthContext';
 import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { instrumentTypeOptions } from '../constants/instrumentTypes';
+import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -161,6 +161,24 @@ function SongsPage() {
     try {
       window.localStorage.setItem('songsInstrumentFilter', instrumentFilter);
     } catch {}
+  }, [instrumentFilter]);
+
+  useEffect(() => {
+    if (!instrumentFilter) {
+      setTechniqueFilters(new Set());
+      setTunningFilter('');
+      return;
+    }
+
+    const allowedTechniques = new Set(instrumentTechniquesMap[instrumentFilter] || []);
+    setTechniqueFilters(prev => {
+      const next = new Set(Array.from(prev).filter(t => allowedTechniques.has(t)));
+      const isSame = next.size === prev.size && Array.from(next).every(t => prev.has(t));
+      return isSame ? prev : next;
+    });
+
+    const allowedTunings = new Set((instrumentTuningsMap[instrumentFilter] || []).map(t => t.value));
+    setTunningFilter(prev => (prev && !allowedTunings.has(prev) ? '' : prev));
   }, [instrumentFilter]);
 
   useEffect(() => {
@@ -644,6 +662,11 @@ function SongsPage() {
     </th>
   );
 
+  const availableTechniqueFilters = instrumentFilter ? instrumentTechniquesMap[instrumentFilter] || [] : [];
+  const availableTunningFilters = instrumentFilter ? instrumentTuningsMap[instrumentFilter] || [] : [];
+  const tunningFilterOptions = availableTunningFilters.filter(opt => opt.value);
+  const showTunningFilters = instrumentFilter && instrumentFilter !== 'Drums';
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <ConfirmDialog
@@ -777,100 +800,111 @@ function SongsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="border border-gray-200 rounded-md mt-3">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
-                        aria-expanded={techniqueAccordionOpen}
-                        onClick={() => setTechniqueAccordionOpen(prev => !prev)}
-                      >
-                        <span>Technique filters</span>
-                        <span>{techniqueAccordionOpen ? '▾' : '▸'}</span>
-                      </button>
-                      {techniqueAccordionOpen && (
-                      <div className="p-3 border-t">
-                        <div className="text-xs font-semibold text-gray-700 mb-2">Filter by technique</div>
-                        <div className="flex flex-col gap-2">
-                          {['Slap','Pick','Tapping','Fingerstyle','Strumming','Palm Mute','Harmonics','Other'].map(tech => (
-                            <label key={tech} className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4"
-                                checked={techniqueFilters.has(tech)}
-                                onChange={() => toggleTechniqueFilter(tech)}
-                              />
-                              <span className="cursor-pointer">{tech}</span>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="mt-3">
-                          <div className="text-xs font-semibold text-gray-700 mb-1">Match mode</div>
-                          <div className="flex items-center gap-3">
-                            <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                              <input
-                                type="radio"
-                                name="technique-match-mode"
-                                value="all"
-                                className="h-3 w-3"
-                                checked={techniqueMatchMode === 'all'}
-                                onChange={() => setTechniqueMatchMode('all')}
-                              />
-                              <span>All</span>
-                            </label>
-                            <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                              <input
-                                type="radio"
-                                name="technique-match-mode"
-                                value="any"
-                                className="h-3 w-3"
-                                checked={techniqueMatchMode === 'any'}
-                                onChange={() => setTechniqueMatchMode('any')}
-                              />
-                              <span>Any</span>
-                            </label>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <button
-                            type="button"
-                            className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
-                            onClick={() => setTechniqueFilters(new Set())}
-                          >
-                            Clear filters
-                          </button>
-                        </div>
-                      </div>
-                      )}
-                    </div>
-                    <div className="border border-gray-200 rounded-md mt-3">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
-                        aria-expanded={tunningAccordionOpen}
-                        onClick={() => setTunningAccordionOpen(prev => !prev)}
-                      >
-                        <span>Tunning filters</span>
-                        <span>{tunningAccordionOpen ? '▾' : '▸'}</span>
-                      </button>
-                      {tunningAccordionOpen && (
+                    {instrumentFilter && (
+                      <div className="border border-gray-200 rounded-md mt-3">
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                          aria-expanded={techniqueAccordionOpen}
+                          onClick={() => setTechniqueAccordionOpen(prev => !prev)}
+                        >
+                          <span>Technique filters</span>
+                          <span>{techniqueAccordionOpen ? '▾' : '▸'}</span>
+                        </button>
+                        {techniqueAccordionOpen && (
                         <div className="p-3 border-t">
-                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by tunning</div>
-                          <select
-                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                            value={tunningFilter}
-                            onChange={e => setTunningFilter(e.target.value)}
-                          >
-                            <option value="">All tunings</option>
-                            <option value="EADGBE">EADGBE (Standard)</option>
-                            <option value="DADGBE">DADGBE (Drop D)</option>
-                            <option value="EbAbDbGbBbEb">EbAbDbGbBbEb (Half-step down)</option>
-                            <option value="DADGAD">DADGAD</option>
-                            <option value="DGDGBD">DGDGBD (Open G)</option>
-                            <option value="Other">Other</option>
-                          </select>
+                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by technique</div>
+                          {availableTechniqueFilters.length === 0 ? (
+                            <p className="text-sm text-gray-600">No techniques available for {instrumentFilter}.</p>
+                          ) : (
+                            <>
+                              <div className="flex flex-col gap-2">
+                                {availableTechniqueFilters.map(tech => (
+                                  <label key={tech} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      className="h-4 w-4"
+                                      checked={techniqueFilters.has(tech)}
+                                      onChange={() => toggleTechniqueFilter(tech)}
+                                    />
+                                    <span className="cursor-pointer">{tech}</span>
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="mt-3">
+                                <div className="text-xs font-semibold text-gray-700 mb-1">Match mode</div>
+                                <div className="flex items-center gap-3">
+                                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="technique-match-mode"
+                                      value="all"
+                                      className="h-3 w-3"
+                                      checked={techniqueMatchMode === 'all'}
+                                      onChange={() => setTechniqueMatchMode('all')}
+                                    />
+                                    <span>All</span>
+                                  </label>
+                                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name="technique-match-mode"
+                                      value="any"
+                                      className="h-3 w-3"
+                                      checked={techniqueMatchMode === 'any'}
+                                      onChange={() => setTechniqueMatchMode('any')}
+                                    />
+                                    <span>Any</span>
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
+                                  onClick={() => setTechniqueFilters(new Set())}
+                                >
+                                  Clear filters
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
+                    {showTunningFilters && (
+                      <div className="border border-gray-200 rounded-md mt-3">
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                          aria-expanded={tunningAccordionOpen}
+                          onClick={() => setTunningAccordionOpen(prev => !prev)}
+                        >
+                          <span>Tunning filters</span>
+                          <span>{tunningAccordionOpen ? '▾' : '▸'}</span>
+                        </button>
+                        {tunningAccordionOpen && (
+                          <div className="p-3 border-t">
+                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by tunning</div>
+                            {tunningFilterOptions.length === 0 ? (
+                              <p className="text-sm text-gray-600">No tunings available for {instrumentFilter}.</p>
+                            ) : (
+                              <select
+                                className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                value={tunningFilter}
+                                onChange={e => setTunningFilter(e.target.value)}
+                              >
+                                <option value="">All tunings</option>
+                                {tunningFilterOptions.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className="border border-gray-200 rounded-md mt-3">
                       <button
                         type="button"
