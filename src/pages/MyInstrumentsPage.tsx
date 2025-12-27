@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { instrumentService, type Instrument, type CreateInstrumentDTO } from '../services/instrumentService';
+import { instrumentService, type Instrument, type CreateInstrumentDTO, type UpdateInstrumentDTO } from '../services/instrumentService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { instrumentTypeOptions } from '../constants/instrumentTypes';
 
 function MyInstrumentsPage() {
   const { logout } = useAuth();
@@ -13,8 +14,12 @@ function MyInstrumentsPage() {
   const [type, setType] = useState('');
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
-  const [notes, setNotes] = useState('');
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
+  const [editingUid, setEditingUid] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState('');
+  const [editBrand, setEditBrand] = useState('');
+  const [editModel, setEditModel] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -35,14 +40,13 @@ function MyInstrumentsPage() {
     if (!name.trim()) return;
     try {
       setLoading(true);
-      const payload: CreateInstrumentDTO = { name: name.trim(), type: type || undefined, brand: brand || undefined, model: model || undefined, notes: notes || undefined };
+      const payload: CreateInstrumentDTO = { name: name.trim(), type: type || undefined, brand: brand || undefined, model: model || undefined };
       const created = await instrumentService.create(payload);
       setList([created, ...list]);
       setName('');
       setType('');
       setBrand('');
       setModel('');
-      setNotes('');
     } catch {
       setError('Failed to add instrument');
     } finally {
@@ -59,6 +63,38 @@ function MyInstrumentsPage() {
       setDeleteUid(null);
     } catch {
       setError('Failed to delete instrument');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startEdit = (item: Instrument) => {
+    setEditingUid(item.uid);
+    setEditName(item.name);
+    setEditType(item.type || '');
+    setEditBrand(item.brand || '');
+    setEditModel(item.model || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingUid(null);
+  };
+
+  const saveEdit = async () => {
+    if (!editingUid) return;
+    try {
+      setLoading(true);
+      const payload: UpdateInstrumentDTO = {
+        name: editName.trim() || undefined,
+        type: editType || undefined,
+        brand: editBrand || undefined,
+        model: editModel || undefined,
+      };
+      const updated = await instrumentService.update(editingUid, payload);
+      setList(list.map(i => (i.uid === editingUid ? updated : i)));
+      setEditingUid(null);
+    } catch {
+      setError('Failed to update instrument');
     } finally {
       setLoading(false);
     }
@@ -103,17 +139,21 @@ function MyInstrumentsPage() {
         <h2 className="text-lg font-medium mb-2">My instruments</h2>
 
         <form onSubmit={handleAdd} className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-2">
-          <input
-            placeholder="Name (ex. Emma)"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            disabled={loading}
-          />
-          <input
-            placeholder="Type (ex. Guitar)"
+          <select
             value={type}
             onChange={e => setType(e.target.value)}
+            className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            disabled={loading}
+          >
+            <option value="">Select type</option>
+            {instrumentTypeOptions.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          <input
+            placeholder="Name (ex. 5 strings bass)"
+            value={name}
+            onChange={e => setName(e.target.value)}
             className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             disabled={loading}
           />
@@ -138,14 +178,7 @@ function MyInstrumentsPage() {
           >
             Add
           </button>
-          <textarea
-            placeholder="Notes (optional)"
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            className="md:col-span-5 rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            rows={2}
-            disabled={loading}
-          />
+          {/* Notes field removed */}
         </form>
 
         {loading ? (
@@ -156,8 +189,8 @@ function MyInstrumentsPage() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr>
-                <th className="text-left p-2 border-b">Name</th>
                 <th className="text-left p-2 border-b">Type</th>
+                <th className="text-left p-2 border-b">Name</th>
                 <th className="text-left p-2 border-b">Brand</th>
                 <th className="text-left p-2 border-b">Model</th>
                 <th className="text-right p-2 border-b">Actions</th>
@@ -165,22 +198,94 @@ function MyInstrumentsPage() {
             </thead>
             <tbody>
               {list.map(item => (
-                <tr key={item.uid} className="hover:bg-gray-50">
-                  <td className="p-2 align-top">{item.name}</td>
-                  <td className="p-2 align-top">{item.type || '-'}</td>
-                  <td className="p-2 align-top">{item.brand || '-'}</td>
-                  <td className="p-2 align-top">{item.model || '-'}</td>
-                  <td className="p-2 align-top text-right">
-                    <button
-                      type="button"
-                      className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50"
-                      onClick={() => setDeleteUid(item.uid)}
-                      disabled={loading}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
+                editingUid === item.uid ? (
+                  <tr key={item.uid} className="bg-yellow-50">
+                    <td className="p-2 align-top">
+                      <select
+                        value={editType}
+                        onChange={e => setEditType(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        disabled={loading}
+                      >
+                        <option value="">Select type</option>
+                        {instrumentTypeOptions.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="p-2 align-top">
+                      <input
+                        value={editName}
+                        onChange={e => setEditName(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        disabled={loading}
+                      />
+                    </td>
+                    <td className="p-2 align-top">
+                      <input
+                        value={editBrand}
+                        onChange={e => setEditBrand(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        disabled={loading}
+                      />
+                    </td>
+                    <td className="p-2 align-top">
+                      <input
+                        value={editModel}
+                        onChange={e => setEditModel(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        disabled={loading}
+                      />
+                    </td>
+                    <td className="p-2 align-top text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-3 py-1.5 hover:bg-gray-300 disabled:opacity-50"
+                          onClick={cancelEdit}
+                          disabled={loading}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1.5 hover:bg-brand-600 disabled:opacity-50"
+                          onClick={saveEdit}
+                          disabled={loading || !editName.trim()}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={item.uid} className="hover:bg-gray-50">
+                    <td className="p-2 align-top">{item.type || '-'}</td>
+                    <td className="p-2 align-top">{item.name}</td>
+                    <td className="p-2 align-top">{item.brand || '-'}</td>
+                    <td className="p-2 align-top">{item.model || '-'}</td>
+                    <td className="p-2 align-top text-right">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-3 py-1.5 hover:bg-gray-300 disabled:opacity-50"
+                          onClick={() => startEdit(item)}
+                          disabled={loading}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50"
+                          onClick={() => setDeleteUid(item.uid)}
+                          disabled={loading}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
               ))}
             </tbody>
           </table>

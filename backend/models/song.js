@@ -31,7 +31,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    chords: {
+    notes: {
       type: DataTypes.TEXT,
       allowNull: true
     },
@@ -58,10 +58,25 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: null
     },
+    instrumentLinks: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null
+    },
     instrument: {
       type: DataTypes.JSON,
       allowNull: true,
       defaultValue: null
+    },
+    myInstrumentUid: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: 'my_instrument_uid',
+      references: {
+        model: 'Instruments',
+        key: 'uid'
+      },
+      onDelete: 'SET NULL'
     },
     artist: {
       type: DataTypes.STRING,
@@ -79,6 +94,7 @@ module.exports = (sequelize, DataTypes) => {
 
   Song.associate = function(models) {
     Song.belongsTo(models.User, { foreignKey: 'userUid' });
+    Song.belongsTo(models.Instrument, { foreignKey: 'myInstrumentUid' });
   };
 
   return Song;

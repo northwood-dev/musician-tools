@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { songService, type Song, type CreateSongDTO } from '../services/songService';
+import { instrumentService, type Instrument } from '../services/instrumentService';
+import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { SongForm } from '../components/SongForm';
 import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -13,9 +15,10 @@ function SongDetailPage() {
     title: '',
     bpm: null,
     key: '',
-    chords: '',
+    notes: '',
     tabs: '',
-    instrument: '',
+    instrument: [],
+    instrumentLinks: {},
     artist: '',
     album: '',
     technique: [],
@@ -26,9 +29,20 @@ function SongDetailPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [myInstruments, setMyInstruments] = useState<Instrument[]>([]);
+  const [songPlays, setSongPlays] = useState<SongPlay[]>([]);
+  const [selectedInstrumentType, setSelectedInstrumentType] = useState<string>('');
 
   useEffect(() => {
     loadSong();
+    (async () => {
+      try {
+        const list = await instrumentService.getAll();
+        setMyInstruments(list);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
   }, [artist, title]);
 
   const loadSong = async () => {
@@ -45,8 +59,31 @@ function SongDetailPage() {
       
       if (found) {
         setSong(found);
+        // Charger les plays pour cette chanson
+        try {
+          const plays = await songPlayService.getPlays(found.uid);
+          setSongPlays(plays);
+        } catch (err) {
+          console.error('Failed to load plays:', err);
+          setSongPlays([]);
+        }
         const { uid: _uid, createdAt, updatedAt, ...rest } = found;
-        setForm(rest);
+        const normalized: CreateSongDTO = {
+          ...rest,
+          instrument: Array.isArray(rest.instrument)
+            ? rest.instrument
+            : rest.instrument
+              ? [rest.instrument as unknown as string]
+              : [],
+          technique: Array.isArray(rest.technique)
+            ? rest.technique
+            : rest.technique
+              ? [rest.technique as unknown as string]
+              : [],
+          myInstrumentUid: rest.myInstrumentUid || undefined,
+          instrumentLinks: rest.instrumentLinks || {}
+        };
+        setForm(normalized);
       } else {
         setError('Song not found');
       }
@@ -67,30 +104,59 @@ function SongDetailPage() {
     }
   };
 
-  const toggleFormInstrument = (instrument: string) => {
-    const current = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
-    const updated = current.includes(instrument)
-      ? current.filter(i => i !== instrument)
-      : [...current, instrument];
-    setForm({ ...form, instrument: updated as any });
+  const changeFormInstruments = (instruments: string[]) => {
+    setForm(prevForm => ({ ...prevForm, instrument: instruments }));
+    setSelectedInstrumentType(instruments[0] || '');
+  };
+
+  const setFormMyInstrumentUid = (uid: string | undefined) => {
+    setForm(prevForm => ({ ...prevForm, myInstrumentUid: uid }));
+  };
+
+  const setFormTechniques = (techniques: string[]) => {
+    setForm(prevForm => ({ ...prevForm, technique: techniques }));
+  };
+
+  const setFormTunning = (tunning: string | null) => {
+    setForm(prevForm => ({ ...prevForm, tunning: tunning || undefined }));
+  };
+
+  const setInstrumentLinksForInstrument = (instrumentType: string, links: Array<{ label?: string; url: string }>) => {
+    setForm(prevForm => ({
+      ...prevForm,
+      instrumentLinks: {
+        ...(prevForm.instrumentLinks || {}),
+        [instrumentType]: links,
+      },
+    }));
   };
 
   const toggleFormTechnique = (technique: string) => {
-    const current = Array.isArray(form.technique) ? form.technique : (form.technique ? [form.technique] : []);
-    const updated = current.includes(technique)
-      ? current.filter(t => t !== technique)
-      : [...current, technique];
-    setForm({ ...form, technique: updated as any });
+    setForm(prevForm => {
+      const current = Array.isArray(prevForm.technique) ? prevForm.technique : (prevForm.technique ? [prevForm.technique] : []);
+      const updated = current.includes(technique)
+        ? current.filter(t => t !== technique)
+        : [...current, technique];
+      return { ...prevForm, technique: updated };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!song) return;
 
+    const payload: CreateSongDTO = {
+      ...form,
+      instrument: form.instrument && form.instrument.length > 0 ? form.instrument : null,
+      technique: form.technique && form.technique.length > 0 ? form.technique : [],
+      myInstrumentUid: form.myInstrumentUid ? form.myInstrumentUid : undefined,
+      instrumentLinks: form.instrumentLinks || {}
+    };
+
     try {
       setLoading(true);
       setError(null);
-      await songService.updateSong(song.uid, form);
+      await songService.updateSong(song.uid, payload);
       navigate('/songs');
     } catch (err) {
       setError('Error while saving song');
@@ -120,23 +186,35 @@ function SongDetailPage() {
     }
   };
 
-  const handleMarkAsPlayedNow = async () => {
+  const handleMarkAsPlayedNow = async (instrumentType: string) => {
     if (!song) return;
 
     try {
       setLoading(true);
       setError(null);
+      await songPlayService.markPlayed(song.uid, { instrumentType });
+      // Recharger les plays
+      const plays = await songPlayService.getPlays(song.uid);
+      setSongPlays(plays);
       const now = new Date().toISOString();
-      const updatedSong = await songService.updateSong(song.uid, { lastPlayed: now });
-      setSong(updatedSong);
-      const { uid: _uid, createdAt, updatedAt, ...rest } = updatedSong;
-      setForm(rest);
+      await songService.updateSong(song.uid, { lastPlayed: now });
+      // Ne pas réinitialiser le form - juste mettre à jour les plays
     } catch (err) {
       setError('Error while marking as played');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getLastPlayedForInstrument = (): string | undefined => {
+    if (songPlays.length === 0) return undefined;
+    if (selectedInstrumentType) {
+      const plays = songPlays.filter(p => p.instrumentType === selectedInstrumentType);
+      return plays.length > 0 ? plays[0].playedAt : undefined;
+    }
+    // Si aucun type d'instrument n'est sélectionné, retourner le dernier play global
+    return songPlays[0].playedAt;
   };
 
   const formatLastPlayed = (dateString: string | undefined) => {
@@ -215,33 +293,25 @@ function SongDetailPage() {
           <p className="text-sm text-gray-600">Edit song</p>
         </div>
 
-        <div className="mb-4 flex items-center gap-4">
-          <button
-            type="button"
-            className="inline-flex items-center rounded-md bg-green-600 text-white px-3 py-2 hover:bg-green-700 disabled:opacity-50"
-            onClick={handleMarkAsPlayedNow}
-            disabled={loading}
-          >
-            Mark as played now
-          </button>
-          {song && (
-            <div className="text-sm text-gray-600">
-              Last played: <span className="font-medium">{formatLastPlayed(song.lastPlayed)}</span>
-            </div>
-          )}
-        </div>
-
         <SongForm
           mode="edit"
           form={form}
           loading={loading}
           onChange={handleChange}
-          onToggleInstrument={toggleFormInstrument}
+          onChangeInstruments={changeFormInstruments}
+          onSetMyInstrumentUid={setFormMyInstrumentUid}
+          onSetTechniques={setFormTechniques}
+          onSetTunning={setFormTunning}
           onToggleTechnique={toggleFormTechnique}
+          onSetInstrumentLinksForInstrument={setInstrumentLinksForInstrument}
+          onMarkAsPlayedNow={handleMarkAsPlayedNow}
+          songPlays={songPlays}
+          formatLastPlayed={formatLastPlayed}
           onSubmit={handleSubmit}
           onCancel={() => navigate('/songs')}
           onDelete={() => setDeleteDialogOpen(true)}
           tabsFirst
+          myInstruments={myInstruments.map(i => ({ uid: i.uid, name: i.name, type: i.type }))}
         />
       </div>
     </div>

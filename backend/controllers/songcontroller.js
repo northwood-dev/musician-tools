@@ -1,4 +1,4 @@
-const { Song } = require('../models');
+const { Song, SongPlay } = require('../models');
 const createError = require('http-errors');
 const logger = require('../logger');
 
@@ -43,7 +43,7 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, key, chords, tabs, instrument, artist, album, pitchStandard, tunning, technique, lastPlayed } = req.body;
+    const { title, bpm, key, notes, tabs, instrument, artist, album, pitchStandard, tunning, technique, instrumentLinks, myInstrumentUid, lastPlayed } = req.body;
 
     if (!title) {
       return next(createError(400, 'Title is required'));
@@ -54,14 +54,16 @@ const createSong = async (req, res, next) => {
       title,
       bpm: bpm !== undefined ? bpm : null,
       key,
-      chords,
+      notes,
       tabs,
       instrument,
+      instrumentLinks,
       artist,
       album,
       pitchStandard,
       tunning,
       technique,
+      myInstrumentUid,
       lastPlayed: lastPlayed ? new Date(lastPlayed) : null
     });
 
@@ -90,13 +92,13 @@ const updateSong = async (req, res, next) => {
       return next(createError(403, 'Forbidden'));
     }
 
-    const { title, bpm, key, chords, tabs, instrument, artist, album, pitchStandard, tunning, technique, lastPlayed } = req.body;
+    const { title, bpm, key, notes, tabs, instrument, artist, album, pitchStandard, tunning, technique, instrumentLinks, myInstrumentUid, lastPlayed } = req.body;
 
     await song.update({
       title: title || song.title,
       bpm: bpm !== undefined ? bpm : song.bpm,
       key: key !== undefined ? key : song.key,
-      chords: chords !== undefined ? chords : song.chords,
+      notes: notes !== undefined ? notes : song.notes,
       tabs: tabs !== undefined ? tabs : song.tabs,
       instrument: instrument !== undefined ? instrument : song.instrument,
       artist: artist !== undefined ? artist : song.artist,
@@ -104,7 +106,9 @@ const updateSong = async (req, res, next) => {
       pitchStandard: pitchStandard !== undefined ? pitchStandard : song.pitchStandard,
       tunning: tunning !== undefined ? tunning : song.tunning,
       technique: technique !== undefined ? technique : song.technique,
-      lastPlayed: lastPlayed ? new Date(lastPlayed) : song.lastPlayed
+      instrumentLinks: instrumentLinks !== undefined ? instrumentLinks : song.instrumentLinks,
+      lastPlayed: lastPlayed ? new Date(lastPlayed) : song.lastPlayed,
+      myInstrumentUid: myInstrumentUid !== undefined ? myInstrumentUid : song.myInstrumentUid
     });
 
     res.json(song);
@@ -140,10 +144,79 @@ const deleteSong = async (req, res, next) => {
   }
 };
 
+// POST mark song as played
+const markSongPlayed = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const song = await Song.findByPk(req.params.uid);
+    if (!song) {
+      return next(createError(404, 'Song not found'));
+    }
+
+    // Check ownership
+    if (song.userUid !== userId) {
+      return next(createError(403, 'Forbidden'));
+    }
+
+    const { instrumentUid, instrumentType } = req.body;
+
+    const songPlay = await SongPlay.create({
+      songUid: song.uid,
+      instrumentUid: instrumentUid || null,
+      instrumentType: instrumentType || null,
+      playedAt: new Date(),
+    });
+
+    // Also update the song's lastPlayed field as a fallback
+    await song.update({ lastPlayed: new Date() });
+
+    res.status(201).json(songPlay);
+  } catch (error) {
+    logger.error('Error marking song as played:', error);
+    next(createError(500, 'Error marking song as played'));
+  }
+};
+
+// GET song plays history
+const getSongPlays = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const song = await Song.findByPk(req.params.uid);
+    if (!song) {
+      return next(createError(404, 'Song not found'));
+    }
+
+    // Check ownership
+    if (song.userUid !== userId) {
+      return next(createError(403, 'Forbidden'));
+    }
+
+    const plays = await SongPlay.findAll({
+      where: { songUid: song.uid },
+      order: [['playedAt', 'DESC']],
+    });
+
+    res.json(plays);
+  } catch (error) {
+    logger.error('Error fetching song plays:', error);
+    next(createError(500, 'Error fetching song plays'));
+  }
+};
+
 module.exports = {
   getAllSongs,
   getSong,
   createSong,
   updateSong,
-  deleteSong
+  deleteSong,
+  markSongPlayed,
+  getSongPlays,
 };

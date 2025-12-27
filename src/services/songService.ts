@@ -3,14 +3,16 @@ export type Song = {
   title: string;
   bpm: number | null;
   key: string;
-  chords: string;
+  notes: string;
   tabs: string;
-  instrument: string;
+  instrument: string[] | null;
+  instrumentLinks?: Record<string, Array<{ label?: string; url: string }>>;
   artist: string;
   album?: string;
   technique?: string[];
   pitchStandard?: number;
   tunning?: string;
+  myInstrumentUid?: string;
   lastPlayed?: string;
   createdAt?: string;
   updatedAt?: string;

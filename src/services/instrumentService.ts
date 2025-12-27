@@ -4,7 +4,6 @@ export type Instrument = {
   type?: string;
   brand?: string;
   model?: string;
-  notes?: string;
   createdAt?: string;
   updatedAt?: string;
 };

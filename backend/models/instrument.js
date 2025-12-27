@@ -33,10 +33,6 @@ module.exports = (sequelize, DataTypes) => {
     model: {
       type: DataTypes.STRING,
       allowNull: true
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true
     }
   }, {
     tableName: 'Instruments',

@@ -12,5 +12,7 @@ router.get('/:uid', authsess, songController.getSong);
 router.post('/', authsess, songController.createSong);
 router.put('/:uid', authsess, songController.updateSong);
 router.delete('/:uid', authsess, songController.deleteSong);
+router.post('/:uid/plays', authsess, songController.markSongPlayed);
+router.get('/:uid/plays', authsess, songController.getSongPlays);
 
 module.exports = router;

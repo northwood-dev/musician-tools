@@ -29,7 +29,7 @@ const createInstrument = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { name, type, brand, model, notes } = req.body;
+    const { name, type, brand, model } = req.body;
     if (!name) {
       return next(createError(400, 'Name is required'));
     }
@@ -39,8 +39,7 @@ const createInstrument = async (req, res, next) => {
       name,
       type,
       brand,
-      model,
-      notes
+      model
     });
 
     res.status(201).json(instrument);
@@ -66,13 +65,12 @@ const updateInstrument = async (req, res, next) => {
       return next(createError(403, 'Forbidden'));
     }
 
-    const { name, type, brand, model, notes } = req.body;
+    const { name, type, brand, model } = req.body;
     await instrument.update({
       name: name !== undefined ? name : instrument.name,
       type: type !== undefined ? type : instrument.type,
       brand: brand !== undefined ? brand : instrument.brand,
       model: model !== undefined ? model : instrument.model,
-      notes: notes !== undefined ? notes : instrument.notes,
     });
 
     res.json(instrument);

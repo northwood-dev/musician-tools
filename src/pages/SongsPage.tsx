@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
+import { instrumentService, type Instrument } from '../services/instrumentService';
+import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { useAuth } from '../contexts/AuthContext';
 import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { instrumentTypeOptions } from '../constants/instrumentTypes';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -12,7 +15,7 @@ const initialSong: CreateSongDTO = {
   key: '',
   chords: '',
   tabs: '',
-  instrument: '',
+  instrument: [],
   artist: '',
   album: '',
   technique: [],
@@ -49,10 +52,15 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSidebarExpanded') : null;
     return saved === 'false' ? false : true; // default to expanded unless persisted false
   });
-  const [instrumentFilters, setInstrumentFilters] = useState<Set<string>>(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsInstrumentFilters') : null;
-    return saved ? new Set(JSON.parse(saved)) : new Set();
+  const [instrumentFilter, setInstrumentFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsInstrumentFilter') : null;
+    return saved ? saved : '';
   });
+  const [myInstrumentFilter, setMyInstrumentFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsMyInstrumentFilter') : null;
+    return saved ? saved : '';
+  });
+  const [myInstruments, setMyInstruments] = useState<Instrument[]>([]);
   const [instrumentMatchMode, setInstrumentMatchMode] = useState<'any' | 'all'>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsInstrumentMatchMode') : null;
     return saved === 'any' ? 'any' : 'all'; // default to 'all' for exclusive filtering
@@ -109,16 +117,10 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTechniqueAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
+  const [songPlays, setSongPlays] = useState<Map<string, SongPlay[]>>(new Map());
   const { user, logout } = useAuth();
 
-  const toggleInstrumentFilter = (instrument: string) => {
-    setInstrumentFilters(prev => {
-      const next = new Set(prev);
-      if (next.has(instrument)) next.delete(instrument);
-      else next.add(instrument);
-      return next;
-    });
-  };
+
 
   const toggleTechniqueFilter = (technique: string) => {
     setTechniqueFilters(prev => {
@@ -133,6 +135,14 @@ function SongsPage() {
 
   useEffect(() => {
     loadSongs();
+    (async () => {
+      try {
+        const list = await instrumentService.getAll();
+        setMyInstruments(list);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -149,9 +159,15 @@ function SongsPage() {
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('songsInstrumentFilters', JSON.stringify(Array.from(instrumentFilters)));
+      window.localStorage.setItem('songsInstrumentFilter', instrumentFilter);
     } catch {}
-  }, [instrumentFilters]);
+  }, [instrumentFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsMyInstrumentFilter', myInstrumentFilter);
+    } catch {}
+  }, [myInstrumentFilter]);
 
   useEffect(() => {
     try {
@@ -255,6 +271,21 @@ function SongsPage() {
       setError(null);
       const data = await songService.getAllSongs();
       setSongs(data);
+      
+      // Charger les plays pour toutes les chansons
+      const playsMap = new Map<string, SongPlay[]>();
+      await Promise.all(
+        data.map(async (song) => {
+          try {
+            const plays = await songPlayService.getPlays(song.uid);
+            playsMap.set(song.uid, plays);
+          } catch (err) {
+            console.error(`Failed to load plays for ${song.uid}:`, err);
+            playsMap.set(song.uid, []);
+          }
+        })
+      );
+      setSongPlays(playsMap);
     } catch (err) {
       setError('Error while loading songs');
       console.error(err);
@@ -265,6 +296,7 @@ function SongsPage() {
 
   const markPlayedNow = async (uid: string) => {
     try {
+      await songPlayService.markPlayed(uid, { instrumentUid: myInstrumentFilter || undefined });
       const updatedSong = await songService.updateSong(uid, {
         lastPlayed: new Date().toISOString(),
       });
@@ -282,9 +314,10 @@ function SongsPage() {
       const now = new Date().toISOString();
       
       await Promise.all(
-        Array.from(selectedSongs).map(uid =>
-          songService.updateSong(uid, { lastPlayed: now })
-        )
+        Array.from(selectedSongs).map(async uid => {
+          await songPlayService.markPlayed(uid, { instrumentUid: myInstrumentFilter || undefined });
+          return songService.updateSong(uid, { lastPlayed: now });
+        })
       );
       
       const updatedSongs = songs.map(song =>
@@ -310,33 +343,57 @@ function SongsPage() {
   };
 
   const toggleFormInstrument = (instrument: string) => {
-    const current = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
-    const updated = current.includes(instrument)
-      ? current.filter(i => i !== instrument)
-      : [...current, instrument];
-    setForm({ ...form, instrument: updated as any });
+    setForm(prevForm => {
+      const current = Array.isArray(prevForm.instrument) ? prevForm.instrument : (prevForm.instrument ? [prevForm.instrument] : []);
+      const updated = current.includes(instrument)
+        ? current.filter(i => i !== instrument)
+        : [...current, instrument];
+      return { ...prevForm, instrument: updated as any };
+    });
   };
 
   const toggleFormTechnique = (technique: string) => {
-    const current = Array.isArray(form.technique) ? form.technique : (form.technique ? [form.technique] : []);
-    const updated = current.includes(technique)
-      ? current.filter(t => t !== technique)
-      : [...current, technique];
-    setForm({ ...form, technique: updated as any });
+    setForm(prevForm => {
+      const current = Array.isArray(prevForm.technique) ? prevForm.technique : (prevForm.technique ? [prevForm.technique] : []);
+      const updated = current.includes(technique)
+        ? current.filter(t => t !== technique)
+        : [...current, technique];
+      return { ...prevForm, technique: updated as any };
+    });
+  };
+
+  const setFormMyInstrumentUid = (uid: string | undefined) => {
+    setForm(prevForm => ({ ...prevForm, myInstrumentUid: uid }));
+  };
+
+  const setFormTechniques = (techniques: string[]) => {
+    setForm(prevForm => ({ ...prevForm, technique: techniques }));
+  };
+
+  const setFormTunning = (tunning: string | null) => {
+    setForm(prevForm => ({ ...prevForm, tunning: tunning || undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const payload: CreateSongDTO = {
+      ...form,
+      instrument: form.instrument && form.instrument.length > 0 ? form.instrument : null,
+      technique: form.technique && form.technique.length > 0 ? form.technique : [],
+      myInstrumentUid: form.myInstrumentUid ? form.myInstrumentUid : undefined,
+    };
+
     try {
       setLoading(true);
       setError(null);
 
       if (editingUid !== null) {
-        const updatedSong = await songService.updateSong(editingUid, form);
+        const updatedSong = await songService.updateSong(editingUid, payload);
         setSongs(songs.map(song => (song.uid === editingUid ? updatedSong : song)));
         setEditingUid(null);
       } else {
-        const newSong = await songService.createSong(form);
+        const newSong = await songService.createSong(payload);
         setSongs([...songs, newSong]);
       }
 
@@ -354,7 +411,21 @@ function SongsPage() {
     const song = songs.find(s => s.uid === uid);
     if (song) {
       const { uid: _uid, createdAt, updatedAt, ...rest } = song;
-      setForm(rest);
+      const normalized: CreateSongDTO = {
+        ...rest,
+        instrument: Array.isArray(rest.instrument)
+          ? rest.instrument
+          : rest.instrument
+            ? [rest.instrument as unknown as string]
+            : [],
+        technique: Array.isArray(rest.technique)
+          ? rest.technique
+          : rest.technique
+            ? [rest.technique as unknown as string]
+            : [],
+        myInstrumentUid: rest.myInstrumentUid || undefined,
+      };
+      setForm(normalized);
       setEditingUid(uid);
     }
   };
@@ -450,7 +521,7 @@ function SongsPage() {
       song.artist?.toLowerCase().includes(query) ||
       song.album?.toLowerCase().includes(query)
     );
-    const selected = Array.from(instrumentFilters);
+    const selected = instrumentFilter ? [instrumentFilter] : [];
     const songInstruments = Array.isArray(song.instrument)
       ? song.instrument
       : (song.instrument ? [song.instrument] : []);
@@ -459,6 +530,7 @@ function SongsPage() {
       (instrumentMatchMode === 'all'
         ? selected.every(inst => songInstruments.includes(inst))
         : selected.some(inst => songInstruments.includes(inst)));
+    const passesMyInstrument = !myInstrumentFilter || song.myInstrumentUid === myInstrumentFilter;
     const passesTunning = !tunningFilter || song.tunning === tunningFilter;
     const selectedTech = Array.from(techniqueFilters);
     const songTechniques = Array.isArray(song.technique)
@@ -484,7 +556,7 @@ function SongsPage() {
       (pitchMin === undefined || (typeof pitch === 'number' && pitch >= pitchMin)) &&
       (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
     );
-    return passesSearch && passesInstrument && passesTechnique && passesTunning && passesKey && passesBpm && passesPitch;
+    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesTunning && passesKey && passesBpm && passesPitch;
   });
 
   const handleSort = (column: string) => {
@@ -542,6 +614,20 @@ function SongsPage() {
     if (diffDays < 7) return `${diffDays}d ago`;
     
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const getLastPlayedForSong = (songUid: string): string | undefined => {
+    const plays = songPlays.get(songUid) || [];
+    if (plays.length === 0) return undefined;
+
+    // Si on filtre par type d'instrument, trouver le dernier play pour ce type
+    if (instrumentFilter) {
+      const instrumentPlays = plays.filter(p => p.instrumentType === instrumentFilter);
+      return instrumentPlays.length > 0 ? instrumentPlays[0].playedAt : undefined;
+    }
+
+    // Sinon, retourner le dernier play toutes instruments confondus
+    return plays[0].playedAt;
   };
 
   const SortHeader = ({ column, label }: { column: string; label: string }) => (
@@ -653,51 +739,37 @@ function SongsPage() {
                       {filtersAccordionOpen && (
                         <div className="p-3 border-t">
                           <div className="text-xs font-semibold text-gray-700 mb-2">Filter by instrument</div>
-                          <div className="flex flex-col gap-2">
-                            {['Guitar','Piano','Bass','Drums','Vocals','Other'].map(inst => (
-                              <label key={inst} className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4"
-                                  checked={instrumentFilters.has(inst)}
-                                  onChange={() => toggleInstrumentFilter(inst)}
-                                />
-                                <span className="cursor-pointer">{inst}</span>
-                              </label>
+                          <select
+                            value={instrumentFilter}
+                            onChange={(e) => setInstrumentFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 mb-3"
+                          >
+                            <option value="">All instruments</option>
+                            {instrumentTypeOptions.map(inst => (
+                              <option key={inst} value={inst}>{inst}</option>
                             ))}
-                          </div>
-                          <div className="mt-3">
-                            <div className="text-xs font-semibold text-gray-700 mb-1">Match mode</div>
-                            <div className="flex items-center gap-3">
-                              <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="instrument-match-mode"
-                                  value="all"
-                                  className="h-3 w-3"
-                                  checked={instrumentMatchMode === 'all'}
-                                  onChange={() => setInstrumentMatchMode('all')}
-                                />
-                                <span>All</span>
-                              </label>
-                              <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="instrument-match-mode"
-                                  value="any"
-                                  className="h-3 w-3"
-                                  checked={instrumentMatchMode === 'any'}
-                                  onChange={() => setInstrumentMatchMode('any')}
-                                />
-                                <span>Any</span>
-                              </label>
-                            </div>
-                          </div>
+                          </select>
+                          
+                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by my instrument</div>
+                          <select
+                            value={myInstrumentFilter}
+                            onChange={(e) => setMyInstrumentFilter(e.target.value)}
+                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          >
+                            <option value="">All my instruments</option>
+                            {myInstruments.map(mi => (
+                              <option key={mi.uid} value={mi.uid}>{mi.type ? `${mi.type} - ${mi.name}` : mi.name}</option>
+                            ))}
+                          </select>
+                          
                           <div className="mt-3">
                             <button
                               type="button"
                               className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
-                              onClick={() => setInstrumentFilters(new Set())}
+                              onClick={() => {
+                                setInstrumentFilter('');
+                                setMyInstrumentFilter('');
+                              }}
                             >
                               Clear filters
                             </button>
@@ -1019,7 +1091,9 @@ function SongsPage() {
                           </td>
                           <td className="p-2 align-top max-w-xs truncate" title={song.artist}>{song.artist}</td>
                           <td className="p-2 align-top max-w-sm truncate" title={song.title}>{song.title}</td>
-                          <td className="p-2 align-top max-w-32">{formatLastPlayed(song.lastPlayed)}</td>
+                          <td className="p-2 align-top max-w-32">
+                            {instrumentFilter ? formatLastPlayed(getLastPlayedForSong(song.uid)) : 'Select instrument'}
+                          </td>
                           <td className="p-2 align-top">
                             <button
                               type="button"
@@ -1052,7 +1126,10 @@ function SongsPage() {
             form={form}
             loading={loading}
             onChange={handleChange}
-            onToggleInstrument={toggleFormInstrument}
+            onChangeInstruments={(instruments) => setForm(prevForm => ({ ...prevForm, instrument: instruments }))}
+            onSetMyInstrumentUid={setFormMyInstrumentUid}
+            onSetTechniques={setFormTechniques}
+            onSetTunning={setFormTunning}
             onToggleTechnique={toggleFormTechnique}
             onSubmit={handleSubmit}
             onCancel={() => {
