@@ -15,7 +15,7 @@ type SongFormProps = {
   onSetTechniques: (techniques: string[]) => void;
   onSetInstrumentDifficulty?: (instrumentType: string, difficulty: number | null) => void;
   onSetMyInstrumentUid: (uid: string | undefined) => void;
-  onSetTunning: (tunning: string | null) => void;
+  onSetInstrumentTuning?: (instrumentType: string, tuning: string | null) => void;
   onToggleTechnique: (technique: string) => void;
   onSetInstrumentLinksForInstrument?: (instrumentType: string, links: Array<{ label?: string; url: string }>) => void;
   onSubmit: (e: React.FormEvent) => void;
@@ -49,7 +49,7 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
   return formatter(instrumentPlays[0].playedAt);
 };
 
-export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetTunning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, tabsFirst, myInstruments, playlistSlot }: SongFormProps) {
+export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onSetInstrumentDifficulty, onSetInstrumentTuning, onSetMyInstrumentUid, onToggleTechnique, onSetInstrumentLinksForInstrument, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, tabsFirst, myInstruments, playlistSlot }: SongFormProps) {
   const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
   const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
   const [selectedInstrumentType, setSelectedInstrumentType] = useState('');
@@ -85,11 +85,9 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
     <form onSubmit={onSubmit} className="space-y-4">
       {/* Top quick links aggregated from all instruments */}
       {allInstrumentLinks.length > 0 && (
-        <div className="border border-gray-200 rounded-md bg-white">
-          <div className="p-2 flex items-center justify-between">
-            <span className="font-medium">Quick Links</span>
-          </div>
-          <div className="p-3 pt-0 flex flex-wrap gap-2">
+        <>
+          <div className="text-sm font-medium text-gray-700">Quick Links</div>
+          <div className="flex flex-wrap gap-2">
             {allInstrumentLinks.map((lnk, idx) => (
               <button
                 key={`quick-link-${idx}`}
@@ -107,7 +105,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
               </button>
             ))}
           </div>
-        </div>
+        </>
       )}
       {tabsFirst && (
         <div>
@@ -347,6 +345,28 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                       </div>
                     </div>
 
+                    {getAvailableTunings(instrumentType).length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Tuning</label>
+                        <select
+                          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          value={(form.instrumentTuning && form.instrumentTuning[instrumentType] !== undefined && form.instrumentTuning[instrumentType] !== null)
+                            ? form.instrumentTuning[instrumentType]
+                            : ''}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? null : e.target.value;
+                            onSetInstrumentTuning?.(instrumentType, val);
+                          }}
+                          disabled={loading}
+                        >
+                          <option value="">Select tuning</option>
+                          {getAvailableTunings(instrumentType).map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
                     {instrumentTechniques && instrumentTechniques.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Techniques</label>
@@ -472,23 +492,6 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           </div>
         </div>
       </div>
-      {currentInstruments.length > 0 && getAvailableTunings(currentInstruments[0]).length > 0 && (
-        <div>
-          <label htmlFor="song-tuning" className="block text-sm font-medium text-gray-700">Tuning</label>
-          <select
-            id="song-tuning"
-            className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
-            name="tunning"
-            value={typeof form.tunning === 'string' ? form.tunning : ''}
-            onChange={onChange}
-            disabled={loading}
-          >
-            {getAvailableTunings(selectedInstrumentType).map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
-          </select>
-        </div>
-      )}
       
       {playlistSlot}
 

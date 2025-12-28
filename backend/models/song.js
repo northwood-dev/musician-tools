@@ -49,9 +49,10 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 440,
       field: 'pitch_standard'
     },
-    tunning: {
-      type: DataTypes.STRING,
-      allowNull: true
+    instrumentTuning: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null
     },
     technique: {
       type: DataTypes.JSON,

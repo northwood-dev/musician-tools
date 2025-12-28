@@ -43,7 +43,7 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, key, notes, tabs, instrument, artist, album, pitchStandard, tunning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
+    const { title, bpm, key, notes, tabs, instrument, artist, album, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
 
     if (!title) {
       return next(createError(400, 'Title is required'));
@@ -59,10 +59,10 @@ const createSong = async (req, res, next) => {
       instrument,
       instrumentLinks,
       instrumentDifficulty,
+      instrumentTuning,
       artist,
       album,
       pitchStandard,
-      tunning,
       technique,
       myInstrumentUid,
       lastPlayed: lastPlayed ? new Date(lastPlayed) : null
@@ -93,7 +93,7 @@ const updateSong = async (req, res, next) => {
       return next(createError(403, 'Forbidden'));
     }
 
-    const { title, bpm, key, notes, tabs, instrument, artist, album, pitchStandard, tunning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
+    const { title, bpm, key, notes, tabs, instrument, artist, album, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
 
     await song.update({
       title: title || song.title,
@@ -105,7 +105,7 @@ const updateSong = async (req, res, next) => {
       artist: artist !== undefined ? artist : song.artist,
       album: album !== undefined ? album : song.album,
       pitchStandard: pitchStandard !== undefined ? pitchStandard : song.pitchStandard,
-      tunning: tunning !== undefined ? tunning : song.tunning,
+      instrumentTuning: instrumentTuning !== undefined ? instrumentTuning : song.instrumentTuning,
       technique: technique !== undefined ? technique : song.technique,
       instrumentLinks: instrumentLinks !== undefined ? instrumentLinks : song.instrumentLinks,
       instrumentDifficulty: instrumentDifficulty !== undefined ? instrumentDifficulty : song.instrumentDifficulty,

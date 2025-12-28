@@ -22,6 +22,7 @@ function SongDetailPage() {
     tabs: '',
     instrument: [],
     instrumentDifficulty: {},
+    instrumentTuning: {},
     instrumentLinks: {},
     artist: '',
     album: '',
@@ -117,6 +118,7 @@ function SongDetailPage() {
             : [],
         myInstrumentUid: rest.myInstrumentUid || undefined,
         instrumentDifficulty: rest.instrumentDifficulty || {},
+        instrumentTuning: rest.instrumentTuning || {},
         instrumentLinks: rest.instrumentLinks || {},
       };
       setForm(normalized);
@@ -193,6 +195,21 @@ function SongDetailPage() {
     });
   };
 
+  const setInstrumentTuning = (
+    instrumentType: string,
+    tuning: string | null
+  ) => {
+    setForm(prev => {
+      const next = { ...(prev.instrumentTuning || {}) };
+      if (tuning === null || tuning === '') {
+        delete next[instrumentType];
+      } else {
+        next[instrumentType] = tuning;
+      }
+      return { ...prev, instrumentTuning: next };
+    });
+  };
+
   const toggleFormTechnique = (technique: string) => {
     setForm(prev => {
       const current = Array.isArray(prev.technique)
@@ -217,6 +234,7 @@ function SongDetailPage() {
       technique: form.technique && form.technique.length > 0 ? form.technique : [],
       myInstrumentUid: form.myInstrumentUid ? form.myInstrumentUid : undefined,
       instrumentDifficulty: form.instrumentDifficulty || {},
+      instrumentTuning: form.instrumentTuning || {},
       instrumentLinks: form.instrumentLinks || {},
     };
 
@@ -396,9 +414,9 @@ function SongDetailPage() {
             onChange={handleChange}
             onChangeInstruments={changeFormInstruments}
             onSetInstrumentDifficulty={setInstrumentDifficulty}
+            onSetInstrumentTuning={setInstrumentTuning}
             onSetMyInstrumentUid={setFormMyInstrumentUid}
             onSetTechniques={setFormTechniques}
-            onSetTunning={setFormTunning}
             onToggleTechnique={toggleFormTechnique}
             onSetInstrumentLinksForInstrument={setInstrumentLinksForInstrument}
             onMarkAsPlayedNow={handleMarkAsPlayedNow}

@@ -19,6 +19,7 @@ const initialSong: CreateSongDTO = {
   tabs: '',
   instrument: [],
   instrumentDifficulty: {},
+  instrumentTuning: {},
   artist: '',
   album: '',
   technique: [],
@@ -526,6 +527,21 @@ function SongsPage() {
     setForm(prevForm => ({ ...prevForm, technique: techniques }));
   };
 
+  const setInstrumentTuning = (
+    instrumentType: string,
+    tuning: string | null
+  ) => {
+    setForm(prev => {
+      const next = { ...(prev.instrumentTuning || {}) };
+      if (tuning === null || tuning === '') {
+        delete next[instrumentType];
+      } else {
+        next[instrumentType] = tuning;
+      }
+      return { ...prev, instrumentTuning: next };
+    });
+  };
+
   const setFormTunning = (tunning: string | null) => {
     setForm(prevForm => ({ ...prevForm, tunning: tunning || undefined }));
   };
@@ -539,6 +555,7 @@ function SongsPage() {
       technique: form.technique && form.technique.length > 0 ? form.technique : [],
       myInstrumentUid: form.myInstrumentUid ? form.myInstrumentUid : undefined,
       instrumentDifficulty: form.instrumentDifficulty || {},
+      instrumentTuning: form.instrumentTuning || {},
     };
 
     try {
@@ -582,6 +599,7 @@ function SongsPage() {
             : [],
         myInstrumentUid: rest.myInstrumentUid || undefined,
         instrumentDifficulty: rest.instrumentDifficulty || {},
+        instrumentTuning: rest.instrumentTuning || {},
       };
       setForm(normalized);
       setEditingUid(uid);
@@ -733,34 +751,6 @@ function SongsPage() {
     }
   };
 
-  const sortByColumnFunc = (items: Song[]) => {
-    if (!sortColumn) return items;
-
-    return [...items].sort((a, b) => {
-      let aVal: any = (a as any)[sortColumn];
-      let bVal: any = (b as any)[sortColumn];
-
-      if (aVal === null || aVal === undefined) aVal = '';
-      if (bVal === null || bVal === undefined) bVal = '';
-
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
-        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-      }
-
-      if (typeof aVal === 'number') {
-        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-
-      return 0;
-    });
-  };
-
-  const displayedSongs = sortByColumnFunc(filteredSongs);
-
-  const allDisplayedSelected = displayedSongs.length > 0 && displayedSongs.every(song => selectedSongs.has(song.uid));
-
   const formatLastPlayed = (dateString: string | undefined) => {
     if (!dateString) return '-';
     
@@ -794,6 +784,43 @@ function SongsPage() {
     // Sinon, retourner le dernier play toutes instruments confondus
     return plays[0].playedAt;
   };
+
+  const sortByColumnFunc = (items: Song[]) => {
+    if (!sortColumn) return items;
+
+    return [...items].sort((a, b) => {
+      // Special handling for lastPlayed to use instrument-filtered times from songPlays
+      if (sortColumn === 'lastPlayed') {
+        const aLastPlayed = getLastPlayedForSong(a.uid);
+        const bLastPlayed = getLastPlayedForSong(b.uid);
+        const aTime = aLastPlayed ? new Date(aLastPlayed).getTime() : 0;
+        const bTime = bLastPlayed ? new Date(bLastPlayed).getTime() : 0;
+        return sortDirection === 'asc' ? aTime - bTime : bTime - aTime;
+      }
+
+      let aVal: any = (a as any)[sortColumn];
+      let bVal: any = (b as any)[sortColumn];
+
+      if (aVal === null || aVal === undefined) aVal = '';
+      if (bVal === null || bVal === undefined) bVal = '';
+
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+
+      if (typeof aVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      return 0;
+    });
+  };
+
+  const displayedSongs = sortByColumnFunc(filteredSongs);
+
+  const allDisplayedSelected = displayedSongs.length > 0 && displayedSongs.every(song => selectedSongs.has(song.uid));
 
   const SortHeader = ({ column, label }: { column: string; label: string }) => (
     <th
@@ -1426,8 +1453,8 @@ function SongsPage() {
             onChangeInstruments={setFormInstruments}
             onSetMyInstrumentUid={setFormMyInstrumentUid}
             onSetTechniques={setFormTechniques}
-            onSetTunning={setFormTunning}
             onSetInstrumentDifficulty={setInstrumentDifficulty}
+            onSetInstrumentTuning={setInstrumentTuning}
             onToggleTechnique={toggleFormTechnique}
             onSubmit={handleSubmit}
             onCancel={() => {

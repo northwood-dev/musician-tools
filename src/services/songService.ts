@@ -12,7 +12,7 @@ export type Song = {
   album?: string;
   technique?: string[];
   pitchStandard?: number;
-  tunning?: string;
+  instrumentTuning?: Record<string, string | null>;
   myInstrumentUid?: string;
   lastPlayed?: string;
   createdAt?: string;
