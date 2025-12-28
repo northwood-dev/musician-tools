@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
-import { PageHeader } from '../components/PageHeader';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
@@ -842,7 +841,7 @@ function SongsPage() {
   const showTunningFilters = instrumentFilter && instrumentFilter !== 'Drums';
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="Delete song(s)"
@@ -867,26 +866,25 @@ function SongsPage() {
       {error && (
         <div className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
           <span>{error}</span>
-          <button className="rounded-md px-2 py-1 hover:bg-red-100" onClick={() => setError(null)}>
+          <button
+            type="button"
+            className="btn-secondary text-xs"
+            onClick={() => setError(null)}
+          >
             ✕
           </button>
         </div>
       )}
 
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-30 rounded-lg bg-green-600 text-white px-5 py-3 shadow-xl text-base min-w-[240px]">
-          {toastMessage}
-        </div>
-      )}
+      {toastMessage}
 
       {page === 'list' ? (
         <>
-          <div className="container mx-auto px-4 py-8">
-            <PageHeader loading={loading} />
-            <div className="flex gap-4 items-stretch">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+            <div className="flex flex-col lg:flex-row gap-6 items-start">
               <aside
                 id="songs-sidebar"
-                className={`${sidebarExpanded ? 'w-full md:w-64 fixed md:static inset-0 z-40' : 'w-10 md:w-10 relative'} shrink-0 min-w-[40px] overflow-hidden transition-all duration-200 border border-gray-200 bg-white rounded-md min-h-screen`}
+                className={`${sidebarExpanded ? 'w-full lg:w-80' : 'w-12 lg:w-12'} shrink-0 min-w-[48px] overflow-hidden transition-all duration-300 card-base glass-effect lg:sticky lg:top-24`}
                 aria-hidden={false}
               >
                 {/* Collapsed rail shows only toggle button */}
@@ -894,7 +892,7 @@ function SongsPage() {
                   <div className="p-2 flex items-center justify-center">
                     <button
                       type="button"
-                      className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
+                      className="btn-secondary text-xs px-2 py-1"
                       aria-label="Expand sidebar"
                       onClick={() => setSidebarExpanded(true)}
                     >
@@ -902,22 +900,22 @@ function SongsPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="p-3">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold">Filters</h3>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-semibold text-gray-800">Filters</h3>
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
+                        className="btn-secondary text-xs px-2 py-1"
                         aria-label="Collapse sidebar"
                         onClick={() => setSidebarExpanded(false)}
                       >
                         «
                       </button>
                     </div>
-                    <div className="border border-gray-200 rounded-md">
+                    <div className="card-base">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                         aria-expanded={filtersAccordionOpen}
                         onClick={() => setFiltersAccordionOpen(prev => !prev)}
                       >
@@ -925,35 +923,39 @@ function SongsPage() {
                         <span>{filtersAccordionOpen ? '▾' : '▸'}</span>
                       </button>
                       {filtersAccordionOpen && (
-                        <div className="p-3 border-t">
-                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by instrument</div>
-                          <select
-                            value={instrumentFilter}
-                            onChange={(e) => setInstrumentFilter(e.target.value)}
-                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 mb-3"
-                          >
-                            <option value="">All instruments</option>
-                            {instrumentTypeOptions.map(inst => (
-                              <option key={inst} value={inst}>{inst}</option>
-                            ))}
-                          </select>
+                        <div className="p-4 border-t border-gray-100 space-y-3">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by instrument</div>
+                            <select
+                              value={instrumentFilter}
+                              onChange={(e) => setInstrumentFilter(e.target.value)}
+                              className="input-base text-sm"
+                            >
+                              <option value="">All instruments</option>
+                              {instrumentTypeOptions.map(inst => (
+                                <option key={inst} value={inst}>{inst}</option>
+                              ))}
+                            </select>
+                          </div>
 
-                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by my instrument</div>
-                          <select
-                            value={myInstrumentFilter}
-                            onChange={(e) => setMyInstrumentFilter(e.target.value)}
-                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                          >
-                            <option value="">All my instruments</option>
-                            {myInstruments.map(mi => (
-                              <option key={mi.uid} value={mi.uid}>{mi.type ? `${mi.type} - ${mi.name}` : mi.name}</option>
-                            ))}
-                          </select>
-                          
-                          <div className="mt-3">
+                          <div>
+                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by my instrument</div>
+                            <select
+                              value={myInstrumentFilter}
+                              onChange={(e) => setMyInstrumentFilter(e.target.value)}
+                              className="input-base text-sm"
+                            >
+                              <option value="">All my instruments</option>
+                              {myInstruments.map(mi => (
+                                <option key={mi.uid} value={mi.uid}>{mi.type ? `${mi.type} - ${mi.name}` : mi.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="pt-2">
                             <button
                               type="button"
-                              className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
+                              className="btn-secondary text-xs"
                               onClick={() => {
                                 setInstrumentFilter('');
                                 setMyInstrumentFilter('');
@@ -966,10 +968,10 @@ function SongsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="border border-gray-200 rounded-md mt-3">
+                    <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                         aria-expanded={playlistAccordionOpen}
                         onClick={() => setPlaylistAccordionOpen(prev => !prev)}
                       >
@@ -977,10 +979,10 @@ function SongsPage() {
                         <span>{playlistAccordionOpen ? '▾' : '▸'}</span>
                       </button>
                       {playlistAccordionOpen && (
-                        <div className="p-3 border-t">
+                        <div className="p-4 border-t border-gray-100 space-y-3">
                           <div className="text-xs font-semibold text-gray-700 mb-2">Filter by playlist</div>
                           <select
-                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                            className="input-base text-sm"
                             value={playlistFilter}
                             onChange={e => setPlaylistFilter(e.target.value)}
                           >
@@ -990,10 +992,10 @@ function SongsPage() {
                             ))}
                           </select>
                           {playlistFilter && (
-                            <div className="mt-3">
+                            <div className="pt-1">
                               <button
                                 type="button"
-                                className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
+                                className="btn-secondary text-xs"
                                 onClick={() => setPlaylistFilter('')}
                               >
                                 Clear filter
@@ -1004,7 +1006,7 @@ function SongsPage() {
                       )}
                     </div>
 
-                    <div className="border border-gray-200 rounded-md mt-3 p-3 bg-white">
+                    <div className="card-base mt-3">
                       <div className="text-xs font-semibold text-gray-700 mb-2">Filter by difficulty (max)</div>
                       <select
                         value={instrumentDifficultyFilter === '' ? '' : instrumentDifficultyFilter}
@@ -1012,7 +1014,7 @@ function SongsPage() {
                           const val = e.target.value === '' ? '' : Number(e.target.value);
                           setInstrumentDifficultyFilter(val as number | '');
                         }}
-                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        className="input-base text-sm"
                         disabled={!instrumentFilter}
                       >
                         <option value="">All difficulties</option>
@@ -1022,10 +1024,10 @@ function SongsPage() {
                       </select>
                     </div>
                     {instrumentFilter && (
-                      <div className="border border-gray-200 rounded-md mt-3">
+                      <div className="card-base mt-3">
                         <button
                           type="button"
-                          className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                           aria-expanded={techniqueAccordionOpen}
                           onClick={() => setTechniqueAccordionOpen(prev => !prev)}
                         >
@@ -1033,7 +1035,7 @@ function SongsPage() {
                           <span>{techniqueAccordionOpen ? '▾' : '▸'}</span>
                         </button>
                         {techniqueAccordionOpen && (
-                        <div className="p-3 border-t">
+                        <div className="p-4 border-t border-gray-100">
                           <div className="text-xs font-semibold text-gray-700 mb-2">Filter by technique</div>
                           {availableTechniqueFilters.length === 0 ? (
                             <p className="text-sm text-gray-600">No techniques available for {instrumentFilter}.</p>
@@ -1082,7 +1084,7 @@ function SongsPage() {
                               <div className="mt-3">
                                 <button
                                   type="button"
-                                  className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-2 py-1 hover:bg-gray-200"
+                                  className="btn-secondary text-xs"
                                   onClick={() => setTechniqueFilters(new Set())}
                                 >
                                   Clear filters
@@ -1095,10 +1097,10 @@ function SongsPage() {
                       </div>
                     )}
                     {showTunningFilters && (
-                      <div className="border border-gray-200 rounded-md mt-3">
+                      <div className="card-base mt-3">
                         <button
                           type="button"
-                          className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                           aria-expanded={tunningAccordionOpen}
                           onClick={() => setTunningAccordionOpen(prev => !prev)}
                         >
@@ -1106,13 +1108,13 @@ function SongsPage() {
                           <span>{tunningAccordionOpen ? '▾' : '▸'}</span>
                         </button>
                         {tunningAccordionOpen && (
-                          <div className="p-3 border-t">
-                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by tunning</div>
+                          <div className="p-4 border-t border-gray-100">
+                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by tuning</div>
                             {tunningFilterOptions.length === 0 ? (
                               <p className="text-sm text-gray-600">No tunings available for {instrumentFilter}.</p>
                             ) : (
                               <select
-                                className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                                className="input-base text-sm"
                                 value={tunningFilter}
                                 onChange={e => setTunningFilter(e.target.value)}
                               >
@@ -1126,10 +1128,10 @@ function SongsPage() {
                         )}
                       </div>
                     )}
-                    <div className="border border-gray-200 rounded-md mt-3">
+                    <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                         aria-expanded={keyAccordionOpen}
                         onClick={() => setKeyAccordionOpen(prev => !prev)}
                       >
@@ -1137,10 +1139,10 @@ function SongsPage() {
                         <span>{keyAccordionOpen ? '▾' : '▸'}</span>
                       </button>
                       {keyAccordionOpen && (
-                        <div className="p-3 border-t">
+                        <div className="p-4 border-t border-gray-100">
                           <div className="text-xs font-semibold text-gray-700 mb-2">Filter by key</div>
                           <select
-                            className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                            className="input-base text-sm"
                             value={keyFilter}
                             onChange={e => setKeyFilter(e.target.value)}
                           >
@@ -1163,17 +1165,17 @@ function SongsPage() {
                         </div>
                       )}
                     </div>
-                    <div className="border border-gray-200 rounded-md mt-3">
+                    <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                         aria-expanded={true}
                         onClick={() => {}}
                       >
                         <span>BPM filters</span>
                         <span>▾</span>
                       </button>
-                      <div className="p-3 border-t">
+                      <div className="p-4 border-t border-gray-100">
                         <div className="text-xs font-semibold text-gray-700 mb-2">Filter by BPM</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -1183,7 +1185,7 @@ function SongsPage() {
                               type="number"
                               min={1}
                               placeholder="e.g. 90"
-                              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              className="input-base text-sm"
                               value={bpmMinFilter}
                               onChange={e => setBpmMinFilter(e.target.value)}
                             />
@@ -1195,7 +1197,7 @@ function SongsPage() {
                               type="number"
                               min={1}
                               placeholder="e.g. 140"
-                              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              className="input-base text-sm"
                               value={bpmMaxFilter}
                               onChange={e => setBpmMaxFilter(e.target.value)}
                             />
@@ -1203,17 +1205,17 @@ function SongsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="border border-gray-200 rounded-md mt-3">
+                    <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-2 text-sm font-medium hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
                         aria-expanded={true}
                         onClick={() => {}}
                       >
                         <span>Pitch standard filters</span>
                         <span>▾</span>
                       </button>
-                      <div className="p-3 border-t">
+                      <div className="p-4 border-t border-gray-100">
                         <div className="text-xs font-semibold text-gray-700 mb-2">Filter by pitch standard (Hz)</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -1224,7 +1226,7 @@ function SongsPage() {
                               min={400}
                               max={500}
                               placeholder="e.g. 440"
-                              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              className="input-base text-sm"
                               value={pitchStandardMinFilter}
                               onChange={e => setPitchStandardMinFilter(e.target.value)}
                             />
@@ -1237,7 +1239,7 @@ function SongsPage() {
                               min={400}
                               max={500}
                               placeholder="e.g. 452"
-                              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              className="input-base text-sm"
                               value={pitchStandardMaxFilter}
                               onChange={e => setPitchStandardMaxFilter(e.target.value)}
                             />
@@ -1248,49 +1250,55 @@ function SongsPage() {
                   </div>
                 )}
               </aside>
-              <div className="flex-1">
-                <h2 className="text-lg font-medium mb-2">Song list</h2>
-                <div className="mb-4 flex gap-2">
-                  <button
-                    className="w-full inline-flex items-center justify-center rounded-md bg-brand-500 text-white px-3 py-2 hover:bg-brand-600 disabled:opacity-50"
-                    onClick={() => {
-                      setForm(initialSong);
-                      setEditingUid(null);
-                      setPage('form');
-                    }}
-                    disabled={loading}
-                  >
-                    Add a song
-                  </button>
-                </div>
-                <div className="mb-4 relative">
-                  <input
-                    type="text"
-                    placeholder="Search by title, artist, or album..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="w-full rounded-md border border-gray-300 p-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                  {searchQuery && (
+              <div className="flex-1 space-y-4">
+                <div className="card-base glass-effect p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900">Song list</h2>
+                      <p className="text-sm text-gray-600">Manage your songs, filters, and playlists.</p>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
-                      aria-label="Clear search"
+                      className="btn-primary"
+                      onClick={() => {
+                        setForm(initialSong);
+                        setEditingUid(null);
+                        setPage('form');
+                      }}
+                      disabled={loading}
                     >
-                      ✕
+                      Add a song
                     </button>
-                  )}
+                  </div>
+                  <div className="mt-4 relative">
+                    <input
+                      type="text"
+                      placeholder="Search by title, artist, or album..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="input-base pr-10"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                        aria-label="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {selectedSongs.size > 0 && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-blue-900">{selectedSongs.size} song(s) selected</span>
-                      <div className="flex gap-2">
+                  <div className="card-base glass-effect p-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <span className="text-sm font-semibold text-gray-800">{selectedSongs.size} song(s) selected</span>
+                      <div className="flex flex-wrap gap-2">
                         <div className="relative">
                           <button
                             type="button"
-                            className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1.5 text-sm hover:bg-brand-600 disabled:opacity-50"
+                            className="btn-primary text-sm px-3 py-1.5"
                             onClick={() => setBulkPlaylistOpen(prev => !prev)}
                             disabled={loading || playlists.length === 0}
                           >
@@ -1357,7 +1365,7 @@ function SongsPage() {
                         {instrumentFilter && (
                           <button
                             type="button"
-                            className="inline-flex items-center rounded-md bg-green-600 text-white px-3 py-1.5 text-sm hover:bg-green-700 disabled:opacity-50"
+                            className="btn-accent text-sm px-3 py-1.5"
                             onClick={handleMarkSelectedAsPlayedNow}
                             disabled={loading}
                           >
@@ -1377,74 +1385,89 @@ function SongsPage() {
                   </div>
                 )}
                 {loading ? (
-                  <p>Loading...</p>
+                  <div className="card-base p-6 text-sm text-gray-600">Loading...</div>
                 ) : filteredSongs.length === 0 ? (
-                  <p>{searchQuery ? 'No songs match your search.' : 'No songs saved.'}</p>
+                  <div className="card-base p-6 text-center text-gray-600">
+                    {searchQuery ? 'No songs match your search.' : 'No songs saved.'}
+                  </div>
                 ) : (
-                  <table className="w-full border-collapse text-sm">
-                    <thead>
-                      <tr>
-                        <th className="text-left p-2 border-b w-10">
-                          <button
-                            type="button"
-                            className="text-xs rounded px-1.5 py-0.5 bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
-                            onClick={toggleSelectAll}
-                            disabled={loading}
-                            title={allDisplayedSelected ? "Deselect all" : "Select all"}
-                          >
-                            {allDisplayedSelected ? 'None' : 'All'}
-                          </button>
-                        </th>
-                        <SortHeader column="artist" label="Artist" />
-                        <SortHeader column="title" label="Title" />
-                        <SortHeader column="lastPlayed" label="Last played" />
-                        <th className="text-left p-2 border-b">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayedSongs.map(song => (
-                        <tr key={song.uid} className={`border-b cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-100 hover:bg-blue-200' : 'hover:bg-gray-100'}`} onClick={() => toggleSelectSong(song.uid)}>
-                          <td className="p-2 align-top w-10" onClick={e => e.stopPropagation()}>
-                            <input
-                              className="h-4 w-4 cursor-pointer"
-                              type="checkbox"
-                              checked={selectedSongs.has(song.uid)}
-                              onChange={() => toggleSelectSong(song.uid)}
-                              disabled={loading}
-                            />
-                          </td>
-                          <td className="p-2 align-top max-w-xs truncate" title={song.artist}>{song.artist}</td>
-                          <td className="p-2 align-top max-w-sm truncate" title={song.title}>{song.title}</td>
-                          <td className="p-2 align-top max-w-32">
-                            {instrumentFilter ? formatLastPlayed(getLastPlayedForSong(song.uid)) : 'Select instrument'}
-                          </td>
-                          <td className="p-2 align-top">
-                            <button
-                              type="button"
-                              className="inline-flex items-center rounded-md bg-blue-600 text-white px-2 py-1 hover:bg-blue-700 disabled:opacity-50"
-                              onClick={() => {
-                                navigate(`/song/${toSlug(song.artist)}/${toSlug(song.title)}`);
-                              }}
-                              disabled={loading}
+                  <div className="card-base overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-center p-2 border-b w-12">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 cursor-pointer"
+                                checked={allDisplayedSelected}
+                                onChange={toggleSelectAll}
+                                disabled={loading}
+                                title={allDisplayedSelected ? "Deselect all" : "Select all"}
+                              />
+                            </th>
+                            <SortHeader column="artist" label="Artist" />
+                            <SortHeader column="title" label="Title" />
+                            <SortHeader column="lastPlayed" label="Last played" />
+                            <th className="text-left p-2 border-b">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayedSongs.map(song => (
+                            <tr
+                              key={song.uid}
+                              className={`border-b cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
+                              onClick={() => toggleSelectSong(song.uid)}
                             >
-                              Edit
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              <td
+                                className="p-2 text-center w-12"
+                                onClick={e => e.stopPropagation()}
+                                onKeyDown={e => e.stopPropagation()}
+                                tabIndex={-1}
+                              >
+                                <input
+                                  className="h-4 w-4 cursor-pointer"
+                                  type="checkbox"
+                                  checked={selectedSongs.has(song.uid)}
+                                  onChange={() => toggleSelectSong(song.uid)}
+                                  disabled={loading}
+                                />
+                              </td>
+                              <td className="p-2 align-middle max-w-xs truncate" title={song.artist}>{song.artist}</td>
+                              <td className="p-2 align-middle max-w-sm truncate" title={song.title}>{song.title}</td>
+                              <td className="p-2 align-middle max-w-32">
+                                {instrumentFilter ? formatLastPlayed(getLastPlayedForSong(song.uid)) : 'Select instrument'}
+                              </td>
+                              <td className="p-2 align-middle">
+                                <button
+                                  type="button"
+                                  className="btn-secondary text-xs"
+                                  onClick={() => {
+                                    navigate(`/song/${toSlug(song.artist)}/${toSlug(song.title)}`);
+                                  }}
+                                  disabled={loading}
+                                >
+                                  Edit
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </>
       ) : (
-        <div className="max-w-2xl mx-auto p-6">
-          <div className="mb-6">
-            <Link to="/" className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition">Musician Tools</Link>
-            <p className="text-sm text-gray-600">{editingUid ? 'Edit a song' : 'Add a song'}</p>
-          </div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="card-base glass-effect p-6">
+            <div className="mb-6">
+              <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
+              <p className="text-sm text-gray-600">{editingUid ? 'Edit a song' : 'Add a song'}</p>
+            </div>
           <SongForm
             mode={editingUid ? 'edit' : 'add'}
             form={form}
@@ -1464,6 +1487,7 @@ function SongsPage() {
             }}
             onDelete={editingUid ? () => handleDelete(editingUid) : undefined}
           />
+          </div>
         </div>
       )}
     </div>

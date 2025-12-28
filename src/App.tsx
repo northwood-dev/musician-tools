@@ -6,64 +6,25 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MyInstrumentsPage from './pages/MyInstrumentsPage';
 import MyPlaylistsPage from './pages/MyPlaylistsPage';
+import Header from './components/Header';
+import Footer from './components/Footer';
 
 function HomePage() {
   const { isAuthenticated, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center px-6">
-      <div className="max-w-xl w-full text-center space-y-6">
-        <h1 className="text-3xl font-semibold">Musician Tools</h1>
-        <p className="text-gray-700">
-          Manage your songs, tempos, keys, and last played dates. Open your list to add or edit tracks.
-        </p>
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          {isAuthenticated ? (
-            <>
-              <Link
-                to="/songs"
-                className="inline-flex items-center rounded-md bg-brand-500 text-white px-4 py-2 hover:bg-brand-600"
-              >
-                Go to songs
-              </Link>
-              <Link
-                to="/my-instruments"
-                className="inline-flex items-center rounded-md bg-blue-500 text-white px-4 py-2 hover:bg-blue-600"
-              >
-                My instruments
-              </Link>
-              <Link
-                to="/my-playlists"
-                className="inline-flex items-center rounded-md bg-purple-500 text-white px-4 py-2 hover:bg-purple-600"
-              >
-                My playlists
-              </Link>
-              <button
-                onClick={async () => {
-                  await logout();
-                  window.location.href = '/';
-                }}
-                className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-4 py-2 hover:bg-gray-300"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                className="inline-flex items-center rounded-md bg-brand-500 text-white px-4 py-2 hover:bg-brand-600"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/register"
-                className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-4 py-2 hover:bg-gray-300"
-              >
-                Create account
-              </Link>
-            </>
-          )}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center px-6">
+      <div className="max-w-2xl w-full text-center space-y-8">
+        <div className="space-y-4">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center">
+              <span className="text-white font-bold text-4xl">♪</span>
+            </div>
+          </div>
+          <h1 className="text-5xl font-bold text-gradient">Musician Tools</h1>
+          <p className="text-xl text-gray-600">
+            Practice management for musicians. Track your songs, tempos, keys, and progress.
+          </p>
         </div>
       </div>
     </div>
@@ -82,31 +43,37 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route
-        path="/songs"
-        element={isAuthenticated ? <SongsPage /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/my-instruments"
-        element={isAuthenticated ? <MyInstrumentsPage /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/my-playlists"
-        element={isAuthenticated ? <MyPlaylistsPage /> : <Navigate to="/login" replace />}
-      />
-      <Route
-        path="/song/:artist/:title"
-        element={isAuthenticated ? <SongDetailPage /> : <Navigate to="/login" replace />}
-      />
-      <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/songs" replace />} />
-      <Route
-        path="/register"
-        element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/songs" replace />}
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      <Header />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/songs"
+            element={isAuthenticated ? <SongsPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/my-instruments"
+            element={isAuthenticated ? <MyInstrumentsPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/my-playlists"
+            element={isAuthenticated ? <MyPlaylistsPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/song/:artist/:title"
+            element={isAuthenticated ? <SongDetailPage /> : <Navigate to="/login" replace />}
+          />
+          <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/songs" replace />} />
+          <Route
+            path="/register"
+            element={!isAuthenticated ? <RegisterPage /> : <Navigate to="/songs" replace />}
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+      <Footer />
+    </div>
   );
 }
 

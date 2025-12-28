@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { PageHeader } from '../components/PageHeader';
 import { instrumentService, type Instrument, type CreateInstrumentDTO, type UpdateInstrumentDTO } from '../services/instrumentService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
@@ -102,7 +101,7 @@ function MyInstrumentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
       <ConfirmDialog
         isOpen={!!deleteUid}
         title="Delete instrument"
@@ -114,170 +113,177 @@ function MyInstrumentsPage() {
         onCancel={() => setDeleteUid(null)}
       />
       {error && (
-        <div className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
+        <div className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
           <span>{error}</span>
-          <button type="button" className="rounded-md px-2 py-1 hover:bg-red-100" onClick={() => setError(null)}>
+          <button type="button" className="btn-secondary text-xs" onClick={() => setError(null)}>
             ✕
           </button>
         </div>
       )}
-      <div className="container mx-auto px-4 py-8">
-        <PageHeader loading={loading} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-        <h2 className="text-lg font-medium mb-2">My instruments</h2>
+        <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">My instruments</h2>
+          </div>
 
-        <form onSubmit={handleAdd} className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-2">
-          <select
-            value={type}
-            onChange={e => setType(e.target.value)}
-            className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            disabled={loading}
-          >
-            <option value="">Select type</option>
-            {instrumentTypeOptions.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-          <input
-            placeholder="Name (ex. 5 strings bass)"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            disabled={loading}
-          />
-          <input
-            placeholder="Brand (ex Fender)"
-            value={brand}
-            onChange={e => setBrand(e.target.value)}
-            className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            disabled={loading}
-          />
-          <input
-            placeholder="Model (ex. Stratocaster)"
-            value={model}
-            onChange={e => setModel(e.target.value)}
-            className="rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center rounded-md bg-brand-500 text-white px-3 py-2 hover:bg-brand-600 disabled:opacity-50"
-            disabled={loading || !name.trim()}
-          >
-            Add
-          </button>
-          {/* Notes field removed */}
-        </form>
-
-        {loading ? (
-          <p>Loading...</p>
-        ) : list.length === 0 ? (
-          <p>No instruments saved yet.</p>
-        ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr>
-                <th className="text-left p-2 border-b">Type</th>
-                <th className="text-left p-2 border-b">Name</th>
-                <th className="text-left p-2 border-b">Brand</th>
-                <th className="text-left p-2 border-b">Model</th>
-                <th className="text-right p-2 border-b">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {list.map(item => (
-                editingUid === item.uid ? (
-                  <tr key={item.uid} className="bg-yellow-50">
-                    <td className="p-2 align-top">
-                      <select
-                        value={editType}
-                        onChange={e => setEditType(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        disabled={loading}
-                      >
-                        <option value="">Select type</option>
-                        {instrumentTypeOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2 align-top">
-                      <input
-                        value={editName}
-                        onChange={e => setEditName(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        disabled={loading}
-                      />
-                    </td>
-                    <td className="p-2 align-top">
-                      <input
-                        value={editBrand}
-                        onChange={e => setEditBrand(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        disabled={loading}
-                      />
-                    </td>
-                    <td className="p-2 align-top">
-                      <input
-                        value={editModel}
-                        onChange={e => setEditModel(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                        disabled={loading}
-                      />
-                    </td>
-                    <td className="p-2 align-top text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-3 py-1.5 hover:bg-gray-300 disabled:opacity-50"
-                          onClick={cancelEdit}
-                          disabled={loading}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1.5 hover:bg-brand-600 disabled:opacity-50"
-                          onClick={saveEdit}
-                          disabled={loading || !editName.trim()}
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  <tr key={item.uid} className="hover:bg-gray-50">
-                    <td className="p-2 align-top">{item.type || '-'}</td>
-                    <td className="p-2 align-top">{item.name}</td>
-                    <td className="p-2 align-top">{item.brand || '-'}</td>
-                    <td className="p-2 align-top">{item.model || '-'}</td>
-                    <td className="p-2 align-top text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-3 py-1.5 hover:bg-gray-300 disabled:opacity-50"
-                          onClick={() => startEdit(item)}
-                          disabled={loading}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50"
-                          onClick={() => setDeleteUid(item.uid)}
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            <select
+              value={type}
+              onChange={e => setType(e.target.value)}
+              className="input-base text-sm"
+              disabled={loading}
+            >
+              <option value="">Select type</option>
+              {instrumentTypeOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
               ))}
-            </tbody>
-          </table>
-        )}
+            </select>
+            <input
+              placeholder="Name (ex. 5 strings bass)"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="input-base text-sm"
+              disabled={loading}
+            />
+            <input
+              placeholder="Brand (ex Fender)"
+              value={brand}
+              onChange={e => setBrand(e.target.value)}
+              className="input-base text-sm"
+              disabled={loading}
+            />
+            <input
+              placeholder="Model (ex. Stratocaster)"
+              value={model}
+              onChange={e => setModel(e.target.value)}
+              className="input-base text-sm"
+              disabled={loading}
+            />
+            <button
+              type="submit"
+              className="btn-primary justify-center"
+              disabled={loading || !name.trim()}
+            >
+              Add
+            </button>
+            {/* Notes field removed */}
+          </form>
+
+          {loading ? (
+            <p className="text-sm text-gray-600">Loading...</p>
+          ) : list.length === 0 ? (
+            <p className="text-sm text-gray-600">No instruments saved yet.</p>
+          ) : (
+            <div className="card-base overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="text-left p-2 border-b">Type</th>
+                      <th className="text-left p-2 border-b">Name</th>
+                      <th className="text-left p-2 border-b">Brand</th>
+                      <th className="text-left p-2 border-b">Model</th>
+                      <th className="text-right p-2 border-b">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.map(item => (
+                      editingUid === item.uid ? (
+                        <tr key={item.uid} className="bg-yellow-50">
+                          <td className="p-2 align-top">
+                            <select
+                              value={editType}
+                              onChange={e => setEditType(e.target.value)}
+                              className="input-base text-sm"
+                              disabled={loading}
+                            >
+                              <option value="">Select type</option>
+                              {instrumentTypeOptions.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="p-2 align-top">
+                            <input
+                              value={editName}
+                              onChange={e => setEditName(e.target.value)}
+                              className="input-base text-sm"
+                              disabled={loading}
+                            />
+                          </td>
+                          <td className="p-2 align-top">
+                            <input
+                              value={editBrand}
+                              onChange={e => setEditBrand(e.target.value)}
+                              className="input-base text-sm"
+                              disabled={loading}
+                            />
+                          </td>
+                          <td className="p-2 align-top">
+                            <input
+                              value={editModel}
+                              onChange={e => setEditModel(e.target.value)}
+                              className="input-base text-sm"
+                              disabled={loading}
+                            />
+                          </td>
+                          <td className="p-2 align-top text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                className="btn-secondary text-sm"
+                                onClick={cancelEdit}
+                                disabled={loading}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-primary text-sm"
+                                onClick={saveEdit}
+                                disabled={loading || !editName.trim()}
+                              >
+                                Save
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        <tr key={item.uid} className="hover:bg-gray-50">
+                          <td className="p-2 align-top">{item.type || '-'}</td>
+                          <td className="p-2 align-top">{item.name}</td>
+                          <td className="p-2 align-top">{item.brand || '-'}</td>
+                          <td className="p-2 align-top">{item.model || '-'}</td>
+                          <td className="p-2 align-top text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                className="btn-secondary text-sm"
+                                onClick={() => startEdit(item)}
+                                disabled={loading}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50"
+                                onClick={() => setDeleteUid(item.uid)}
+                                disabled={loading}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

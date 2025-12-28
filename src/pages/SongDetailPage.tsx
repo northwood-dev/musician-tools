@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { PageHeader } from '../components/PageHeader';
 import { SongForm } from '../components/SongForm';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { playlistService, type Playlist } from '../services/playlistService';
@@ -346,40 +345,36 @@ function SongDetailPage() {
 
   if (loading && !song) {
     return (
-      <div className="min-h-screen bg-gray-50 text-gray-900">
-        <p className="p-6">Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900 flex items-center justify-center px-6">
+        <div className="card-base glass-effect p-6">Loading...</div>
       </div>
     );
   }
 
   if (error && !song) {
     return (
-      <div className="min-h-screen bg-gray-50 text-gray-900">
-        <div className="max-w-2xl mx-auto p-6">
-          <div className="mb-6">
-            <Link
-              to="/"
-              className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition"
-            >
-              Musician Tools
-+            </Link>
-          </div>
-          <div className="text-center space-y-4">
-            <p className="text-red-600">{error || 'Song not found'}</p>
-            <Link
-              to="/songs"
-              className="inline-flex items-center rounded-md bg-brand-500 text-white px-4 py-2 hover:bg-brand-600"
-            >
-              Back to songs
-            </Link>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900 flex items-center justify-center px-6">
+        <div className="card-base glass-effect p-6 max-w-xl w-full space-y-4 text-center">
+          <Link
+            to="/"
+            className="text-2xl font-semibold text-gradient"
+          >
+            Musician Tools
+          </Link>
+          <p className="text-red-600">{error || 'Song not found'}</p>
+          <Link
+            to="/songs"
+            className="btn-primary justify-center"
+          >
+            Back to songs
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="Delete song"
@@ -392,10 +387,10 @@ function SongDetailPage() {
       />
 
       {error && (
-        <div className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
+        <div className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
           <span>{error}</span>
           <button
-            className="rounded-md px-2 py-1 hover:bg-red-100"
+            className="btn-secondary text-xs"
             onClick={() => setError(null)}
           >
             ✕
@@ -403,9 +398,8 @@ function SongDetailPage() {
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-8">
-        <PageHeader loading={loading} />
-        <div className="max-w-2xl mx-auto mt-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-3xl mx-auto mt-6 card-base glass-effect p-6">
           <p className="text-sm text-gray-600 mb-6">Edit song</p>
           <SongForm
             mode="edit"
@@ -433,13 +427,13 @@ function SongDetailPage() {
             }))}
             playlistSlot={(
               <div className="mt-8 space-y-3">
-                <h2 className="text-base font-semibold text-gray-900">Add to playlists</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-gray-700">Add to playlists</h2>
                 {playlists.length === 0 ? (
                   <p className="text-sm text-gray-500">
                     No playlists found.{' '}
                     <Link
                       to="/my-playlists"
-                      className="text-brand-500 hover:text-brand-600"
+                      className="text-brand-600 hover:text-brand-700"
                     >
                       Create one
                     </Link>
@@ -449,7 +443,7 @@ function SongDetailPage() {
                     {playlists.map(playlist => (
                       <label
                         key={playlist.uid}
-                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                       >
                         <input
                           type="checkbox"
@@ -458,7 +452,7 @@ function SongDetailPage() {
                           className="rounded border-gray-300"
                         />
                         <div className="flex-1">
-                          <p className="text-gray-900">{playlist.name}</p>
+                          <p className="text-sm font-medium text-gray-900">{playlist.name}</p>
                           {playlist.description && (
                             <p className="text-sm text-gray-600">{playlist.description}</p>
                           )}

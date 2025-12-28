@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { playlistService, type Playlist, type CreatePlaylistDTO } from '../services/playlistService';
 import { songService, type Song } from '../services/songService';
-import { PageHeader } from '../components/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
@@ -13,7 +12,6 @@ const initialPlaylist: CreatePlaylistDTO = {
 };
 
 function MyPlaylistsPage() {
-  const navigate = useNavigate();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [form, setForm] = useState<CreatePlaylistDTO>(initialPlaylist);
@@ -23,7 +21,7 @@ function MyPlaylistsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
-  const { user, logout } = useAuth();
+  useAuth(); // keep auth context alive; no direct usage here
 
   useEffect(() => {
     loadPlaylists();
@@ -110,8 +108,8 @@ function MyPlaylistsPage() {
   };
 
   const handleDelete = (uid: string) => {
-    setDeleteDialogOpen(true);
     setDeleteUid(uid);
+    setDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = async (uidToDelete: string) => {
@@ -136,7 +134,7 @@ function MyPlaylistsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="Delete playlist"
@@ -156,160 +154,173 @@ function MyPlaylistsPage() {
       />
 
       {error && (
-        <div className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
+        <div className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
           <span>{error}</span>
-          <button className="rounded-md px-2 py-1 hover:bg-red-100" onClick={() => setError(null)}>
+          <button className="btn-secondary text-xs" type="button" onClick={() => setError(null)}>
             ✕
           </button>
         </div>
       )}
 
       {page === 'list' ? (
-        <div className="container mx-auto px-4 py-8">
-          <PageHeader loading={loading} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-          <h2 className="text-lg font-medium mb-4">My Playlists</h2>
-
-          <div className="mb-4">
-            <button
-              className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-2 hover:bg-brand-600 disabled:opacity-50"
-              onClick={() => {
-                setForm(initialPlaylist);
-                setEditingUid(null);
-                setPage('form');
-              }}
-              disabled={loading}
-            >
-              Create Playlist
-            </button>
-          </div>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : playlists.length === 0 ? (
-            <p>No playlists yet. Create one to get started.</p>
-          ) : (
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left p-2 border-b">Name</th>
-                  <th className="text-left p-2 border-b">Description</th>
-                  <th className="text-left p-2 border-b">Songs</th>
-                  <th className="text-left p-2 border-b">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {playlists.map(playlist => (
-                  <tr key={playlist.uid} className="border-b hover:bg-gray-100">
-                    <td className="p-2 align-top max-w-xs truncate font-semibold" title={playlist.name}>{playlist.name}</td>
-                    <td className="p-2 align-top max-w-sm truncate text-gray-600" title={playlist.description}>{playlist.description || '-'}</td>
-                    <td className="p-2 align-top text-gray-500">{playlist.songUids?.length || 0}</td>
-                    <td className="p-2 align-top">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-blue-600 text-white px-3 py-1 hover:bg-blue-700 disabled:opacity-50 text-sm"
-                          onClick={() => handleEdit(playlist.uid)}
-                          disabled={loading}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1 hover:bg-red-700 disabled:opacity-50 text-sm"
-                          onClick={() => handleDelete(playlist.uid)}
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      ) : (
-        <div className="max-w-2xl mx-auto p-6">
-          <div className="mb-6">
-            <Link to="/" className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition">Musician Tools</Link>
-            <p className="text-sm text-gray-600">{editingUid ? 'Edit playlist' : 'Create new playlist'}</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="playlist-name" className="block text-sm font-medium text-gray-700">Name</label>
-              <input
-                id="playlist-name"
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                required
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="playlist-description" className="block text-sm font-medium text-gray-700">Description</label>
-              <textarea
-                id="playlist-description"
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                name="description"
-                value={form.description || ''}
-                onChange={handleChange}
-                rows={4}
-                disabled={loading}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Songs</label>
-              <div className="border border-gray-200 rounded-md max-h-96 overflow-y-auto">
-                {songs.length === 0 ? (
-                  <p className="p-3 text-sm text-gray-600">No songs available. Create songs first.</p>
-                ) : (
-                  <div className="space-y-2 p-3">
-                    {songs.map(song => (
-                      <label key={song.uid} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={(form.songUids || []).includes(song.uid)}
-                          onChange={() => handleToggleSong(song.uid)}
-                          disabled={loading}
-                          className="h-4 w-4 rounded border border-gray-300"
-                        />
-                        <span className="text-sm">{song.artist} - {song.title}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
+          <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">My Playlists</h2>
+                <p className="text-sm text-gray-600">Organize your songs by mood or practice focus.</p>
               </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 inline-flex items-center justify-center rounded-md bg-brand-500 text-white px-4 py-2 hover:bg-brand-600 disabled:opacity-50"
-                disabled={loading}
-              >
-                {editingUid ? 'Update' : 'Create'}
-              </button>
               <button
                 type="button"
-                className="flex-1 inline-flex items-center justify-center rounded-md bg-gray-300 text-gray-800 px-4 py-2 hover:bg-gray-400 disabled:opacity-50"
+                className="btn-primary"
                 onClick={() => {
                   setForm(initialPlaylist);
                   setEditingUid(null);
-                  setPage('list');
+                  setPage('form');
                 }}
                 disabled={loading}
               >
-                Cancel
+                Create Playlist
               </button>
             </div>
-          </form>
+
+            {loading ? (
+              <p className="text-sm text-gray-600">Loading...</p>
+            ) : playlists.length === 0 ? (
+              <p className="text-sm text-gray-600">No playlists yet. Create one to get started.</p>
+            ) : (
+              <div className="card-base overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left p-2 border-b">Name</th>
+                        <th className="text-left p-2 border-b">Description</th>
+                        <th className="text-left p-2 border-b">Songs</th>
+                        <th className="text-left p-2 border-b">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {playlists.map(playlist => (
+                        <tr key={playlist.uid} className="hover:bg-gray-50">
+                          <td className="p-2 align-top font-medium text-gray-900">{playlist.name}</td>
+                          <td className="p-2 align-top max-w-md whitespace-pre-wrap text-gray-700">{playlist.description || '-'}</td>
+                          <td className="p-2 align-top">
+                            {(playlist.songUids || []).map(uid => (
+                              <div key={uid} className="text-xs text-gray-700">{getSongTitle(uid)}</div>
+                            ))}
+                          </td>
+                          <td className="p-2 align-top">
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                className="btn-secondary text-sm"
+                                onClick={() => handleEdit(playlist.uid)}
+                                disabled={loading}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50 text-sm"
+                                onClick={() => handleDelete(playlist.uid)}
+                                disabled={loading}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="card-base glass-effect p-6 space-y-6">
+            <div>
+              <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
+              <p className="text-sm text-gray-600">{editingUid ? 'Edit playlist' : 'Create playlist'}</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="playlist-name" className="label-base">Name</label>
+                <input
+                  id="playlist-name"
+                  className="input-base"
+                  name="name"
+                  value={form.name}
+                  onChange={handleChange}
+                  required
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="playlist-description" className="label-base">Description</label>
+                <textarea
+                  id="playlist-description"
+                  className="input-base"
+                  name="description"
+                  value={form.description || ''}
+                  onChange={handleChange}
+                  rows={4}
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Songs</label>
+                <div className="card-base max-h-96 overflow-y-auto">
+                  {songs.length === 0 ? (
+                    <p className="p-3 text-sm text-gray-600">No songs available. Create songs first.</p>
+                  ) : (
+                    <div className="space-y-2 p-3">
+                      {songs.map(song => (
+                        <label key={song.uid} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={(form.songUids || []).includes(song.uid)}
+                            onChange={() => handleToggleSong(song.uid)}
+                            disabled={loading}
+                            className="h-4 w-4 rounded border border-gray-300"
+                          />
+                          <span className="text-sm">{song.artist} - {song.title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="submit"
+                  className="btn-primary flex-1 justify-center"
+                  disabled={loading}
+                >
+                  {editingUid ? 'Update' : 'Create'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary flex-1 justify-center"
+                  onClick={() => {
+                    setForm(initialPlaylist);
+                    setEditingUid(null);
+                    setPage('list');
+                  }}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
