@@ -10,7 +10,7 @@ export function PageHeader({ loading = false }: PageHeaderProps) {
 
   return (
     <div className="flex items-center justify-between mb-6">
-      <Link to="/" className="text-2xl font-semibold text-gray-900 hover:text-brand-500 transition">Musician Tools</Link>
+      <Link to="/" className="text-2xl font-semibold text-gray-900 dark:text-gray-100 hover:text-brand-500 dark:hover:text-brand-400 transition">Musician Tools</Link>
       <div className="flex items-center gap-3">
         {user && <span className="text-sm text-gray-600">Hello, {user.name}</span>}
         <Link

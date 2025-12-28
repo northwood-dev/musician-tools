@@ -259,7 +259,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                   <div className="flex items-center gap-3">
                     <span className="font-medium">{instrumentType}</span>
                     {formatLastPlayed && (
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
                         Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
                       </span>
                     )}
@@ -378,7 +378,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                                 checked={currentTechniques.includes(technique)}
                                 onChange={() => onToggleTechnique(technique)}
                                 disabled={loading}
-                                className="h-4 w-4 rounded border border-gray-300"
+                                className="h-4 w-4 rounded border border-gray-300 accent-brand-500 dark:accent-brand-400"
                               />
                               <span className="ml-2 text-sm text-gray-700">{technique}</span>
                             </label>
@@ -459,7 +459,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                             Add link
                           </button>
                         </div>
-                        <p className="text-xs text-gray-500">Add resources for this instrument (videos, tabs, lessons).</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Add resources for this instrument (videos, tabs, lessons).</p>
                       </div>
                     </div>
                   </div>

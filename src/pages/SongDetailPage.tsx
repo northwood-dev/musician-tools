@@ -345,7 +345,7 @@ function SongDetailPage() {
 
   if (loading && !song) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100 flex items-center justify-center px-6">
         <div className="card-base glass-effect p-6">Loading...</div>
       </div>
     );
@@ -353,7 +353,7 @@ function SongDetailPage() {
 
   if (error && !song) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100 flex items-center justify-center px-6">
         <div className="card-base glass-effect p-6 max-w-xl w-full space-y-4 text-center">
           <Link
             to="/"
@@ -374,7 +374,7 @@ function SongDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="Delete song"
@@ -400,7 +400,7 @@ function SongDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-3xl mx-auto mt-6 card-base glass-effect p-6">
-          <p className="text-sm text-gray-600 mb-6">Edit song</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Edit song</p>
           <SongForm
             mode="edit"
             form={form}
@@ -429,11 +429,11 @@ function SongDetailPage() {
               <div className="mt-8 space-y-3">
                 <h2 className="text-sm font-semibold tracking-wide text-gray-700">Add to playlists</h2>
                 {playlists.length === 0 ? (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     No playlists found.{' '}
                     <Link
                       to="/my-playlists"
-                      className="text-brand-600 hover:text-brand-700"
+                      className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
                     >
                       Create one
                     </Link>
@@ -443,13 +443,13 @@ function SongDetailPage() {
                     {playlists.map(playlist => (
                       <label
                         key={playlist.uid}
-                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded"
                       >
                         <input
                           type="checkbox"
                           checked={selectedPlaylistUids.has(playlist.uid)}
                           onChange={() => handleTogglePlaylist(playlist.uid)}
-                          className="rounded border-gray-300"
+                          className="rounded border-gray-300 accent-brand-500 dark:accent-brand-400"
                         />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">{playlist.name}</p>

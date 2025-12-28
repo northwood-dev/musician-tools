@@ -134,7 +134,7 @@ function MyPlaylistsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="Delete playlist"
@@ -169,7 +169,7 @@ function MyPlaylistsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">My Playlists</h2>
-                <p className="text-sm text-gray-600">Organize your songs by mood or practice focus.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Organize your songs by mood or practice focus.</p>
               </div>
               <button
                 type="button"
@@ -186,14 +186,14 @@ function MyPlaylistsPage() {
             </div>
 
             {loading ? (
-              <p className="text-sm text-gray-600">Loading...</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
             ) : playlists.length === 0 ? (
-              <p className="text-sm text-gray-600">No playlists yet. Create one to get started.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">No playlists yet. Create one to get started.</p>
             ) : (
               <div className="card-base overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
                       <tr>
                         <th className="text-left p-2 border-b">Name</th>
                         <th className="text-left p-2 border-b">Description</th>
@@ -203,7 +203,7 @@ function MyPlaylistsPage() {
                     </thead>
                     <tbody>
                       {playlists.map(playlist => (
-                        <tr key={playlist.uid} className="hover:bg-gray-50">
+                        <tr key={playlist.uid} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="p-2 align-top font-medium text-gray-900">{playlist.name}</td>
                           <td className="p-2 align-top max-w-md whitespace-pre-wrap text-gray-700">{playlist.description || '-'}</td>
                           <td className="p-2 align-top">
@@ -245,7 +245,7 @@ function MyPlaylistsPage() {
           <div className="card-base glass-effect p-6 space-y-6">
             <div>
               <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
-              <p className="text-sm text-gray-600">{editingUid ? 'Edit playlist' : 'Create playlist'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{editingUid ? 'Edit playlist' : 'Create playlist'}</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -278,17 +278,17 @@ function MyPlaylistsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-3">Songs</label>
                 <div className="card-base max-h-96 overflow-y-auto">
                   {songs.length === 0 ? (
-                    <p className="p-3 text-sm text-gray-600">No songs available. Create songs first.</p>
+                    <p className="p-3 text-sm text-gray-600 dark:text-gray-400">No songs available. Create songs first.</p>
                   ) : (
                     <div className="space-y-2 p-3">
                       {songs.map(song => (
-                        <label key={song.uid} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                        <label key={song.uid} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                           <input
                             type="checkbox"
                             checked={(form.songUids || []).includes(song.uid)}
                             onChange={() => handleToggleSong(song.uid)}
                             disabled={loading}
-                            className="h-4 w-4 rounded border border-gray-300"
+                            className="h-4 w-4 rounded border border-gray-300 accent-brand-500 dark:accent-brand-400"
                           />
                           <span className="text-sm">{song.artist} - {song.title}</span>
                         </label>

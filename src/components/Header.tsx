@@ -1,9 +1,23 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState } from 'react';
 
 function Header() {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', darkMode.toString());
+  }, [darkMode]);
 
   const handleLogout = async () => {
     await logout();
@@ -11,7 +25,7 @@ function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 glass-effect border-b border-gray-200 shadow-sm">
+    <header className="sticky top-0 z-40 glass-effect border-b border-gray-200 dark:border-gray-700 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -30,19 +44,19 @@ function Header() {
               <>
                 <Link
                   to="/songs"
-                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:text-brand-400"
                 >
                   Songs
                 </Link>
                 <Link
                   to="/my-instruments"
-                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:text-brand-400"
                 >
                   Instruments
                 </Link>
                 <Link
                   to="/my-playlists"
-                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors"
+                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:text-brand-400"
                 >
                   Playlists
                 </Link>
@@ -52,6 +66,18 @@ function Header() {
 
           {/* Right side actions */}
           <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setDarkMode(!darkMode)}
+              className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? (
+                <span className="text-lg">☀️</span>
+              ) : (
+                <span className="text-lg">🌙</span>
+              )}
+            </button>
             {isAuthenticated ? (
               <button
                 type="button"

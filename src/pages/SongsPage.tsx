@@ -823,7 +823,7 @@ function SongsPage() {
 
   const SortHeader = ({ column, label }: { column: string; label: string }) => (
     <th
-      className="text-left p-2 border-b cursor-pointer hover:bg-gray-100"
+      className="text-left p-2 border-b cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
       onClick={() => handleSort(column)}
     >
       <div className="flex items-center gap-1">
@@ -841,7 +841,7 @@ function SongsPage() {
   const showTunningFilters = instrumentFilter && instrumentFilter !== 'Drums';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="Delete song(s)"
@@ -902,7 +902,7 @@ function SongsPage() {
                 ) : (
                   <div className="p-4 space-y-3">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-gray-800">Filters</h3>
+                      <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
                       <button
                         type="button"
                         className="btn-secondary text-xs px-2 py-1"
@@ -915,7 +915,7 @@ function SongsPage() {
                     <div className="card-base">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                         aria-expanded={filtersAccordionOpen}
                         onClick={() => setFiltersAccordionOpen(prev => !prev)}
                       >
@@ -923,9 +923,9 @@ function SongsPage() {
                         <span>{filtersAccordionOpen ? '▾' : '▸'}</span>
                       </button>
                       {filtersAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 space-y-3">
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
                           <div>
-                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by instrument</div>
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by instrument</div>
                             <select
                               value={instrumentFilter}
                               onChange={(e) => setInstrumentFilter(e.target.value)}
@@ -939,7 +939,7 @@ function SongsPage() {
                           </div>
 
                           <div>
-                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by my instrument</div>
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by my instrument</div>
                             <select
                               value={myInstrumentFilter}
                               onChange={(e) => setMyInstrumentFilter(e.target.value)}
@@ -971,7 +971,7 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                         aria-expanded={playlistAccordionOpen}
                         onClick={() => setPlaylistAccordionOpen(prev => !prev)}
                       >
@@ -979,8 +979,8 @@ function SongsPage() {
                         <span>{playlistAccordionOpen ? '▾' : '▸'}</span>
                       </button>
                       {playlistAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 space-y-3">
-                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by playlist</div>
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by playlist</div>
                           <select
                             className="input-base text-sm"
                             value={playlistFilter}
@@ -1007,7 +1007,7 @@ function SongsPage() {
                     </div>
 
                     <div className="card-base mt-3">
-                      <div className="text-xs font-semibold text-gray-700 mb-2">Filter by difficulty (max)</div>
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
                       <select
                         value={instrumentDifficultyFilter === '' ? '' : instrumentDifficultyFilter}
                         onChange={(e) => {
@@ -1027,7 +1027,7 @@ function SongsPage() {
                       <div className="card-base mt-3">
                         <button
                           type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                           aria-expanded={techniqueAccordionOpen}
                           onClick={() => setTechniqueAccordionOpen(prev => !prev)}
                         >
@@ -1035,10 +1035,10 @@ function SongsPage() {
                           <span>{techniqueAccordionOpen ? '▾' : '▸'}</span>
                         </button>
                         {techniqueAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100">
-                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by technique</div>
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by technique</div>
                           {availableTechniqueFilters.length === 0 ? (
-                            <p className="text-sm text-gray-600">No techniques available for {instrumentFilter}.</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">No techniques available for {instrumentFilter}.</p>
                           ) : (
                             <>
                               <div className="flex flex-col gap-2">
@@ -1046,7 +1046,7 @@ function SongsPage() {
                                   <label key={tech} className="inline-flex items-center gap-2 text-sm cursor-pointer">
                                     <input
                                       type="checkbox"
-                                      className="h-4 w-4"
+                                      className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
                                       checked={techniqueFilters.has(tech)}
                                       onChange={() => toggleTechniqueFilter(tech)}
                                     />
@@ -1055,7 +1055,7 @@ function SongsPage() {
                                 ))}
                               </div>
                               <div className="mt-3">
-                                <div className="text-xs font-semibold text-gray-700 mb-1">Match mode</div>
+                                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
                                 <div className="flex items-center gap-3">
                                   <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
                                     <input
@@ -1100,7 +1100,7 @@ function SongsPage() {
                       <div className="card-base mt-3">
                         <button
                           type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                           aria-expanded={tunningAccordionOpen}
                           onClick={() => setTunningAccordionOpen(prev => !prev)}
                         >
@@ -1108,10 +1108,10 @@ function SongsPage() {
                           <span>{tunningAccordionOpen ? '▾' : '▸'}</span>
                         </button>
                         {tunningAccordionOpen && (
-                          <div className="p-4 border-t border-gray-100">
-                            <div className="text-xs font-semibold text-gray-700 mb-2">Filter by tuning</div>
+                          <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
                             {tunningFilterOptions.length === 0 ? (
-                              <p className="text-sm text-gray-600">No tunings available for {instrumentFilter}.</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {instrumentFilter}.</p>
                             ) : (
                               <select
                                 className="input-base text-sm"
@@ -1131,7 +1131,7 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                         aria-expanded={keyAccordionOpen}
                         onClick={() => setKeyAccordionOpen(prev => !prev)}
                       >
@@ -1139,8 +1139,8 @@ function SongsPage() {
                         <span>{keyAccordionOpen ? '▾' : '▸'}</span>
                       </button>
                       {keyAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100">
-                          <div className="text-xs font-semibold text-gray-700 mb-2">Filter by key</div>
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by key</div>
                           <select
                             className="input-base text-sm"
                             value={keyFilter}
@@ -1168,18 +1168,18 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                         aria-expanded={true}
                         onClick={() => {}}
                       >
                         <span>BPM filters</span>
                         <span>▾</span>
                       </button>
-                      <div className="p-4 border-t border-gray-100">
-                        <div className="text-xs font-semibold text-gray-700 mb-2">Filter by BPM</div>
+                      <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by BPM</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label htmlFor="bpm-min" className="block text-xs text-gray-700">Min</label>
+                            <label htmlFor="bpm-min" className="block text-xs text-gray-700 dark:text-gray-300">Min</label>
                             <input
                               id="bpm-min"
                               type="number"
@@ -1191,7 +1191,7 @@ function SongsPage() {
                             />
                           </div>
                           <div>
-                            <label htmlFor="bpm-max" className="block text-xs text-gray-700">Max</label>
+                            <label htmlFor="bpm-max" className="block text-xs text-gray-700 dark:text-gray-300">Max</label>
                             <input
                               id="bpm-max"
                               type="number"
@@ -1208,18 +1208,18 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
                         aria-expanded={true}
                         onClick={() => {}}
                       >
                         <span>Pitch standard filters</span>
                         <span>▾</span>
                       </button>
-                      <div className="p-4 border-t border-gray-100">
-                        <div className="text-xs font-semibold text-gray-700 mb-2">Filter by pitch standard (Hz)</div>
+                      <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by pitch standard (Hz)</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label htmlFor="pitch-min" className="block text-xs text-gray-700">Min</label>
+                            <label htmlFor="pitch-min" className="block text-xs text-gray-700 dark:text-gray-300">Min</label>
                             <input
                               id="pitch-min"
                               type="number"
@@ -1232,7 +1232,7 @@ function SongsPage() {
                             />
                           </div>
                           <div>
-                            <label htmlFor="pitch-max" className="block text-xs text-gray-700">Max</label>
+                            <label htmlFor="pitch-max" className="block text-xs text-gray-700 dark:text-gray-300">Max</label>
                             <input
                               id="pitch-max"
                               type="number"
@@ -1255,7 +1255,7 @@ function SongsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
                       <h2 className="text-xl font-semibold text-gray-900">Song list</h2>
-                      <p className="text-sm text-gray-600">Manage your songs, filters, and playlists.</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Manage your songs, filters, and playlists.</p>
                     </div>
                     <button
                       type="button"
@@ -1282,7 +1282,7 @@ function SongsPage() {
                       <button
                         type="button"
                         onClick={() => setSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
                         aria-label="Clear search"
                       >
                         ✕
@@ -1293,7 +1293,7 @@ function SongsPage() {
                 {selectedSongs.size > 0 && (
                   <div className="card-base glass-effect p-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <span className="text-sm font-semibold text-gray-800">{selectedSongs.size} song(s) selected</span>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{selectedSongs.size} song(s) selected</span>
                       <div className="flex flex-wrap gap-2">
                         <div className="relative">
                           <button
@@ -1305,21 +1305,21 @@ function SongsPage() {
                             Add to playlist
                           </button>
                           {bulkPlaylistOpen && (
-                            <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white shadow-lg z-20 p-3">
+                            <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
                               <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm text-gray-700">Select playlists</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
                                 <button
                                   type="button"
-                                  className="text-xs text-gray-500 hover:text-gray-700"
+                                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                                   onClick={() => setBulkPlaylistOpen(false)}
                                 >
                                   ✕
                                 </button>
                               </div>
                               {playlists.length === 0 ? (
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                   No playlists found.{' '}
-                                  <Link to="/my-playlists" className="text-brand-500 hover:text-brand-600">Create one</Link>
+                                  <Link to="/my-playlists" className="text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">Create one</Link>
                                 </p>
                               ) : (
                                 <>
@@ -1327,23 +1327,23 @@ function SongsPage() {
                                     {playlists.map(pl => (
                                       <label
                                         key={pl.uid}
-                                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
                                       >
                                         <input
                                           type="checkbox"
                                           checked={bulkPlaylistSelection.has(pl.uid)}
                                           onChange={() => toggleBulkPlaylistSelection(pl.uid)}
-                                          className="rounded border-gray-300"
+                                          className="rounded border-gray-300 accent-brand-500 dark:accent-brand-400"
                                         />
-                                        <span className="text-sm text-gray-900">{pl.name}</span>
-                                        <span className="text-xs text-gray-500">{(pl.songUids || []).length}</span>
+                                        <span className="text-sm text-gray-900 dark:text-gray-100">{pl.name}</span>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">{(pl.songUids || []).length}</span>
                                       </label>
                                     ))}
                                   </div>
                                   <div className="flex justify-end gap-2">
                                     <button
                                       type="button"
-                                      className="text-sm px-3 py-1 rounded-md border border-gray-200 text-gray-700 hover:bg-gray-100"
+                                      className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                                       onClick={() => setBulkPlaylistOpen(false)}
                                     >
                                       Cancel
@@ -1385,21 +1385,21 @@ function SongsPage() {
                   </div>
                 )}
                 {loading ? (
-                  <div className="card-base p-6 text-sm text-gray-600">Loading...</div>
+                  <div className="card-base p-6 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
                 ) : filteredSongs.length === 0 ? (
-                  <div className="card-base p-6 text-center text-gray-600">
+                  <div className="card-base p-6 text-center text-gray-600 dark:text-gray-400">
                     {searchQuery ? 'No songs match your search.' : 'No songs saved.'}
                   </div>
                 ) : (
                   <div className="card-base overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
                           <tr>
                             <th className="text-center p-2 border-b w-12">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 cursor-pointer"
+                                className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
                                 checked={allDisplayedSelected}
                                 onChange={toggleSelectAll}
                                 disabled={loading}
@@ -1416,7 +1416,7 @@ function SongsPage() {
                           {displayedSongs.map(song => (
                             <tr
                               key={song.uid}
-                              className={`border-b cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
+                              className={`border-b cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                               onClick={() => toggleSelectSong(song.uid)}
                             >
                               <td
@@ -1426,8 +1426,8 @@ function SongsPage() {
                                 tabIndex={-1}
                               >
                                 <input
-                                  className="h-4 w-4 cursor-pointer"
                                   type="checkbox"
+                                  className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
                                   checked={selectedSongs.has(song.uid)}
                                   onChange={() => toggleSelectSong(song.uid)}
                                   disabled={loading}
@@ -1466,7 +1466,7 @@ function SongsPage() {
           <div className="card-base glass-effect p-6">
             <div className="mb-6">
               <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
-              <p className="text-sm text-gray-600">{editingUid ? 'Edit a song' : 'Add a song'}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{editingUid ? 'Edit a song' : 'Add a song'}</p>
             </div>
           <SongForm
             mode={editingUid ? 'edit' : 'add'}

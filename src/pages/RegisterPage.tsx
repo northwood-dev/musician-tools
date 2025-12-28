@@ -40,7 +40,7 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center px-6 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md space-y-8">
         {/* Logo & Header */}
         <div className="text-center space-y-4">
@@ -51,7 +51,7 @@ function RegisterPage() {
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Get started</h1>
-            <p className="text-gray-600 mt-2">Create your Musician Tools account</p>
+            <p className="text-gray-600 dark:text-gray-300 mt-2">Create your Musician Tools account</p>
           </div>
         </div>
 
@@ -130,9 +130,9 @@ function RegisterPage() {
         </form>
 
         {/* Sign in link */}
-        <div className="text-center text-sm text-gray-600">
+        <div className="text-center text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{' '}
-          <Link to="/login" className="text-brand-600 font-medium hover:text-brand-700">
+          <Link to="/login" className="text-brand-600 dark:text-brand-400 font-medium hover:text-brand-700 dark:hover:text-brand-300">
             Sign in
           </Link>
         </div>

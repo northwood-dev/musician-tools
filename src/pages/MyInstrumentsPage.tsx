@@ -101,7 +101,7 @@ function MyInstrumentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 text-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
       <ConfirmDialog
         isOpen={!!deleteUid}
         title="Delete instrument"
@@ -171,14 +171,14 @@ function MyInstrumentsPage() {
           </form>
 
           {loading ? (
-            <p className="text-sm text-gray-600">Loading...</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
           ) : list.length === 0 ? (
-            <p className="text-sm text-gray-600">No instruments saved yet.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">No instruments saved yet.</p>
           ) : (
             <div className="card-base overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
                     <tr>
                       <th className="text-left p-2 border-b">Type</th>
                       <th className="text-left p-2 border-b">Name</th>
@@ -250,7 +250,7 @@ function MyInstrumentsPage() {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={item.uid} className="hover:bg-gray-50">
+                        <tr key={item.uid} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="p-2 align-top">{item.type || '-'}</td>
                           <td className="p-2 align-top">{item.name}</td>
                           <td className="p-2 align-top">{item.brand || '-'}</td>
