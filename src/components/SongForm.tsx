@@ -86,7 +86,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
       {/* Top quick links aggregated from all instruments */}
       {allInstrumentLinks.length > 0 && (
         <>
-          <div className="text-sm font-medium text-gray-700">Quick Links</div>
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-100">Quick Links</div>
           <div className="flex flex-wrap gap-2">
             {allInstrumentLinks.map((lnk, idx) => (
               <button
@@ -109,11 +109,11 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
       )}
       {tabsFirst && (
         <div>
-          <label htmlFor="song-tabs" className="block text-sm font-medium text-gray-700">Tabs</label>
+          <label htmlFor="song-tabs" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Tabs</label>
           <div className="mt-1 flex gap-2">
             <input
               id="song-tabs"
-              className="block flex-1 rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="block flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
               type="url"
               name="tabs"
               placeholder="https://example.com/tabs"
@@ -137,10 +137,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         </div>
       )}
       <div>
-        <label htmlFor="song-artist" className="block text-sm font-medium text-gray-700">Artist</label>
+        <label htmlFor="song-artist" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Artist</label>
         <input
           id="song-artist"
-          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
           name="artist"
           value={form.artist}
           onChange={onChange}
@@ -148,10 +148,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         />
       </div>
       <div>
-        <label htmlFor="song-title" className="block text-sm font-medium text-gray-700">Title</label>
+        <label htmlFor="song-title" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Title</label>
         <input
           id="song-title"
-          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
           name="title"
           value={form.title}
           onChange={onChange}
@@ -159,10 +159,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           disabled={loading}
         />
       </div>
-      <div className="border border-gray-200 rounded-md">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md">
         <button
           type="button"
-          className="w-full flex items-center justify-between p-2 hover:bg-gray-50"
+          className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
           onClick={() => setDetailsAccordionOpen(!detailsAccordionOpen)}
           aria-expanded={detailsAccordionOpen}
         >
@@ -170,12 +170,12 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           <span>{detailsAccordionOpen ? '▾' : '▸'}</span>
         </button>
         {detailsAccordionOpen && (
-          <div className="mt-0 space-y-4 p-3 border-t border-gray-200 bg-gray-50">
+          <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div>
-              <label htmlFor="song-album" className="block text-sm font-medium text-gray-700">Album</label>
+              <label htmlFor="song-album" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Album</label>
               <input
                 id="song-album"
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                 name="album"
                 value={typeof form.album === 'string' ? form.album : ''}
                 onChange={onChange}
@@ -184,10 +184,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label htmlFor="song-bpm" className="block text-sm font-medium text-gray-700">BPM</label>
+                <label htmlFor="song-bpm" className="block text-sm font-medium text-gray-700 dark:text-gray-100">BPM</label>
                 <input
                   id="song-bpm"
-                  className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                   name="bpm"
                   type="number"
                   value={form.bpm ?? ''}
@@ -197,10 +197,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                 />
               </div>
               <div>
-                <label htmlFor="song-key" className="block text-sm font-medium text-gray-700">Key</label>
+                <label htmlFor="song-key" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Key</label>
                 <select
                   id="song-key"
-                  className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                   name="key"
                   value={form.key || ''}
                   onChange={onChange}
@@ -213,10 +213,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                 </select>
               </div>
               <div>
-                <label htmlFor="song-pitch-standard" className="block text-sm font-medium text-gray-700">Pitch Standard (Hz)</label>
+                <label htmlFor="song-pitch-standard" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Pitch Standard (Hz)</label>
                 <input
                   id="song-pitch-standard"
-                  className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                   name="pitchStandard"
                   type="number"
                   value={form.pitchStandard ?? 440}
@@ -231,7 +231,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         )}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Instruments</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</label>
         <div className="space-y-2">
           {currentInstruments.map((instrumentType) => {
             const isExpanded = expandedInstruments.has(instrumentType);
@@ -241,10 +241,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
             const instrumentTechniques = getAvailableTechniques(instrumentType);
             
             return (
-              <div key={instrumentType} className="border border-gray-200 rounded-md">
+              <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md">
                 <button
                   type="button"
-                  className="w-full flex items-center justify-between p-2 hover:bg-gray-50"
+                  className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
                   onClick={() => {
                     const next = new Set(expandedInstruments);
                     if (next.has(instrumentType)) {
@@ -298,12 +298,12 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                   </div>
                 </button>
                 {isExpanded && (
-                  <div className="mt-0 space-y-4 p-3 border-t border-gray-200 bg-gray-50">
+                  <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                     {filteredMyInstruments && filteredMyInstruments.length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">My instrument</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">My instrument</label>
                         <select
-                          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                           name="myInstrumentUid"
                           value={form.myInstrumentUid || ''}
                           onChange={onChange}
@@ -319,7 +319,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     <div>
                       <div className="flex items-center justify-between">
-                        <label className="block text-sm font-medium text-gray-700">Difficulty (1-5)</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Difficulty (1-5)</label>
                         <div className="flex items-center gap-1" role="radiogroup" aria-label="Difficulty" aria-live="polite">
                           {[1,2,3,4,5].map(n => {
                             const current = form.instrumentDifficulty ? form.instrumentDifficulty[instrumentType] : null;
@@ -347,9 +347,9 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     {getAvailableTunings(instrumentType).length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Tuning</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Tuning</label>
                         <select
-                          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                           value={(form.instrumentTuning && form.instrumentTuning[instrumentType] !== undefined && form.instrumentTuning[instrumentType] !== null)
                             ? form.instrumentTuning[instrumentType]
                             : ''}
@@ -369,7 +369,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     {instrumentTechniques && instrumentTechniques.length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Techniques</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Techniques</label>
                         <div className="space-y-2">
                           {instrumentTechniques.map(technique => (
                             <label key={technique} className="flex items-center">
@@ -378,9 +378,9 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                                 checked={currentTechniques.includes(technique)}
                                 onChange={() => onToggleTechnique(technique)}
                                 disabled={loading}
-                                className="h-4 w-4 rounded border border-gray-300 accent-brand-500 dark:accent-brand-400"
+                                className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
                               />
-                              <span className="ml-2 text-sm text-gray-700">{technique}</span>
+                              <span className="ml-2 text-sm text-gray-700 dark:text-gray-100">{technique}</span>
                             </label>
                           ))}
                         </div>
@@ -388,7 +388,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Links</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Links</label>
                       <div className="space-y-2">
                         {((form.instrumentLinks && form.instrumentLinks[instrumentType]) || []).map((lnk, idx) => (
                           <div key={`${instrumentType}-link-${idx}`} className="flex items-center gap-2">
@@ -424,7 +424,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                         ))}
                         <div className="flex items-center gap-2">
                           <input
-                            className="flex-1 rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                             type="text"
                             placeholder="Label (ex, Tabs video)"
                             value={(newLinkInputs[instrumentType]?.label) || ''}
@@ -432,7 +432,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                             disabled={loading}
                           />
                           <input
-                            className="flex-1 rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                             type="url"
                             placeholder="https://example.com"
                             value={(newLinkInputs[instrumentType]?.url) || ''}
@@ -469,7 +469,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           })}
           
           <div>
-            <label htmlFor="add-instrument" className="block text-sm font-medium text-gray-700 mb-2">Add an instrument</label>
+            <label htmlFor="add-instrument" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Add an instrument</label>
             <select
               id="add-instrument"
               value={selectedInstrumentType}
@@ -481,7 +481,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                 }
                 setSelectedInstrumentType('');
               }}
-              className="block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
               disabled={loading}
             >
               <option value="">Select an instrument to add</option>
@@ -496,10 +496,10 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
       {playlistSlot}
 
       <div>
-        <label htmlFor="song-notes" className="block text-sm font-medium text-gray-700">Notes</label>
+        <label htmlFor="song-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Notes</label>
         <textarea
           id="song-notes"
-          className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
           name="notes"
           value={(form as any).notes}
           onChange={onChange}
@@ -510,11 +510,11 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
       <div>
         {!tabsFirst && (
           <>
-            <label htmlFor="song-tabs" className="block text-sm font-medium text-gray-700">Tabs</label>
+            <label htmlFor="song-tabs" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Tabs</label>
             <div className="mt-1 flex gap-2">
               <input
                 id="song-tabs"
-                className="block flex-1 rounded-md border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="block flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                 type="url"
                 name="tabs"
                 placeholder="https://example.com/tabs"
@@ -554,7 +554,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         <div className="flex items-center gap-2">
           <button
             type="button"
-            className="inline-flex items-center rounded-md bg-gray-100 text-gray-800 px-3 py-2 hover:bg-gray-200 disabled:opacity-50"
+            className="inline-flex items-center rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 px-3 py-2 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
             onClick={onCancel}
             disabled={loading}
           >

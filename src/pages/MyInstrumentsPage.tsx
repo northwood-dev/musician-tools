@@ -178,13 +178,13 @@ function MyInstrumentsPage() {
             <div className="card-base overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <thead className="bg-gray-50 dark:bg-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm">
                     <tr>
-                      <th className="text-left p-2 border-b">Type</th>
-                      <th className="text-left p-2 border-b">Name</th>
-                      <th className="text-left p-2 border-b">Brand</th>
-                      <th className="text-left p-2 border-b">Model</th>
-                      <th className="text-right p-2 border-b">Actions</th>
+                      <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Type</th>
+                      <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Name</th>
+                      <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Brand</th>
+                      <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Model</th>
+                      <th className="text-right p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -250,12 +250,12 @@ function MyInstrumentsPage() {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={item.uid} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="p-2 align-top">{item.type || '-'}</td>
-                          <td className="p-2 align-top">{item.name}</td>
-                          <td className="p-2 align-top">{item.brand || '-'}</td>
-                          <td className="p-2 align-top">{item.model || '-'}</td>
-                          <td className="p-2 align-top text-right">
+                        <tr key={item.uid} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="p-2 align-middle">{item.type || '-'}</td>
+                          <td className="p-2 align-middle">{item.name}</td>
+                          <td className="p-2 align-middle">{item.brand || '-'}</td>
+                          <td className="p-2 align-middle">{item.model || '-'}</td>
+                          <td className="p-2 align-middle text-right">
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"

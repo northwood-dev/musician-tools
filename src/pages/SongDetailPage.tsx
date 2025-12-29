@@ -427,7 +427,7 @@ function SongDetailPage() {
             }))}
             playlistSlot={(
               <div className="mt-8 space-y-3">
-                <h2 className="text-sm font-semibold tracking-wide text-gray-700">Add to playlists</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-100">Add to playlists</h2>
                 {playlists.length === 0 ? (
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     No playlists found.{' '}
@@ -449,15 +449,15 @@ function SongDetailPage() {
                           type="checkbox"
                           checked={selectedPlaylistUids.has(playlist.uid)}
                           onChange={() => handleTogglePlaylist(playlist.uid)}
-                          className="rounded border-gray-300 accent-brand-500 dark:accent-brand-400"
+                          className="rounded border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
                         />
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{playlist.name}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{playlist.name}</p>
                           {playlist.description && (
-                            <p className="text-sm text-gray-600">{playlist.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{playlist.description}</p>
                           )}
                         </div>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
                           {(playlist.songUids || []).length} songs
                         </span>
                       </label>

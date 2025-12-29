@@ -13,7 +13,7 @@ function HomePage() {
   const { isAuthenticated, logout } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 flex items-center justify-center px-6">
+    <div className="flex-1 bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 flex items-center justify-center px-6">
       <div className="max-w-2xl w-full text-center space-y-8">
         <div className="space-y-4">
           <div className="flex justify-center">
@@ -45,7 +45,7 @@ function App() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950">
       <Header />
-      <main className="flex-1">
+      <main className="flex-1 flex flex-col">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route

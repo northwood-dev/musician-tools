@@ -168,7 +168,7 @@ function MyPlaylistsPage() {
           <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">My Playlists</h2>
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My Playlists</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Organize your songs by mood or practice focus.</p>
               </div>
               <button
@@ -193,25 +193,25 @@ function MyPlaylistsPage() {
               <div className="card-base overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm">
                       <tr>
-                        <th className="text-left p-2 border-b">Name</th>
-                        <th className="text-left p-2 border-b">Description</th>
-                        <th className="text-left p-2 border-b">Songs</th>
-                        <th className="text-left p-2 border-b">Actions</th>
+                        <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Name</th>
+                        <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Description</th>
+                        <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Songs</th>
+                        <th className="text-left p-2 border-b dark:border-gray-700 uppercase text-xs font-semibold tracking-wide">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {playlists.map(playlist => (
-                        <tr key={playlist.uid} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="p-2 align-top font-medium text-gray-900">{playlist.name}</td>
-                          <td className="p-2 align-top max-w-md whitespace-pre-wrap text-gray-700">{playlist.description || '-'}</td>
-                          <td className="p-2 align-top">
+                        <tr key={playlist.uid} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="p-2 align-middle font-medium text-gray-900 dark:text-gray-100">{playlist.name}</td>
+                          <td className="p-2 align-middle max-w-md whitespace-pre-wrap text-gray-700 dark:text-gray-300">{playlist.description || '-'}</td>
+                          <td className="p-2 align-middle">
                             {(playlist.songUids || []).map(uid => (
-                              <div key={uid} className="text-xs text-gray-700">{getSongTitle(uid)}</div>
+                              <div key={uid} className="text-xs text-gray-700 dark:text-gray-300">{getSongTitle(uid)}</div>
                             ))}
                           </td>
-                          <td className="p-2 align-top">
+                          <td className="p-2 align-middle">
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
@@ -244,7 +244,6 @@ function MyPlaylistsPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="card-base glass-effect p-6 space-y-6">
             <div>
-              <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
               <p className="text-sm text-gray-600 dark:text-gray-400">{editingUid ? 'Edit playlist' : 'Create playlist'}</p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -275,22 +274,26 @@ function MyPlaylistsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Songs</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-3">Songs</label>
                 <div className="card-base max-h-96 overflow-y-auto">
                   {songs.length === 0 ? (
                     <p className="p-3 text-sm text-gray-600 dark:text-gray-400">No songs available. Create songs first.</p>
                   ) : (
                     <div className="space-y-2 p-3">
-                      {songs.map(song => (
+                      {songs.sort((a, b) => {
+                        const aDisplay = `${a.artist} - ${a.title}`.toLowerCase();
+                        const bDisplay = `${b.artist} - ${b.title}`.toLowerCase();
+                        return aDisplay.localeCompare(bDisplay);
+                      }).map(song => (
                         <label key={song.uid} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
                           <input
                             type="checkbox"
                             checked={(form.songUids || []).includes(song.uid)}
                             onChange={() => handleToggleSong(song.uid)}
                             disabled={loading}
-                            className="h-4 w-4 rounded border border-gray-300 accent-brand-500 dark:accent-brand-400"
+                            className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
                           />
-                          <span className="text-sm">{song.artist} - {song.title}</span>
+                          <span className="text-sm dark:text-gray-100">{song.artist} - {song.title}</span>
                         </label>
                       ))}
                     </div>
@@ -299,13 +302,6 @@ function MyPlaylistsPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  type="submit"
-                  className="btn-primary flex-1 justify-center"
-                  disabled={loading}
-                >
-                  {editingUid ? 'Update' : 'Create'}
-                </button>
                 <button
                   type="button"
                   className="btn-secondary flex-1 justify-center"
@@ -317,6 +313,13 @@ function MyPlaylistsPage() {
                   disabled={loading}
                 >
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary flex-1 justify-center"
+                  disabled={loading}
+                >
+                  {editingUid ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

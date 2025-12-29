@@ -137,6 +137,14 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPlaylistAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
+  const [bpmAccordionOpen, setBpmAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsBpmAccordionOpen') : null;
+    return saved === 'false' ? false : true;
+  });
+  const [pitchAccordionOpen, setPitchAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPitchAccordionOpen') : null;
+    return saved === 'false' ? false : true;
+  });
   const { user, logout } = useAuth();
 
 
@@ -243,6 +251,18 @@ function SongsPage() {
       window.localStorage.setItem('songsKeyAccordionOpen', keyAccordionOpen ? 'true' : 'false');
     } catch {}
   }, [keyAccordionOpen]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsBpmAccordionOpen', bpmAccordionOpen ? 'true' : 'false');
+    } catch {}
+  }, [bpmAccordionOpen]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsPitchAccordionOpen', pitchAccordionOpen ? 'true' : 'false');
+    } catch {}
+  }, [pitchAccordionOpen]);
 
   useEffect(() => {
     try {
@@ -823,7 +843,7 @@ function SongsPage() {
 
   const SortHeader = ({ column, label }: { column: string; label: string }) => (
     <th
-      className="text-left p-2 border-b cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+      className="text-left p-2 border-b dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
       onClick={() => handleSort(column)}
     >
       <div className="flex items-center gap-1">
@@ -915,12 +935,12 @@ function SongsPage() {
                     <div className="card-base">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
                         aria-expanded={filtersAccordionOpen}
                         onClick={() => setFiltersAccordionOpen(prev => !prev)}
                       >
                         <span>Instrument filters</span>
-                        <span>{filtersAccordionOpen ? '▾' : '▸'}</span>
+                        <span className="text-xl">{filtersAccordionOpen ? '▾' : '▴'}</span>
                       </button>
                       {filtersAccordionOpen && (
                         <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
@@ -971,12 +991,12 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
                         aria-expanded={playlistAccordionOpen}
                         onClick={() => setPlaylistAccordionOpen(prev => !prev)}
                       >
                         <span>Playlist filters</span>
-                        <span>{playlistAccordionOpen ? '▾' : '▸'}</span>
+                        <span className="text-xl">{playlistAccordionOpen ? '▾' : '▴'}</span>
                       </button>
                       {playlistAccordionOpen && (
                         <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
@@ -1007,32 +1027,34 @@ function SongsPage() {
                     </div>
 
                     <div className="card-base mt-3">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
-                      <select
-                        value={instrumentDifficultyFilter === '' ? '' : instrumentDifficultyFilter}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Number(e.target.value);
-                          setInstrumentDifficultyFilter(val as number | '');
-                        }}
-                        className="input-base text-sm"
-                        disabled={!instrumentFilter}
-                      >
-                        <option value="">All difficulties</option>
-                        {[1,2,3,4,5].map(n => (
-                          <option key={n} value={n}>{`Up to ${n} ★`}</option>
-                        ))}
-                      </select>
+                      <div className="p-4">
+                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
+                        <select
+                          value={instrumentDifficultyFilter === '' ? '' : instrumentDifficultyFilter}
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Number(e.target.value);
+                            setInstrumentDifficultyFilter(val as number | '');
+                          }}
+                          className="input-base text-sm"
+                          disabled={!instrumentFilter}
+                        >
+                          <option value="">All difficulties</option>
+                          {[1,2,3,4,5].map(n => (
+                            <option key={n} value={n}>{`Up to ${n} ★`}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     {instrumentFilter && (
                       <div className="card-base mt-3">
                         <button
                           type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
                           aria-expanded={techniqueAccordionOpen}
                           onClick={() => setTechniqueAccordionOpen(prev => !prev)}
                         >
                           <span>Technique filters</span>
-                          <span>{techniqueAccordionOpen ? '▾' : '▸'}</span>
+                          <span className="text-xl">{techniqueAccordionOpen ? '▾' : '▴'}</span>
                         </button>
                         {techniqueAccordionOpen && (
                         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
@@ -1100,12 +1122,12 @@ function SongsPage() {
                       <div className="card-base mt-3">
                         <button
                           type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
                           aria-expanded={tunningAccordionOpen}
                           onClick={() => setTunningAccordionOpen(prev => !prev)}
                         >
                           <span>Tunning filters</span>
-                          <span>{tunningAccordionOpen ? '▾' : '▸'}</span>
+                          <span className="text-xl">{tunningAccordionOpen ? '▾' : '▴'}</span>
                         </button>
                         {tunningAccordionOpen && (
                           <div className="p-4 border-t border-gray-100 dark:border-gray-700">
@@ -1131,12 +1153,12 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
                         aria-expanded={keyAccordionOpen}
                         onClick={() => setKeyAccordionOpen(prev => !prev)}
                       >
                         <span>Key filters</span>
-                        <span>{keyAccordionOpen ? '▾' : '▸'}</span>
+                        <span className="text-xl">{keyAccordionOpen ? '▾' : '▴'}</span>
                       </button>
                       {keyAccordionOpen && (
                         <div className="p-4 border-t border-gray-100 dark:border-gray-700">
@@ -1168,18 +1190,19 @@ function SongsPage() {
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
-                        aria-expanded={true}
-                        onClick={() => {}}
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                        aria-expanded={bpmAccordionOpen}
+                        onClick={() => setBpmAccordionOpen(prev => !prev)}
                       >
                         <span>BPM filters</span>
-                        <span>▾</span>
+                        <span className="text-xl">{bpmAccordionOpen ? '▾' : '▴'}</span>
                       </button>
+                      {bpmAccordionOpen && (
                       <div className="p-4 border-t border-gray-100 dark:border-gray-700">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by BPM</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label htmlFor="bpm-min" className="block text-xs text-gray-700 dark:text-gray-300">Min</label>
+                            <label htmlFor="bpm-min" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Min</label>
                             <input
                               id="bpm-min"
                               type="number"
@@ -1191,7 +1214,7 @@ function SongsPage() {
                             />
                           </div>
                           <div>
-                            <label htmlFor="bpm-max" className="block text-xs text-gray-700 dark:text-gray-300">Max</label>
+                            <label htmlFor="bpm-max" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Max</label>
                             <input
                               id="bpm-max"
                               type="number"
@@ -1204,22 +1227,24 @@ function SongsPage() {
                           </div>
                         </div>
                       </div>
+                      )}
                     </div>
                     <div className="card-base mt-3">
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors"
-                        aria-expanded={true}
-                        onClick={() => {}}
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                        aria-expanded={pitchAccordionOpen}
+                        onClick={() => setPitchAccordionOpen(prev => !prev)}
                       >
                         <span>Pitch standard filters</span>
-                        <span>▾</span>
+                        <span className="text-xl">{pitchAccordionOpen ? '▾' : '▴'}</span>
                       </button>
+                      {pitchAccordionOpen && (
                       <div className="p-4 border-t border-gray-100 dark:border-gray-700">
                         <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by pitch standard (Hz)</div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label htmlFor="pitch-min" className="block text-xs text-gray-700 dark:text-gray-300">Min</label>
+                            <label htmlFor="pitch-min" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Min</label>
                             <input
                               id="pitch-min"
                               type="number"
@@ -1232,7 +1257,7 @@ function SongsPage() {
                             />
                           </div>
                           <div>
-                            <label htmlFor="pitch-max" className="block text-xs text-gray-700 dark:text-gray-300">Max</label>
+                            <label htmlFor="pitch-max" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Max</label>
                             <input
                               id="pitch-max"
                               type="number"
@@ -1246,6 +1271,7 @@ function SongsPage() {
                           </div>
                         </div>
                       </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1394,9 +1420,9 @@ function SongsPage() {
                   <div className="card-base overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-gray-50 dark:bg-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <thead className="bg-gray-50 dark:bg-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm">
                           <tr>
-                            <th className="text-center p-2 border-b w-12">
+                            <th className="text-center p-2 border-b dark:border-gray-700 w-12">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
@@ -1409,14 +1435,14 @@ function SongsPage() {
                             <SortHeader column="artist" label="Artist" />
                             <SortHeader column="title" label="Title" />
                             <SortHeader column="lastPlayed" label="Last played" />
-                            <th className="text-left p-2 border-b">Actions</th>
+                            <th className="text-left p-2 border-b dark:border-gray-700">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {displayedSongs.map(song => (
                             <tr
                               key={song.uid}
-                              className={`border-b cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                              className={`border-b dark:border-gray-700 cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
                               onClick={() => toggleSelectSong(song.uid)}
                             >
                               <td
