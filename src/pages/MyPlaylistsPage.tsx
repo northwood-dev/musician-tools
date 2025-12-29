@@ -21,6 +21,7 @@ function MyPlaylistsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
+  const [songSearch, setSongSearch] = useState<string>('');
   useAuth(); // keep auth context alive; no direct usage here
 
   useEffect(() => {
@@ -177,6 +178,7 @@ function MyPlaylistsPage() {
                 onClick={() => {
                   setForm(initialPlaylist);
                   setEditingUid(null);
+                  setSongSearch('');
                   setPage('form');
                 }}
                 disabled={loading}
@@ -275,12 +277,37 @@ function MyPlaylistsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-3">Songs</label>
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    placeholder="Search songs..."
+                    value={songSearch}
+                    onChange={(e) => setSongSearch(e.target.value)}
+                    className="input-base w-full pr-10"
+                    disabled={loading}
+                  />
+                  {songSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setSongSearch('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg font-bold"
+                      title="Clear search"
+                      disabled={loading}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
                 <div className="card-base max-h-96 overflow-y-auto">
                   {songs.length === 0 ? (
                     <p className="p-3 text-sm text-gray-600 dark:text-gray-400">No songs available. Create songs first.</p>
                   ) : (
                     <div className="space-y-2 p-3">
-                      {songs.sort((a, b) => {
+                      {songs.filter(song => {
+                        const searchLower = songSearch.toLowerCase();
+                        const songDisplay = `${song.artist} - ${song.title}`.toLowerCase();
+                        return songDisplay.includes(searchLower);
+                      }).sort((a, b) => {
                         const aDisplay = `${a.artist} - ${a.title}`.toLowerCase();
                         const bDisplay = `${b.artist} - ${b.title}`.toLowerCase();
                         return aDisplay.localeCompare(bDisplay);
@@ -308,6 +335,7 @@ function MyPlaylistsPage() {
                   onClick={() => {
                     setForm(initialPlaylist);
                     setEditingUid(null);
+                    setSongSearch('');
                     setPage('list');
                   }}
                   disabled={loading}

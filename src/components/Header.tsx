@@ -6,8 +6,10 @@ function Header() {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false;
     const saved = localStorage.getItem('darkMode');
-    return saved === 'true';
+    if (saved !== null) return saved === 'true';
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   useEffect(() => {
@@ -18,6 +20,19 @@ function Header() {
     }
     localStorage.setItem('darkMode', darkMode.toString());
   }, [darkMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (event: MediaQueryListEvent) => {
+      const saved = localStorage.getItem('darkMode');
+      if (saved === null) {
+        setDarkMode(event.matches);
+      }
+    };
+    media.addEventListener('change', handler);
+    return () => media.removeEventListener('change', handler);
+  }, []);
 
   const handleLogout = async () => {
     await logout();

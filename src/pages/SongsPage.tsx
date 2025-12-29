@@ -147,6 +147,36 @@ function SongsPage() {
   });
   const { user, logout } = useAuth();
 
+  const hasActiveFilters = Boolean(
+    instrumentFilter ||
+    myInstrumentFilter ||
+    instrumentDifficultyFilter ||
+    tunningFilter ||
+    keyFilter ||
+    bpmMinFilter ||
+    bpmMaxFilter ||
+    pitchStandardMinFilter ||
+    pitchStandardMaxFilter ||
+    playlistFilter ||
+    techniqueFilters.size > 0
+  );
+
+  const clearAllFilters = () => {
+    setInstrumentFilter('');
+    setMyInstrumentFilter('');
+    setInstrumentDifficultyFilter('');
+    setInstrumentMatchMode('all');
+    setTechniqueFilters(new Set());
+    setTechniqueMatchMode('all');
+    setTunningFilter('');
+    setKeyFilter('');
+    setBpmMinFilter('');
+    setBpmMaxFilter('');
+    setPitchStandardMinFilter('');
+    setPitchStandardMaxFilter('');
+    setPlaylistFilter('');
+  };
+
 
 
   const toggleTechniqueFilter = (technique: string) => {
@@ -922,7 +952,18 @@ function SongsPage() {
                 ) : (
                   <div className="p-4 space-y-3">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
+                        {hasActiveFilters && (
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs px-2 py-1"
+                            onClick={clearAllFilters}
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
                       <button
                         type="button"
                         className="btn-secondary text-xs px-2 py-1"
@@ -1045,6 +1086,38 @@ function SongsPage() {
                         </select>
                       </div>
                     </div>
+                    {showTunningFilters && (
+                      <div className="card-base mt-3">
+                        <button
+                          type="button"
+                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                          aria-expanded={tunningAccordionOpen}
+                          onClick={() => setTunningAccordionOpen(prev => !prev)}
+                        >
+                          <span>Tunning filters</span>
+                          <span className="text-xl">{tunningAccordionOpen ? '▾' : '▴'}</span>
+                        </button>
+                        {tunningAccordionOpen && (
+                          <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
+                            {tunningFilterOptions.length === 0 ? (
+                              <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {instrumentFilter}.</p>
+                            ) : (
+                              <select
+                                className="input-base text-sm"
+                                value={tunningFilter}
+                                onChange={e => setTunningFilter(e.target.value)}
+                              >
+                                <option value="">All tunings</option>
+                                {tunningFilterOptions.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {instrumentFilter && (
                       <div className="card-base mt-3">
                         <button
@@ -1115,38 +1188,6 @@ function SongsPage() {
                             </>
                           )}
                         </div>
-                        )}
-                      </div>
-                    )}
-                    {showTunningFilters && (
-                      <div className="card-base mt-3">
-                        <button
-                          type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                          aria-expanded={tunningAccordionOpen}
-                          onClick={() => setTunningAccordionOpen(prev => !prev)}
-                        >
-                          <span>Tunning filters</span>
-                          <span className="text-xl">{tunningAccordionOpen ? '▾' : '▴'}</span>
-                        </button>
-                        {tunningAccordionOpen && (
-                          <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
-                            {tunningFilterOptions.length === 0 ? (
-                              <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {instrumentFilter}.</p>
-                            ) : (
-                              <select
-                                className="input-base text-sm"
-                                value={tunningFilter}
-                                onChange={e => setTunningFilter(e.target.value)}
-                              >
-                                <option value="">All tunings</option>
-                                {tunningFilterOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
                         )}
                       </div>
                     )}
