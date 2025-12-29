@@ -33,7 +33,8 @@ const keyOptions = ['C','C#','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','
 
 const getAvailableTechniques = (instrumentType: string) => {
   if (!instrumentType) return [];
-  return instrumentTechniquesMap[instrumentType] || [];
+  const list = instrumentTechniquesMap[instrumentType] || [];
+  return [...list].sort((a, b) => a.localeCompare(b));
 };
 
 const getAvailableTunings = (instrumentType: string) => {
@@ -268,7 +269,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                     {onMarkAsPlayedNow && mode === 'edit' && (
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-md bg-green-600 text-white px-2 py-1 text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        className="inline-flex items-center rounded-md bg-brand-500 text-white px-2 py-1 text-sm hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                         onClick={(e) => {
                           e.stopPropagation();
                           onMarkAsPlayedNow(instrumentType);
@@ -281,7 +282,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                     )}
                     <button
                       type="button"
-                      className="inline-flex items-center rounded-md bg-red-600 text-white px-2 py-1 text-sm hover:bg-red-700 disabled:opacity-50"
+                      className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-2 py-1 text-sm hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
                       onClick={(e) => {
                         e.stopPropagation();
                         onChangeInstruments(currentInstruments.filter(i => i !== instrumentType));
@@ -370,9 +371,12 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                     {instrumentTechniques && instrumentTechniques.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Techniques</label>
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {instrumentTechniques.map(technique => (
-                            <label key={technique} className="flex items-center">
+                            <label
+                              key={technique}
+                              className="flex items-center gap-2 rounded-md px-2 py-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
                               <input
                                 type="checkbox"
                                 checked={currentTechniques.includes(technique)}
@@ -380,7 +384,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                                 disabled={loading}
                                 className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
                               />
-                              <span className="ml-2 text-sm text-gray-700 dark:text-gray-100">{technique}</span>
+                              <span className="text-sm text-gray-700 dark:text-gray-100 truncate">{technique}</span>
                             </label>
                           ))}
                         </div>
@@ -389,39 +393,46 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Links</label>
-                      <div className="space-y-2">
-                        {((form.instrumentLinks && form.instrumentLinks[instrumentType]) || []).map((lnk, idx) => (
-                          <div key={`${instrumentType}-link-${idx}`} className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                              onClick={() => {
-                                const u = (lnk.url || '').trim();
-                                if (u && (u.startsWith('http://') || u.startsWith('https://'))) {
-                                  window.open(u, '_blank');
-                                }
-                              }}
-                              title={lnk.label || lnk.url}
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2">
+                          {((form.instrumentLinks && form.instrumentLinks[instrumentType]) || []).map((lnk, idx) => (
+                            <div
+                              key={`${instrumentType}-link-${idx}`}
+                              className="inline-flex items-stretch overflow-hidden rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
                             >
-                              <span className="truncate max-w-[12rem]">{lnk.label || lnk.url}</span>
-                            </button>
-                            <button
-                              type="button"
-                              className="inline-flex items-center rounded-md bg-red-600 text-white px-2 py-1 text-sm hover:bg-red-700 disabled:opacity-50"
-                              onClick={() => {
-                                const currentLinks = (form.instrumentLinks && form.instrumentLinks[instrumentType]) || [];
-                                const nextLinks = currentLinks.filter((_, i) => i !== idx);
-                                if (onSetInstrumentLinksForInstrument) {
-                                  onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
-                                }
-                              }}
-                              disabled={loading}
-                              title="Remove link"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-2 px-3 py-1 text-sm text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50"
+                                onClick={() => {
+                                  const u = (lnk.url || '').trim();
+                                  if (u && (u.startsWith('http://') || u.startsWith('https://'))) {
+                                    window.open(u, '_blank');
+                                  }
+                                }}
+                                title={lnk.label || lnk.url}
+                                disabled={loading}
+                              >
+                                <span className="truncate max-w-[11rem]">{lnk.label || lnk.url}</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center px-2 text-gray-700 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-300 dark:border-gray-600"
+                                onClick={() => {
+                                  const currentLinks = (form.instrumentLinks && form.instrumentLinks[instrumentType]) || [];
+                                  const nextLinks = currentLinks.filter((_, i) => i !== idx);
+                                  if (onSetInstrumentLinksForInstrument) {
+                                    onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
+                                  }
+                                }}
+                                disabled={loading}
+                                title="Remove link"
+                              >
+                                <span className="sr-only">Remove link</span>
+                                <span aria-hidden="true">✕</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                         <div className="flex items-center gap-2">
                           <input
                             className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
@@ -445,7 +456,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                             onClick={() => {
                               const val = newLinkInputs[instrumentType] || { label: '', url: '' };
                               const url = (val.url || '').trim();
-                              if (!url || !(url.startsWith('http://') || url.startsWith('https://'))) return;
+                              if (!url) return;
                               const label = (val.label || '').trim();
                               const currentLinks = (form.instrumentLinks && form.instrumentLinks[instrumentType]) || [];
                               const nextLinks = [...currentLinks, { url, label: label || undefined }];

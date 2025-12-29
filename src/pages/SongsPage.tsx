@@ -1432,7 +1432,7 @@ function SongsPage() {
                         {instrumentFilter && (
                           <button
                             type="button"
-                            className="btn-accent text-sm px-3 py-1.5"
+                            className="btn-primary text-sm px-3 py-1.5"
                             onClick={handleMarkSelectedAsPlayedNow}
                             disabled={loading}
                           >
