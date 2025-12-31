@@ -1,0 +1,45 @@
+# fly.toml file generated for musician-tools on 2025-12-31
+
+app = "musician-tools-prod"
+kill_signal = "SIGINT"
+kill_timeout = 5
+processes = []
+
+[build]
+  dockerfile = "both.Dockerfile"
+
+[deploy]
+  strategy = "rolling"
+
+[env]
+  ROOT_URL="https://musician-tools.fly.dev"
+  NODE_ENV="production"
+  PORT="3001"
+
+[mounts]
+  source = "logs"
+  destination = "/app/logs"
+
+[experimental]
+  allowed_public_ports = []
+  auto_rollback = true
+
+[[services]]
+  http_checks = []
+  internal_port = 3001
+  processes = ["app"]
+  protocol = "tcp"
+  script_checks = []
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
