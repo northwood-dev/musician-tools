@@ -651,6 +651,60 @@ function SongsPage() {
     setForm(prevForm => ({ ...prevForm, tunning: tunning || undefined }));
   };
 
+  const setInstrumentLinksForInstrument = (instrumentType: string, links: Array<{ label?: string; url: string }>) => {
+    setForm(prev => ({
+      ...prev,
+      instrumentLinks: {
+        ...(prev.instrumentLinks || {}),
+        [instrumentType]: links
+      }
+    }));
+  };
+
+  const setStreamingLinks = (links: Array<{ label: string; url: string }>) => {
+    setForm(prev => ({
+      ...prev,
+      streamingLinks: links
+    }));
+  };
+
+  const handleFetchStreamingLinks = async () => {
+    if (!form.title) {
+      setError('Title is required to fetch streaming links');
+      return;
+    }
+
+    try {
+      setError(null);
+      const searchQuery = `${form.artist || ''} ${form.title || ''}`.trim();
+      if (!searchQuery) {
+        setError('Artist and title are required');
+        return;
+      }
+
+      const encodedQuery = encodeURIComponent(searchQuery);
+      const links = [
+        { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodedQuery}` },
+        { label: 'Spotify', url: `https://open.spotify.com/search/${encodedQuery}` },
+        { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodedQuery}` },
+        { label: 'Deezer', url: `https://www.deezer.com/search/${encodedQuery}` },
+        { label: 'Tidal', url: `https://tidal.com/search?q=${encodedQuery}&types=TRACKS` },
+        { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodedQuery}` }
+      ];
+
+      const currentLinks = form.streamingLinks || [];
+      const existingUrls = new Set(currentLinks.map(l => l.url));
+      const newLinks = links.filter(link => !existingUrls.has(link.url));
+      
+      if (newLinks.length > 0) {
+        setStreamingLinks([...currentLinks, ...newLinks]);
+      }
+    } catch (err) {
+      console.error('Error fetching streaming links:', err);
+      setError('Failed to fetch streaming links');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -1667,9 +1721,12 @@ function SongsPage() {
       ) : (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="card-base glass-effect p-6">
-            <div className="mb-6">
-              <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{editingUid ? 'Edit a song' : 'Add a song'}</p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <Link to="/" className="text-2xl font-semibold text-gradient">Musician Tools</Link>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{editingUid ? 'Edit a song' : 'Add a song'}</p>
+              </div>
+
             </div>
           <SongForm
             mode={editingUid ? 'edit' : 'add'}
@@ -1683,6 +1740,8 @@ function SongsPage() {
             onSetInstrumentDifficulty={setInstrumentDifficulty}
             onSetInstrumentTuning={setInstrumentTuning}
             onToggleTechnique={toggleFormTechnique}
+            onSetInstrumentLinksForInstrument={setInstrumentLinksForInstrument}
+            onSetStreamingLinks={setStreamingLinks}
             onSubmit={handleSubmit}
             onCancel={() => {
               setEditingUid(null);

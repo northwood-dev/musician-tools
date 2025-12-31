@@ -93,6 +93,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'last_played'
+    },
+    streamingLinks: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      field: 'streaming_links'
     }
   }, {
     tableName: 'Songs',

@@ -19,6 +19,7 @@ type SongFormProps = {
   onSetInstrumentTuning?: (instrumentType: string, tuning: string | null) => void;
   onToggleTechnique: (technique: string) => void;
   onSetInstrumentLinksForInstrument?: (instrumentType: string, links: Array<{ label?: string; url: string }>) => void;
+  onSetStreamingLinks?: (links: Array<{ label: string; url: string }>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   onDelete?: () => void;
@@ -87,7 +88,7 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
   return formatter(instrumentPlays[0].playedAt);
 };
 
-export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onSetMyInstrumentUid, onToggleTechnique, onSetInstrumentLinksForInstrument, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot }: SongFormProps) {
+export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onSetMyInstrumentUid, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot }: SongFormProps) {
   const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
   const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
@@ -122,26 +123,95 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {/* Top quick links aggregated from all instruments */}
-      {allInstrumentLinks.length > 0 && (
+      {/* Top quick links aggregated from all instruments + bouton auto-add streaming links à droite */}
+      {(allInstrumentLinks.length > 0 || (form.title?.trim() && form.artist?.trim())) && (
         <>
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-100">Quick Links</div>
+          <div className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Links</div>
+          <div className="flex mb-2 gap-2">
+            <div className="flex flex-wrap gap-2 flex-1 min-w-0">
+              {allInstrumentLinks.map((lnk, idx) => (
+                <button
+                  key={`quick-link-${idx}`}
+                  type="button"
+                  className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
+                  onClick={() => {
+                    if (lnk.url && (lnk.url.startsWith('http://') || lnk.url.startsWith('https://'))) {
+                      window.open(lnk.url, '_blank');
+                    }
+                  }}
+                  title={`${lnk.label || lnk.url} • ${lnk.type}`}
+                >
+                  <span className="mr-2 inline-flex items-center rounded bg-white/20 px-2 py-0.5 text-xs">{lnk.type}</span>
+                  <span className="truncate max-w-[12rem]">{lnk.label || lnk.url}</span>
+                </button>
+              ))}
+            </div>
+            {(form.title?.trim() && form.artist?.trim() && typeof onSetStreamingLinks === 'function') && (
+              <div className="flex items-start h-full">
+                <button
+                  type="button"
+                  className="btn-secondary text-xs whitespace-nowrap"
+                  onClick={async () => {
+                    if (typeof onSetStreamingLinks === 'function') {
+                      // Simulate the logic from SongsPage/SongDetailPage
+                      const searchQuery = `${form.artist || ''} ${form.title || ''}`.trim();
+                      if (!searchQuery) return;
+                      const links = [
+                        { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
+                        { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
+                        { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
+                        { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
+                        { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
+                        { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
+                      ];
+                      const currentLinks = form.streamingLinks || [];
+                      const existingUrls = new Set(currentLinks.map(l => l.url));
+                      const newLinks = links.filter(link => !existingUrls.has(link.url));
+                      if (newLinks.length > 0) {
+                        onSetStreamingLinks([...currentLinks, ...newLinks]);
+                      }
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? 'Fetching...' : '🔗 Auto-add streaming links'}
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+      {form.streamingLinks && form.streamingLinks.length > 0 && (
+        <>
           <div className="flex flex-wrap gap-2">
-            {allInstrumentLinks.map((lnk, idx) => (
-              <button
-                key={`quick-link-${idx}`}
-                type="button"
-                className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                onClick={() => {
-                  if (lnk.url && (lnk.url.startsWith('http://') || lnk.url.startsWith('https://'))) {
-                    window.open(lnk.url, '_blank');
-                  }
-                }}
-                title={`${lnk.label || lnk.url} • ${lnk.type}`}
+            {form.streamingLinks.map((link, idx) => (
+              <div
+                key={`streaming-link-${idx}`}
+                className="inline-flex items-center gap-1 rounded-md bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-800 dark:text-blue-100"
               >
-                <span className="mr-2 inline-flex items-center rounded bg-white/20 px-2 py-0.5 text-xs">{lnk.type}</span>
-                <span className="truncate max-w-[12rem]">{lnk.label || lnk.url}</span>
-              </button>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline truncate max-w-[20rem]"
+                  title={link.label || link.url}
+                >
+                  {link.label || link.url}
+                </a>
+                <button
+                  type="button"
+                  className="ml-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800 px-1"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const updatedLinks = (form.streamingLinks || []).filter((_, i) => i !== idx);
+                    onSetStreamingLinks?.(updatedLinks);
+                  }}
+                  title="Remove link"
+                  disabled={loading}
+                >
+                  ✕
+                </button>
+              </div>
             ))}
           </div>
         </>

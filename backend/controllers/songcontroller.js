@@ -43,7 +43,7 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
+    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks } = req.body;
 
     if (!title) {
       return next(createError(400, 'Title is required'));
@@ -65,7 +65,8 @@ const createSong = async (req, res, next) => {
       pitchStandard,
       technique,
       myInstrumentUid,
-      lastPlayed: lastPlayed ? new Date(lastPlayed) : null
+      lastPlayed: lastPlayed ? new Date(lastPlayed) : null,
+      streamingLinks
     });
 
     res.status(201).json(song);
@@ -93,7 +94,7 @@ const updateSong = async (req, res, next) => {
       return next(createError(403, 'Forbidden'));
     }
 
-    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
+    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks } = req.body;
 
     await song.update({
       title: title || song.title,
@@ -110,7 +111,8 @@ const updateSong = async (req, res, next) => {
       instrumentLinks: instrumentLinks !== undefined ? instrumentLinks : song.instrumentLinks,
       instrumentDifficulty: instrumentDifficulty !== undefined ? instrumentDifficulty : song.instrumentDifficulty,
       lastPlayed: lastPlayed ? new Date(lastPlayed) : song.lastPlayed,
-      myInstrumentUid: myInstrumentUid !== undefined ? myInstrumentUid : song.myInstrumentUid
+      myInstrumentUid: myInstrumentUid !== undefined ? myInstrumentUid : song.myInstrumentUid,
+      streamingLinks: streamingLinks !== undefined ? streamingLinks : song.streamingLinks
     });
 
     res.json(song);

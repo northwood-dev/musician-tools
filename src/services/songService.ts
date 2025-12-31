@@ -15,6 +15,7 @@ export type Song = {
   instrumentTuning?: Record<string, string | null>;
   myInstrumentUid?: string;
   lastPlayed?: string;
+  streamingLinks?: Array<{ label: string; url: string }>;
   createdAt?: string;
   updatedAt?: string;
 };

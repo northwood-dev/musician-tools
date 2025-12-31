@@ -6,6 +6,7 @@ import { instrumentService, type Instrument } from '../services/instrumentServic
 import { playlistService, type Playlist } from '../services/playlistService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
+import { songLinksService } from '../services/songLinksService';
 import { toSlug } from '../utils/slug';
 
 function SongDetailPage() {
@@ -38,6 +39,7 @@ function SongDetailPage() {
   const [songPlays, setSongPlays] = useState<SongPlay[]>([]);
   const [selectedInstrumentType, setSelectedInstrumentType] = useState<string>('');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [fetchingLinks, setFetchingLinks] = useState(false);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -124,6 +126,7 @@ function SongDetailPage() {
         instrumentDifficulty: rest.instrumentDifficulty || {},
         instrumentTuning: rest.instrumentTuning || {},
         instrumentLinks: rest.instrumentLinks || {},
+        streamingLinks: rest.streamingLinks || [],
       };
       setForm(normalized);
     } catch (err) {
@@ -236,6 +239,41 @@ function SongDetailPage() {
         : [...current, technique];
       return { ...prev, technique: updated };
     });
+  };
+
+  const setStreamingLinks = (links: Array<{ label: string; url: string }>) => {
+    setForm(prev => ({
+      ...prev,
+      streamingLinks: links
+    }));
+  };
+  const handleFetchStreamingLinks = async () => {
+    if (!song) return;
+    
+    try {
+      setFetchingLinks(true);
+      const result = await songLinksService.getStreamingLinks(song.uid);
+      
+      // Get current streaming links
+      const currentLinks = form.streamingLinks || [];
+      const existingUrls = new Set(currentLinks.map(l => l.url));
+      
+      const newLinks = result.links
+        .filter(link => !existingUrls.has(link.url))
+        .map(link => ({ label: link.label, url: link.url }));
+      
+      if (newLinks.length > 0) {
+        setForm(prev => ({
+          ...prev,
+          streamingLinks: [...currentLinks, ...newLinks]
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching streaming links:', err);
+      setError('Failed to fetch streaming links');
+    } finally {
+      setFetchingLinks(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -416,7 +454,9 @@ function SongDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="max-w-3xl mx-auto mt-6 card-base glass-effect p-6">
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Edit song</p>
+          <div className="flex items-center justify-between mb-6">
+            <p className="text-sm text-gray-600 dark:text-gray-400">Edit song</p>
+          </div>
           <SongForm
             mode="edit"
             form={form}
@@ -430,6 +470,7 @@ function SongDetailPage() {
             onToggleGenre={toggleFormGenre}
             onToggleTechnique={toggleFormTechnique}
             onSetInstrumentLinksForInstrument={setInstrumentLinksForInstrument}
+            onSetStreamingLinks={setStreamingLinks}
             onMarkAsPlayedNow={handleMarkAsPlayedNow}
             songPlays={songPlays}
             formatLastPlayed={formatLastPlayed}
