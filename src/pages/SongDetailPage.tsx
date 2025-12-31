@@ -6,7 +6,6 @@ import { instrumentService, type Instrument } from '../services/instrumentServic
 import { playlistService, type Playlist } from '../services/playlistService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
-import { songLinksService } from '../services/songLinksService';
 import { toSlug } from '../utils/slug';
 
 function SongDetailPage() {
@@ -28,7 +27,6 @@ function SongDetailPage() {
     genre: [],
     technique: [],
     pitchStandard: 440,
-    tunning: '',
     lastPlayed: undefined,
   });
 
@@ -37,9 +35,7 @@ function SongDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [myInstruments, setMyInstruments] = useState<Instrument[]>([]);
   const [songPlays, setSongPlays] = useState<SongPlay[]>([]);
-  const [selectedInstrumentType, setSelectedInstrumentType] = useState<string>('');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [fetchingLinks, setFetchingLinks] = useState(false);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -104,7 +100,7 @@ function SongDetailPage() {
         console.error('Failed to load playlists:', err);
       }
 
-      const { uid: _uid, createdAt, updatedAt, ...rest } = found;
+      const { uid: _uid, ...rest } = found;
       const normalized: CreateSongDTO = {
         ...rest,
         instrument: Array.isArray(rest.instrument)
@@ -159,7 +155,6 @@ function SongDetailPage() {
 
       return { ...prev, instrument: instruments, instrumentDifficulty: nextDifficulty };
     });
-    setSelectedInstrumentType(instruments[0] || '');
   };
 
   const setFormMyInstrumentUid = (uid: string | undefined) => {
@@ -180,9 +175,6 @@ function SongDetailPage() {
     });
   };
 
-  const setFormTunning = (tunning: string | null) => {
-    setForm(prev => ({ ...prev, tunning: tunning || undefined }));
-  };
 
   const setInstrumentLinksForInstrument = (
     instrumentType: string,
@@ -247,34 +239,6 @@ function SongDetailPage() {
       streamingLinks: links
     }));
   };
-  const handleFetchStreamingLinks = async () => {
-    if (!song) return;
-    
-    try {
-      setFetchingLinks(true);
-      const result = await songLinksService.getStreamingLinks(song.uid);
-      
-      // Get current streaming links
-      const currentLinks = form.streamingLinks || [];
-      const existingUrls = new Set(currentLinks.map(l => l.url));
-      
-      const newLinks = result.links
-        .filter(link => !existingUrls.has(link.url))
-        .map(link => ({ label: link.label, url: link.url }));
-      
-      if (newLinks.length > 0) {
-        setForm(prev => ({
-          ...prev,
-          streamingLinks: [...currentLinks, ...newLinks]
-        }));
-      }
-    } catch (err) {
-      console.error('Error fetching streaming links:', err);
-      setError('Failed to fetch streaming links');
-    } finally {
-      setFetchingLinks(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -325,9 +289,6 @@ function SongDetailPage() {
     }
   };
 
-  const handleDelete = async () => {
-    setDeleteDialogOpen(true);
-  };
 
   const handleConfirmDelete = async () => {
     if (!song) return;
@@ -364,14 +325,6 @@ function SongDetailPage() {
     }
   };
 
-  const getLastPlayedForInstrument = (): string | undefined => {
-    if (songPlays.length === 0) return undefined;
-    if (selectedInstrumentType) {
-      const plays = songPlays.filter(p => p.instrumentType === selectedInstrumentType);
-      return plays.length > 0 ? plays[0].playedAt : undefined;
-    }
-    return songPlays[0].playedAt;
-  };
 
   const formatLastPlayed = (dateString: string | undefined) => {
     if (!dateString) return '-';
@@ -444,6 +397,7 @@ function SongDetailPage() {
         <div className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
           <span>{error}</span>
           <button
+            type="button"
             className="btn-secondary text-xs"
             onClick={() => setError(null)}
           >

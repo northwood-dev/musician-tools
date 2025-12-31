@@ -88,7 +88,8 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
   return formatter(instrumentPlays[0].playedAt);
 };
 
-export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onSetMyInstrumentUid, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot }: SongFormProps) {
+export function SongForm(props: SongFormProps) {
+  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot } = props;
   const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
   const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
@@ -96,10 +97,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
   const [newLinkInputs, setNewLinkInputs] = useState<Record<string, { label: string; url: string }>>({});
-  const availableTechniques = getAvailableTechniques(selectedInstrumentType);
-  const filteredMyInstruments = selectedInstrumentType && myInstruments && myInstruments.length > 0
-    ? myInstruments.filter(mi => (mi.type || '').toLowerCase() === selectedInstrumentType.toLowerCase())
-    : [];
+  // removed unused availableTechniques and filteredMyInstruments
   const allInstrumentLinks = Object.entries(form.instrumentLinks || {}).flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })));
 
   useEffect(() => {
@@ -129,9 +127,9 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           <div className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Links</div>
           <div className="flex mb-2 gap-2">
             <div className="flex flex-wrap gap-2 flex-1 min-w-0">
-              {allInstrumentLinks.map((lnk, idx) => (
+              {allInstrumentLinks.map((lnk) => (
                 <button
-                  key={`quick-link-${idx}`}
+                  key={`quick-link-${lnk.url}-${lnk.label ?? ''}`}
                   type="button"
                   className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
                   onClick={() => {
@@ -186,7 +184,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           <div className="flex flex-wrap gap-2">
             {form.streamingLinks.map((link, idx) => (
               <div
-                key={`streaming-link-${idx}`}
+                key={`streaming-link-${link.url}-${link.label ?? ''}`}
                 className="inline-flex items-center gap-1 rounded-md bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-800 dark:text-blue-100"
               >
                 <a
@@ -252,7 +250,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         {detailsAccordionOpen && (
           <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</label>
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {genreOptions.map(genre => (
                   <label
@@ -332,7 +330,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         )}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</label>
+        <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</span>
         <div className="space-y-2">
           {currentInstruments.map((instrumentType) => {
             const isExpanded = expandedInstruments.has(instrumentType);
@@ -404,7 +402,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                   <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                     {filteredMyInstruments && filteredMyInstruments.length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">My instrument</label>
+                        <label htmlFor={`my-instrument-${instrumentType}`} className="block text-sm font-medium text-gray-700 dark:text-gray-100">My instrument</label>
                         <select
                           className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                           name="myInstrumentUid"
@@ -422,7 +420,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     <div>
                       <div className="flex items-center justify-between">
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Difficulty (1-5)</label>
+                        <span className="block text-sm font-medium text-gray-700 dark:text-gray-100">Difficulty (1-5)</span>
                         <div className="flex items-center gap-1" role="radiogroup" aria-label="Difficulty" aria-live="polite">
                           {[1,2,3,4,5].map(n => {
                             const current = form.instrumentDifficulty ? form.instrumentDifficulty[instrumentType] : null;
@@ -450,7 +448,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     {getAvailableTunings(instrumentType).length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100">Tuning</label>
+                        <label htmlFor={`tuning-${instrumentType}`} className="block text-sm font-medium text-gray-700 dark:text-gray-100">Tuning</label>
                         <select
                           className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
                           value={(form.instrumentTuning && form.instrumentTuning[instrumentType] !== undefined && form.instrumentTuning[instrumentType] !== null)
@@ -472,7 +470,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
 
                     {instrumentTechniques && instrumentTechniques.length > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Techniques</label>
+                        <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Techniques</span>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                           {instrumentTechniques.map(technique => (
                             <label
@@ -494,12 +492,12 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                     )}
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Links</label>
+                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Links</span>
                       <div className="space-y-3">
                         <div className="flex flex-wrap gap-2">
-                          {((form.instrumentLinks && form.instrumentLinks[instrumentType]) || []).map((lnk, idx) => (
+                          {(form.instrumentLinks?.[instrumentType] ?? []).map((lnk, idx) => (
                             <div
-                              key={`${instrumentType}-link-${idx}`}
+                              key={`${instrumentType}-link-${lnk.url}-${lnk.label ?? ''}`}
                               className="inline-flex items-stretch overflow-hidden rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
                             >
                               <button
@@ -520,7 +518,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                                 type="button"
                                 className="inline-flex items-center justify-center px-2 text-gray-700 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-300 dark:border-gray-600"
                                 onClick={() => {
-                                  const currentLinks = (form.instrumentLinks && form.instrumentLinks[instrumentType]) || [];
+                                  const currentLinks = form.instrumentLinks?.[instrumentType] ?? [];
                                   const nextLinks = currentLinks.filter((_, i) => i !== idx);
                                   if (onSetInstrumentLinksForInstrument) {
                                     onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
@@ -560,7 +558,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                               const url = (val.url || '').trim();
                               if (!url) return;
                               const label = (val.label || '').trim();
-                              const currentLinks = (form.instrumentLinks && form.instrumentLinks[instrumentType]) || [];
+                              const currentLinks = form.instrumentLinks?.[instrumentType] ?? [];
                               const nextLinks = [...currentLinks, { url, label: label || undefined }];
                               if (onSetInstrumentLinksForInstrument) {
                                 onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
@@ -614,7 +612,7 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
           id="song-notes"
           className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
           name="notes"
-          value={(form as any).notes}
+          value={form.notes}
           onChange={onChange}
           rows={2}
           disabled={loading}

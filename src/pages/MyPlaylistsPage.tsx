@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+// ...existing code...
 import { playlistService, type Playlist, type CreatePlaylistDTO } from '../services/playlistService';
 import { songService, type Song } from '../services/songService';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,32 +25,30 @@ function MyPlaylistsPage() {
   useAuth(); // keep auth context alive; no direct usage here
 
   useEffect(() => {
+    const loadPlaylists = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await playlistService.getAllPlaylists();
+        setPlaylists(data);
+      } catch (err) {
+        setError('Error while loading playlists');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const loadSongs = async () => {
+      try {
+        const data = await songService.getAllSongs();
+        setSongs(data);
+      } catch (err) {
+        console.error('Error while loading songs:', err);
+      }
+    };
     loadPlaylists();
     loadSongs();
   }, []);
-
-  const loadPlaylists = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await playlistService.getAllPlaylists();
-      setPlaylists(data);
-    } catch (err) {
-      setError('Error while loading playlists');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSongs = async () => {
-    try {
-      const data = await songService.getAllSongs();
-      setSongs(data);
-    } catch (err) {
-      console.error('Error while loading songs:', err);
-    }
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -101,7 +99,7 @@ function MyPlaylistsPage() {
   const handleEdit = (uid: string) => {
     const playlist = playlists.find(p => p.uid === uid);
     if (playlist) {
-      const { uid: _uid, createdAt, updatedAt, ...rest } = playlist;
+      const { uid: _uid, ...rest } = playlist;
       setForm(rest);
       setEditingUid(uid);
       setPage('form');
@@ -276,9 +274,10 @@ function MyPlaylistsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-3">Songs</label>
+                <label htmlFor="playlist-song-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-3">Songs</label>
                 <div className="relative mb-3">
                   <input
+                    id="playlist-song-search"
                     type="text"
                     placeholder="Search songs..."
                     value={songSearch}

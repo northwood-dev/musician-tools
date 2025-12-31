@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -32,8 +32,21 @@ export function ConfirmDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onCancel}>
-      <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onCancel}
+      role="dialog"
+      tabIndex={-1}
+      aria-modal="true"
+      onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+    >
+      <div
+        className="bg-white rounded-lg shadow-lg p-6 max-w-sm mx-4"
+        onClick={e => e.stopPropagation()}
+        role="document"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+      >
         <h2 className="text-lg font-semibold text-gray-900 mb-2">{title}</h2>
         <p className="text-gray-700 mb-6">{message}</p>
         <div className="flex gap-3 justify-end">

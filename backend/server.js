@@ -74,13 +74,20 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// Routes
+
+// Serve static frontend (Vite build)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// API routes
 app.use('/api', indexRouter);
 
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+// Fallback to index.html for React Router (SPA)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// catch 404 and forward to error handler
+// (404 handler is now unreachable for frontend routes)
 
 // error handler
 app.use(function(err, req, res, next) {
