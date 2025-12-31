@@ -343,29 +343,32 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
             
             return (
               <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
-                  onClick={() => {
-                    const next = new Set(expandedInstruments);
-                    if (next.has(instrumentType)) {
-                      next.delete(instrumentType);
-                    } else {
-                      next.add(instrumentType);
-                    }
-                    setExpandedInstruments(next);
-                  }}
-                  aria-expanded={isExpanded}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="font-medium">{instrumentType}</span>
-                    {formatLastPlayed && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+                    onClick={() => {
+                      const next = new Set(expandedInstruments);
+                      if (next.has(instrumentType)) {
+                        next.delete(instrumentType);
+                      } else {
+                        next.add(instrumentType);
+                      }
+                      setExpandedInstruments(next);
+                    }}
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium">{instrumentType}</span>
+                      {formatLastPlayed && (
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
+                        </span>
+                      )}
+                    </div>
+                    <span>{isExpanded ? '▾' : '▸'}</span>
+                  </button>
+                  <div className="flex items-center gap-2 ml-2">
                     {onMarkAsPlayedNow && mode === 'edit' && (
                       <button
                         type="button"
@@ -395,9 +398,8 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
                     >
                       ✕
                     </button>
-                    <span>{isExpanded ? '▾' : '▸'}</span>
                   </div>
-                </button>
+                </div>
                 {isExpanded && (
                   <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                     {filteredMyInstruments && filteredMyInstruments.length > 0 && (

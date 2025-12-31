@@ -20,8 +20,7 @@ Récupérer toutes les chansons.
     "title": "Stairway to Heaven",
     "bpm": 82,
     "key": "Am",
-    "chords": "Am - C/G - D/F# - F - Am - C/G - D/F#",
-    "tabs": "e|---0---0---|",
+    "notes": "Play lightly",
     "instrument": "Guitar",
     "artist": "Led Zeppelin",
     "lastPlayed": null,
@@ -44,8 +43,7 @@ Récupérer une chanson spécifique par son UID.
   "title": "Stairway to Heaven",
   "bpm": 82,
   "key": "Am",
-  "chords": "Am - C/G - D/F# - F - Am - C/G - D/F#",
-  "tabs": "e|---0---0---|",
+  "notes": "Play lightly",
   "instrument": "Guitar",
   "artist": "Led Zeppelin",
   "lastPlayed": null,
@@ -63,8 +61,7 @@ Créer une nouvelle chanson.
   "title": "Stairway to Heaven",
   "bpm": 82,
   "key": "Am",
-  "chords": "Am - C/G - D/F# - F - Am - C/G - D/F#",
-  "tabs": "e|---0---0---|",
+  "notes": "Play lightly",
   "instrument": "Guitar",
   "artist": "Led Zeppelin",
   "lastPlayed": "2025-12-20T13:00:00.000Z"
@@ -77,8 +74,7 @@ Créer une nouvelle chanson.
 **Optional Fields:**
 - `bpm` - Tempo (par défaut: 120)
 - `key` - Tonalité
-- `chords` - Accords
-- `tabs` - Tablatures
+- `notes` - Accords
 - `instrument` - Instrument
 - `artist` - Artiste
 - `lastPlayed` - Date de dernière lecture (format ISO 8601)
@@ -173,8 +169,7 @@ curl -X DELETE http://localhost:3001/api/songs/cc9792bd-782f-4b9c-89a4-a9b842aa1
 | title | STRING | Titre de la chanson (obligatoire) |
 | bpm | INTEGER | Tempo (par défaut: 120) |
 | key | STRING | Tonalité musicale |
-| chords | TEXT | Accords de la chanson |
-| tabs | TEXT | Tablatures |
+| notes | TEXT | Notes sur la chanson |
 | instrument | STRING | Instrument principal |
 | artist | STRING | Nom de l'artiste |
 | last_played | DATE | Date de dernière lecture |

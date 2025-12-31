@@ -5,7 +5,6 @@ import { songService, type CreateSongDTO, type Song } from '../services/songServ
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, type Playlist } from '../services/playlistService';
-import { useAuth } from '../contexts/AuthContext';
 import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
@@ -18,7 +17,7 @@ const initialSong: CreateSongDTO = {
   title: '',
   bpm: null,
   key: '',
-  chords: '',
+  notes: '',
   instrument: [],
   instrumentDifficulty: {},
   instrumentTuning: {},
@@ -27,7 +26,6 @@ const initialSong: CreateSongDTO = {
   genre: [],
   technique: [],
   pitchStandard: 440,
-  tunning: '',
   lastPlayed: undefined,
 };
 
@@ -36,7 +34,7 @@ function SongsPage() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   const [editingUid, setEditingUid] = useState<string | null>(null);
-  const [sortByLastPlayed, setSortByLastPlayed] = useState(false);
+  // Removed unused sortByLastPlayed
   const [sortColumn, setSortColumn] = useState<string | null>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSortColumn') : null;
     return saved ? saved : null;
@@ -99,8 +97,8 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSearchQuery') : null;
     return saved || '';
   });
-  const [tunningFilter, setTunningFilter] = useState<string>(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTunningFilter') : null;
+  const [tuningFilter, setTuningFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTuningFilter') : null;
     return saved || '';
   });
   const [keyFilter, setKeyFilter] = useState<string>(() => {
@@ -127,8 +125,8 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsFiltersAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
-  const [tunningAccordionOpen, setTunningAccordionOpen] = useState<boolean>(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTunningAccordionOpen') : null;
+  const [tuningAccordionOpen, setTuningAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTuningAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
   const [keyAccordionOpen, setKeyAccordionOpen] = useState<boolean>(() => {
@@ -161,13 +159,13 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPitchAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
-  const { user, logout } = useAuth();
+  // Removed unused user, logout from useAuth
 
   const hasActiveFilters = Boolean(
     instrumentFilter ||
     myInstrumentFilter ||
     instrumentDifficultyFilter ||
-    tunningFilter ||
+    tuningFilter ||
     keyFilter ||
     bpmMinFilter ||
     bpmMaxFilter ||
@@ -187,7 +185,7 @@ function SongsPage() {
     setTechniqueMatchMode('all');
     setGenreFilters(new Set());
     setGenreMatchMode('all');
-    setTunningFilter('');
+    setTuningFilter('');
     setKeyFilter('');
     setBpmMinFilter('');
     setBpmMaxFilter('');
@@ -216,18 +214,45 @@ function SongsPage() {
     });
   };
 
-  const clearTunningFilter = () => setTunningFilter('');
 
-  const loadPlaylists = async () => {
-    try {
-      const list = await playlistService.getAllPlaylists();
-      setPlaylists(list);
-    } catch (err) {
-      console.error('Error loading playlists:', err);
-    }
-  };
+
 
   useEffect(() => {
+    const loadSongs = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await songService.getAllSongs();
+        setSongs(data);
+        // Charger les plays pour toutes les chansons
+        const playsMap = new Map<string, SongPlay[]>();
+        await Promise.all(
+          data.map(async (song) => {
+            try {
+              const plays = await songPlayService.getPlays(song.uid);
+              playsMap.set(song.uid, plays);
+            } catch (err) {
+              console.error(`Failed to load plays for ${song.uid}:`, err);
+              playsMap.set(song.uid, []);
+            }
+          })
+        );
+        setSongPlays(playsMap);
+      } catch (err) {
+        setError('Error while loading songs');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const loadPlaylists = async () => {
+      try {
+        const list = await playlistService.getAllPlaylists();
+        setPlaylists(list);
+      } catch (err) {
+        console.error('Error loading playlists:', err);
+      }
+    };
     loadSongs();
     loadPlaylists();
     (async () => {
@@ -243,19 +268,19 @@ function SongsPage() {
   useEffect(() => {
     try {
       window.localStorage.setItem('songsSidebarExpanded', sidebarExpanded ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [sidebarExpanded]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsInstrumentMatchMode', instrumentMatchMode);
-    } catch {}
+    } catch { /* ignore */ }
   }, [instrumentMatchMode]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsInstrumentFilter', instrumentFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [instrumentFilter]);
 
   useEffect(() => {
@@ -265,13 +290,13 @@ function SongsPage() {
       } else {
         window.localStorage.setItem('songsInstrumentDifficultyFilter', String(instrumentDifficultyFilter));
       }
-    } catch {}
+    } catch { /* ignore */ }
   }, [instrumentDifficultyFilter]);
 
   useEffect(() => {
     if (!instrumentFilter) {
       setTechniqueFilters(new Set());
-      setTunningFilter('');
+      setTuningFilter('');
       return;
     }
 
@@ -283,202 +308,155 @@ function SongsPage() {
     });
 
     const allowedTunings = new Set((instrumentTuningsMap[instrumentFilter] || []).map(t => t.value));
-    setTunningFilter(prev => (prev && !allowedTunings.has(prev) ? '' : prev));
+    setTuningFilter(prev => (prev && !allowedTunings.has(prev) ? '' : prev));
   }, [instrumentFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsMyInstrumentFilter', myInstrumentFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [myInstrumentFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsFiltersAccordionOpen', filtersAccordionOpen ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [filtersAccordionOpen]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('songsTunningAccordionOpen', tunningAccordionOpen ? 'true' : 'false');
-    } catch {}
-  }, [tunningAccordionOpen]);
+      window.localStorage.setItem('songsTuningAccordionOpen', tuningAccordionOpen ? 'true' : 'false');
+    } catch { /* ignore */ }
+  }, [tuningAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsKeyAccordionOpen', keyAccordionOpen ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [keyAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsBpmAccordionOpen', bpmAccordionOpen ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [bpmAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsPitchAccordionOpen', pitchAccordionOpen ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [pitchAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsTechniqueFilters', JSON.stringify(Array.from(techniqueFilters)));
-    } catch {}
+    } catch { /* ignore */ }
   }, [techniqueFilters]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsTechniqueMatchMode', techniqueMatchMode);
-    } catch {}
+    } catch { /* ignore */ }
   }, [techniqueMatchMode]);
 
     useEffect(() => {
       try {
         window.localStorage.setItem('songsGenreFilters', JSON.stringify(Array.from(genreFilters)));
-      } catch {}
+      } catch { /* ignore */ }
     }, [genreFilters]);
 
     useEffect(() => {
       try {
         window.localStorage.setItem('songsGenreMatchMode', genreMatchMode);
-      } catch {}
+      } catch { /* ignore */ }
     }, [genreMatchMode]);
 
     useEffect(() => {
       try {
         window.localStorage.setItem('songsGenreAccordionOpen', genreAccordionOpen ? 'true' : 'false');
-      } catch {}
+      } catch { /* ignore */ }
     }, [genreAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsTechniqueAccordionOpen', techniqueAccordionOpen ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [techniqueAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsSortColumn', sortColumn ?? '');
-    } catch {}
+    } catch { /* ignore */ }
   }, [sortColumn]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsSortDirection', sortDirection);
-    } catch {}
+    } catch { /* ignore */ }
   }, [sortDirection]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsSearchQuery', searchQuery);
-    } catch {}
+    } catch { /* ignore */ }
   }, [searchQuery]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem('songsTunningFilter', tunningFilter);
-    } catch {}
-  }, [tunningFilter]);
+      window.localStorage.setItem('songsTuningFilter', tuningFilter);
+    } catch { /* ignore */ }
+  }, [tuningFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsKeyFilter', keyFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [keyFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsBpmMinFilter', bpmMinFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [bpmMinFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsBpmMaxFilter', bpmMaxFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [bpmMaxFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsPitchStandardMinFilter', pitchStandardMinFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [pitchStandardMinFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsPitchStandardMaxFilter', pitchStandardMaxFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [pitchStandardMaxFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsPlaylistFilter', playlistFilter);
-    } catch {}
+    } catch { /* ignore */ }
   }, [playlistFilter]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsPlaylistAccordionOpen', playlistAccordionOpen ? 'true' : 'false');
-    } catch {}
+    } catch { /* ignore */ }
   }, [playlistAccordionOpen]);
 
   useEffect(() => {
     try {
       window.localStorage.setItem('songsSelectedUids', JSON.stringify(Array.from(selectedSongs)));
-    } catch {}
+    } catch { /* ignore */ }
   }, [selectedSongs]);
 
-  const loadSongs = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await songService.getAllSongs();
-      setSongs(data);
-      
-      // Charger les plays pour toutes les chansons
-      const playsMap = new Map<string, SongPlay[]>();
-      await Promise.all(
-        data.map(async (song) => {
-          try {
-            const plays = await songPlayService.getPlays(song.uid);
-            playsMap.set(song.uid, plays);
-          } catch (err) {
-            console.error(`Failed to load plays for ${song.uid}:`, err);
-            playsMap.set(song.uid, []);
-          }
-        })
-      );
-      setSongPlays(playsMap);
-    } catch (err) {
-      setError('Error while loading songs');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const markPlayedNow = async (uid: string) => {
-    try {
-      const instrumentTypeForPlay = instrumentFilter || undefined;
-      const newPlay = await songPlayService.markPlayed(uid, { instrumentType: instrumentTypeForPlay });
-      const updatedSong = await songService.updateSong(uid, {
-        lastPlayed: new Date().toISOString(),
-      });
 
-      setSongs(songs.map(song => (song.uid === uid ? updatedSong : song)));
-      setSongPlays(prev => {
-        const next = new Map(prev);
-        const existing = next.get(uid) || [];
-        next.set(uid, [newPlay, ...existing]);
-        return next;
-      });
-    } catch (err) {
-      setError('Error while updating');
-      console.error(err);
-    }
-  };
 
   const handleMarkSelectedAsPlayedNow = async () => {
     try {
@@ -569,15 +547,7 @@ function SongsPage() {
     }
   };
 
-  const toggleFormInstrument = (instrument: string) => {
-    setForm(prevForm => {
-      const current = Array.isArray(prevForm.instrument) ? prevForm.instrument : (prevForm.instrument ? [prevForm.instrument] : []);
-      const updated = current.includes(instrument)
-        ? current.filter(i => i !== instrument)
-        : [...current, instrument];
-      return { ...prevForm, instrument: updated as any };
-    });
-  };
+  // Removed unused toggleFormInstrument
 
   const toggleFormTechnique = (technique: string) => {
     setForm(prevForm => {
@@ -585,7 +555,7 @@ function SongsPage() {
       const updated = current.includes(technique)
         ? current.filter(t => t !== technique)
         : [...current, technique];
-      return { ...prevForm, technique: updated as any };
+      return { ...prevForm, technique: updated };
     });
   };
 
@@ -595,7 +565,7 @@ function SongsPage() {
       const updated = current.includes(genre)
         ? current.filter(g => g !== genre)
         : [...current, genre];
-      return { ...prevForm, genre: updated as any };
+      return { ...prevForm, genre: updated };
     });
   };
 
@@ -647,9 +617,7 @@ function SongsPage() {
     });
   };
 
-  const setFormTunning = (tunning: string | null) => {
-    setForm(prevForm => ({ ...prevForm, tunning: tunning || undefined }));
-  };
+  // Removed unused setFormTuning
 
   const setInstrumentLinksForInstrument = (instrumentType: string, links: Array<{ label?: string; url: string }>) => {
     setForm(prev => ({
@@ -668,42 +636,7 @@ function SongsPage() {
     }));
   };
 
-  const handleFetchStreamingLinks = async () => {
-    if (!form.title) {
-      setError('Title is required to fetch streaming links');
-      return;
-    }
-
-    try {
-      setError(null);
-      const searchQuery = `${form.artist || ''} ${form.title || ''}`.trim();
-      if (!searchQuery) {
-        setError('Artist and title are required');
-        return;
-      }
-
-      const encodedQuery = encodeURIComponent(searchQuery);
-      const links = [
-        { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodedQuery}` },
-        { label: 'Spotify', url: `https://open.spotify.com/search/${encodedQuery}` },
-        { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodedQuery}` },
-        { label: 'Deezer', url: `https://www.deezer.com/search/${encodedQuery}` },
-        { label: 'Tidal', url: `https://tidal.com/search?q=${encodedQuery}&types=TRACKS` },
-        { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodedQuery}` }
-      ];
-
-      const currentLinks = form.streamingLinks || [];
-      const existingUrls = new Set(currentLinks.map(l => l.url));
-      const newLinks = links.filter(link => !existingUrls.has(link.url));
-      
-      if (newLinks.length > 0) {
-        setStreamingLinks([...currentLinks, ...newLinks]);
-      }
-    } catch (err) {
-      console.error('Error fetching streaming links:', err);
-      setError('Failed to fetch streaming links');
-    }
-  };
+  // Removed unused handleFetchStreamingLinks
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -741,35 +674,7 @@ function SongsPage() {
     }
   };
 
-  const handleEdit = (uid: string) => {
-    const song = songs.find(s => s.uid === uid);
-    if (song) {
-      const { uid: _uid, createdAt, updatedAt, ...rest } = song;
-      const normalized: CreateSongDTO = {
-        ...rest,
-        instrument: Array.isArray(rest.instrument)
-          ? rest.instrument
-          : rest.instrument
-            ? [rest.instrument as unknown as string]
-            : [],
-        technique: Array.isArray(rest.technique)
-          ? rest.technique
-          : rest.technique
-            ? [rest.technique as unknown as string]
-            : [],
-        genre: Array.isArray(rest.genre)
-          ? rest.genre
-          : rest.genre
-            ? [rest.genre as unknown as string]
-            : [],
-        myInstrumentUid: rest.myInstrumentUid || undefined,
-        instrumentDifficulty: rest.instrumentDifficulty || {},
-        instrumentTuning: rest.instrumentTuning || {},
-      };
-      setForm(normalized);
-      setEditingUid(uid);
-    }
-  };
+  // handleEdit supprimé (non utilisé)
 
   const handleDelete = async (uid: string) => {
     setDeleteDialogOpen(true);
@@ -846,14 +751,7 @@ function SongsPage() {
     }
   };
 
-  const sortedSongs = sortByLastPlayed
-    ? [...songs].sort((a, b) => {
-        if (!a.lastPlayed && !b.lastPlayed) return 0;
-        if (!a.lastPlayed) return 1;
-        if (!b.lastPlayed) return -1;
-        return new Date(b.lastPlayed).getTime() - new Date(a.lastPlayed).getTime();
-      })
-    : songs;
+  const sortedSongs = songs;
 
   const filteredSongs = sortedSongs.filter(song => {
     const query = searchQuery.toLowerCase();
@@ -872,7 +770,7 @@ function SongsPage() {
         ? selected.every(inst => songInstruments.includes(inst))
         : selected.some(inst => songInstruments.includes(inst)));
     const passesMyInstrument = !myInstrumentFilter || song.myInstrumentUid === myInstrumentFilter;
-    const passesTunning = !tunningFilter || song.tunning === tunningFilter;
+    const passesTuning = !tuningFilter || (instrumentFilter && song.instrumentTuning && song.instrumentTuning[instrumentFilter] === tuningFilter);
     const songDifficulty = instrumentFilter && song.instrumentDifficulty ? song.instrumentDifficulty[instrumentFilter] : undefined;
     const passesDifficulty = !instrumentDifficultyFilter || (
       instrumentFilter
@@ -913,7 +811,7 @@ function SongsPage() {
       (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
     );
     const passesPlaylist = !playlistFilter || (playlists.find(p => p.uid === playlistFilter)?.songUids || []).includes(song.uid);
-    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTunning && passesDifficulty && passesKey && passesBpm && passesPitch && passesPlaylist;
+    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesKey && passesBpm && passesPitch && passesPlaylist;
   });
 
   const handleSort = (column: string) => {
@@ -972,20 +870,22 @@ function SongsPage() {
         return sortDirection === 'asc' ? aTime - bTime : bTime - aTime;
       }
 
-      let aVal: any = (a as any)[sortColumn];
-      let bVal: any = (b as any)[sortColumn];
+      let aVal = (a as Record<string, unknown>)[sortColumn];
+      let bVal = (b as Record<string, unknown>)[sortColumn];
 
       if (aVal === null || aVal === undefined) aVal = '';
       if (bVal === null || bVal === undefined) bVal = '';
 
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
-        return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortDirection === 'asc'
+          ? (aVal as string).localeCompare(bVal as string)
+          : (bVal as string).localeCompare(aVal as string);
       }
 
-      if (typeof aVal === 'number') {
-        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc'
+          ? (aVal as number) - (bVal as number)
+          : (bVal as number) - (aVal as number);
       }
 
       return 0;
@@ -1011,9 +911,9 @@ function SongsPage() {
   );
 
   const availableTechniqueFilters = instrumentFilter ? instrumentTechniquesMap[instrumentFilter] || [] : [];
-  const availableTunningFilters = instrumentFilter ? instrumentTuningsMap[instrumentFilter] || [] : [];
-  const tunningFilterOptions = availableTunningFilters.filter(opt => opt.value);
-  const showTunningFilters = instrumentFilter && instrumentFilter !== 'Drums';
+  const availableTuningFilters = instrumentFilter ? instrumentTuningsMap[instrumentFilter] || [] : [];
+  const tuningFilterOptions = availableTuningFilters.filter(opt => opt.value);
+  const showTuningFilters = instrumentFilter && instrumentFilter !== 'Drums';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
@@ -1211,30 +1111,30 @@ function SongsPage() {
                         </select>
                       </div>
                     </div>
-                    {showTunningFilters && (
+                    {showTuningFilters && (
                       <div className="card-base mt-3">
                         <button
                           type="button"
                           className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                          aria-expanded={tunningAccordionOpen}
-                          onClick={() => setTunningAccordionOpen(prev => !prev)}
+                          aria-expanded={tuningAccordionOpen}
+                          onClick={() => setTuningAccordionOpen(prev => !prev)}
                         >
-                          <span>Tunning filters</span>
-                          <span className="text-xl">{tunningAccordionOpen ? '▾' : '▴'}</span>
+                          <span>Tuning filters</span>
+                          <span className="text-xl">{tuningAccordionOpen ? '▾' : '▴'}</span>
                         </button>
-                        {tunningAccordionOpen && (
+                        {tuningAccordionOpen && (
                           <div className="p-4 border-t border-gray-100 dark:border-gray-700">
                             <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
-                            {tunningFilterOptions.length === 0 ? (
+                            {tuningFilterOptions.length === 0 ? (
                               <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {instrumentFilter}.</p>
                             ) : (
                               <select
                                 className="input-base text-sm"
-                                value={tunningFilter}
-                                onChange={e => setTunningFilter(e.target.value)}
+                                value={tuningFilter}
+                                onChange={e => setTuningFilter(e.target.value)}
                               >
                                 <option value="">All tunings</option>
-                                {tunningFilterOptions.map(opt => (
+                                {tuningFilterOptions.map(opt => (
                                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                               </select>
