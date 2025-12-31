@@ -18,7 +18,6 @@ function SongDetailPage() {
     bpm: null,
     key: '',
     notes: '',
-    tabs: '',
     instrument: [],
     instrumentDifficulty: {},
     instrumentTuning: {},
@@ -437,7 +436,6 @@ function SongDetailPage() {
             onSubmit={handleSubmit}
             onCancel={() => navigate('/songs')}
             onDelete={() => setDeleteDialogOpen(true)}
-            tabsFirst
             myInstruments={myInstruments.map(i => ({
               uid: i.uid,
               name: i.name,

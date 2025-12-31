@@ -35,10 +35,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.TEXT,
       allowNull: true
     },
-    tabs: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
     album: {
       type: DataTypes.STRING,
       allowNull: true

@@ -43,7 +43,7 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, key, notes, tabs, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
+    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
 
     if (!title) {
       return next(createError(400, 'Title is required'));
@@ -55,7 +55,6 @@ const createSong = async (req, res, next) => {
       bpm: bpm !== undefined ? bpm : null,
       key,
       notes,
-      tabs,
       instrument,
       instrumentLinks,
       instrumentDifficulty,
@@ -94,14 +93,13 @@ const updateSong = async (req, res, next) => {
       return next(createError(403, 'Forbidden'));
     }
 
-    const { title, bpm, key, notes, tabs, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
+    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed } = req.body;
 
     await song.update({
       title: title || song.title,
       bpm: bpm !== undefined ? bpm : song.bpm,
       key: key !== undefined ? key : song.key,
       notes: notes !== undefined ? notes : song.notes,
-      tabs: tabs !== undefined ? tabs : song.tabs,
       instrument: instrument !== undefined ? instrument : song.instrument,
       artist: artist !== undefined ? artist : song.artist,
       album: album !== undefined ? album : song.album,

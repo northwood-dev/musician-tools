@@ -19,7 +19,6 @@ const initialSong: CreateSongDTO = {
   bpm: null,
   key: '',
   chords: '',
-  tabs: '',
   instrument: [],
   instrumentDifficulty: {},
   instrumentTuning: {},

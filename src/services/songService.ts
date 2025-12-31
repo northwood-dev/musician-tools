@@ -4,7 +4,6 @@ export type Song = {
   bpm: number | null;
   key: string;
   notes: string;
-  tabs: string;
   instrument: string[] | null;
   instrumentLinks?: Record<string, Array<{ label?: string; url: string }>>;
   instrumentDifficulty?: Record<string, number | null>;
