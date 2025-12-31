@@ -43,6 +43,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true
     },
+    genre: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null
+    },
     pitchStandard: {
       type: DataTypes.INTEGER,
       allowNull: true,

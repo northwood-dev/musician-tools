@@ -25,6 +25,7 @@ function SongDetailPage() {
     instrumentLinks: {},
     artist: '',
     album: '',
+    genre: [],
     technique: [],
     pitchStandard: 440,
     tunning: '',
@@ -115,6 +116,11 @@ function SongDetailPage() {
           : rest.technique
             ? [rest.technique as unknown as string]
             : [],
+        genre: Array.isArray(rest.genre)
+          ? rest.genre
+          : rest.genre
+            ? [rest.genre as unknown as string]
+            : [],
         myInstrumentUid: rest.myInstrumentUid || undefined,
         instrumentDifficulty: rest.instrumentDifficulty || {},
         instrumentTuning: rest.instrumentTuning || {},
@@ -160,6 +166,16 @@ function SongDetailPage() {
 
   const setFormTechniques = (techniques: string[]) => {
     setForm(prev => ({ ...prev, technique: techniques }));
+  };
+
+  const toggleFormGenre = (genre: string) => {
+    setForm(prev => {
+      const current = Array.isArray(prev.genre) ? prev.genre : (prev.genre ? [prev.genre] : []);
+      const updated = current.includes(genre)
+        ? current.filter(g => g !== genre)
+        : [...current, genre];
+      return { ...prev, genre: updated };
+    });
   };
 
   const setFormTunning = (tunning: string | null) => {
@@ -231,6 +247,7 @@ function SongDetailPage() {
       ...form,
       instrument: form.instrument && form.instrument.length > 0 ? form.instrument : null,
       technique: form.technique && form.technique.length > 0 ? form.technique : [],
+      genre: form.genre && form.genre.length > 0 ? form.genre : [],
       myInstrumentUid: form.myInstrumentUid ? form.myInstrumentUid : undefined,
       instrumentDifficulty: form.instrumentDifficulty || {},
       instrumentTuning: form.instrumentTuning || {},
@@ -411,6 +428,7 @@ function SongDetailPage() {
             onSetInstrumentTuning={setInstrumentTuning}
             onSetMyInstrumentUid={setFormMyInstrumentUid}
             onSetTechniques={setFormTechniques}
+            onToggleGenre={toggleFormGenre}
             onToggleTechnique={toggleFormTechnique}
             onSetInstrumentLinksForInstrument={setInstrumentLinksForInstrument}
             onMarkAsPlayedNow={handleMarkAsPlayedNow}

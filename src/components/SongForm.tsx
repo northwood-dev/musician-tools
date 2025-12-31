@@ -11,6 +11,7 @@ type SongFormProps = {
   form: CreateSongDTO;
   loading: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onToggleGenre: (genre: string) => void;
   onChangeInstruments: (instruments: string[]) => void;
   onSetTechniques: (techniques: string[]) => void;
   onSetInstrumentDifficulty?: (instrumentType: string, difficulty: number | null) => void;
@@ -30,6 +31,43 @@ type SongFormProps = {
 };
 
 const keyOptions = ['C','C#','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','B'];
+const genreOptions = [
+  'Acoustic',
+  'Alternative',
+  'Ambient',
+  'Blues',
+  'Classical',
+  'Country',
+  'Disco',
+  'Drum & Bass',
+  'EDM',
+  'Electronic',
+  'Folk',
+  'Funk',
+  'Gospel',
+  'Hard Rock',
+  'Hip-Hop',
+  'House',
+  'Indie',
+  'Jazz',
+  'K-Pop',
+  'Latin',
+  'Metal',
+  'Pop',
+  'Progressive',
+  'Punk',
+  'R&B / Soul',
+  'Rap',
+  'Reggae',
+  'Rock',
+  'Singer-Songwriter',
+  'Ska',
+  'Soundtrack',
+  'Techno',
+  'Trap',
+  'World',
+  'Other',
+];
 
 const getAvailableTechniques = (instrumentType: string) => {
   if (!instrumentType) return [];
@@ -50,9 +88,10 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
   return formatter(instrumentPlays[0].playedAt);
 };
 
-export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onSetInstrumentDifficulty, onSetInstrumentTuning, onSetMyInstrumentUid, onToggleTechnique, onSetInstrumentLinksForInstrument, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, tabsFirst, myInstruments, playlistSlot }: SongFormProps) {
+export function SongForm({ mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onSetMyInstrumentUid, onToggleTechnique, onSetInstrumentLinksForInstrument, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, tabsFirst, myInstruments, playlistSlot }: SongFormProps) {
   const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
   const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
+  const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
   const [selectedInstrumentType, setSelectedInstrumentType] = useState('');
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
@@ -172,6 +211,27 @@ export function SongForm({ mode, form, loading, onChange, onChangeInstruments, o
         </button>
         {detailsAccordionOpen && (
           <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {genreOptions.map(genre => (
+                  <label
+                    key={genre}
+                    className="flex items-center gap-2 rounded-md px-2 py-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={currentGenres.includes(genre)}
+                      onChange={() => onToggleGenre(genre)}
+                      disabled={loading}
+                      className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-100 truncate">{genre}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select one or more styles.</p>
+            </div>
             <div>
               <label htmlFor="song-album" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Album</label>
               <input

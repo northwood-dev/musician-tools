@@ -10,6 +10,10 @@ import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
 
+const genreOptions = [
+  'Acoustic','Alternative','Ambient','Blues','Classical','Country','Disco','Drum & Bass','EDM','Electronic','Folk','Funk','Gospel','Hard Rock','Hip-Hop','House','Indie','Jazz','K-Pop','Latin','Metal','Pop','Progressive','Punk','R&B / Soul','Rap','Reggae','Rock','Singer-Songwriter','Ska','Soundtrack','Techno','Trap','World','Other'
+];
+
 const initialSong: CreateSongDTO = {
   title: '',
   bpm: null,
@@ -21,6 +25,7 @@ const initialSong: CreateSongDTO = {
   instrumentTuning: {},
   artist: '',
   album: '',
+  genre: [],
   technique: [],
   pitchStandard: 440,
   tunning: '',
@@ -40,6 +45,14 @@ function SongsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSortDirection') : null;
     return saved === 'desc' ? 'desc' : 'asc';
+  });
+  const [genreFilters, setGenreFilters] = useState<Set<string>>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsGenreFilters') : null;
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+  const [genreMatchMode, setGenreMatchMode] = useState<'any' | 'all'>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsGenreMatchMode') : null;
+    return saved === 'any' ? 'any' : 'all';
   });
   const [page, setPage] = useState<'list' | 'form'>('list');
   const [loading, setLoading] = useState(false);
@@ -137,6 +150,10 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPlaylistAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
+  const [genreAccordionOpen, setGenreAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsGenreAccordionOpen') : null;
+    return saved === 'false' ? false : true;
+  });
   const [bpmAccordionOpen, setBpmAccordionOpen] = useState<boolean>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsBpmAccordionOpen') : null;
     return saved === 'false' ? false : true;
@@ -158,7 +175,8 @@ function SongsPage() {
     pitchStandardMinFilter ||
     pitchStandardMaxFilter ||
     playlistFilter ||
-    techniqueFilters.size > 0
+    techniqueFilters.size > 0 ||
+    genreFilters.size > 0
   );
 
   const clearAllFilters = () => {
@@ -168,6 +186,8 @@ function SongsPage() {
     setInstrumentMatchMode('all');
     setTechniqueFilters(new Set());
     setTechniqueMatchMode('all');
+    setGenreFilters(new Set());
+    setGenreMatchMode('all');
     setTunningFilter('');
     setKeyFilter('');
     setBpmMinFilter('');
@@ -184,6 +204,15 @@ function SongsPage() {
       const next = new Set(prev);
       if (next.has(technique)) next.delete(technique);
       else next.add(technique);
+      return next;
+    });
+  };
+
+  const toggleGenreFilter = (genre: string) => {
+    setGenreFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(genre)) next.delete(genre);
+      else next.add(genre);
       return next;
     });
   };
@@ -305,6 +334,24 @@ function SongsPage() {
       window.localStorage.setItem('songsTechniqueMatchMode', techniqueMatchMode);
     } catch {}
   }, [techniqueMatchMode]);
+
+    useEffect(() => {
+      try {
+        window.localStorage.setItem('songsGenreFilters', JSON.stringify(Array.from(genreFilters)));
+      } catch {}
+    }, [genreFilters]);
+
+    useEffect(() => {
+      try {
+        window.localStorage.setItem('songsGenreMatchMode', genreMatchMode);
+      } catch {}
+    }, [genreMatchMode]);
+
+    useEffect(() => {
+      try {
+        window.localStorage.setItem('songsGenreAccordionOpen', genreAccordionOpen ? 'true' : 'false');
+      } catch {}
+    }, [genreAccordionOpen]);
 
   useEffect(() => {
     try {
@@ -543,6 +590,16 @@ function SongsPage() {
     });
   };
 
+  const toggleFormGenre = (genre: string) => {
+    setForm(prevForm => {
+      const current = Array.isArray(prevForm.genre) ? prevForm.genre : (prevForm.genre ? [prevForm.genre] : []);
+      const updated = current.includes(genre)
+        ? current.filter(g => g !== genre)
+        : [...current, genre];
+      return { ...prevForm, genre: updated as any };
+    });
+  };
+
   const setFormInstruments = (instruments: string[]) => {
     setForm(prevForm => {
       const nextDifficulty = { ...(prevForm.instrumentDifficulty || {}) } as Record<string, number | null>;
@@ -602,6 +659,7 @@ function SongsPage() {
       ...form,
       instrument: form.instrument && form.instrument.length > 0 ? form.instrument : null,
       technique: form.technique && form.technique.length > 0 ? form.technique : [],
+      genre: form.genre && form.genre.length > 0 ? form.genre : [],
       myInstrumentUid: form.myInstrumentUid ? form.myInstrumentUid : undefined,
       instrumentDifficulty: form.instrumentDifficulty || {},
       instrumentTuning: form.instrumentTuning || {},
@@ -645,6 +703,11 @@ function SongsPage() {
           ? rest.technique
           : rest.technique
             ? [rest.technique as unknown as string]
+            : [],
+        genre: Array.isArray(rest.genre)
+          ? rest.genre
+          : rest.genre
+            ? [rest.genre as unknown as string]
             : [],
         myInstrumentUid: rest.myInstrumentUid || undefined,
         instrumentDifficulty: rest.instrumentDifficulty || {},
@@ -772,6 +835,15 @@ function SongsPage() {
       (techniqueMatchMode === 'all'
         ? selectedTech.every(t => songTechniques.includes(t))
         : selectedTech.some(t => songTechniques.includes(t)));
+    const selectedGenres = Array.from(genreFilters);
+    const songGenres = Array.isArray(song.genre)
+      ? song.genre
+      : (song.genre ? [song.genre] : []);
+    const passesGenre =
+      selectedGenres.length === 0 ||
+      (genreMatchMode === 'all'
+        ? selectedGenres.every(g => songGenres.includes(g))
+        : selectedGenres.some(g => songGenres.includes(g)));
     const passesKey = !keyFilter || song.key === keyFilter;
     const min = bpmMinFilter ? parseInt(bpmMinFilter, 10) : undefined;
     const max = bpmMaxFilter ? parseInt(bpmMaxFilter, 10) : undefined;
@@ -788,7 +860,7 @@ function SongsPage() {
       (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
     );
     const passesPlaylist = !playlistFilter || (playlists.find(p => p.uid === playlistFilter)?.songUids || []).includes(song.uid);
-    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesTunning && passesDifficulty && passesKey && passesBpm && passesPitch && passesPlaylist;
+    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTunning && passesDifficulty && passesKey && passesBpm && passesPitch && passesPlaylist;
   });
 
   const handleSort = (column: string) => {
@@ -1195,6 +1267,71 @@ function SongsPage() {
                       <button
                         type="button"
                         className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                        aria-expanded={genreAccordionOpen}
+                        onClick={() => setGenreAccordionOpen(prev => !prev)}
+                      >
+                        <span>Genre filters</span>
+                        <span className="text-xl">{genreAccordionOpen ? '▾' : '▴'}</span>
+                      </button>
+                      {genreAccordionOpen && (
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by genre</div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            {genreOptions.map(genre => (
+                              <label key={genre} className="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
+                                  checked={genreFilters.has(genre)}
+                                  onChange={() => toggleGenreFilter(genre)}
+                                />
+                                <span className="truncate">{genre}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="mt-3">
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
+                            <div className="flex items-center gap-3">
+                              <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="genre-match-mode"
+                                  value="all"
+                                  className="h-3 w-3"
+                                  checked={genreMatchMode === 'all'}
+                                  onChange={() => setGenreMatchMode('all')}
+                                />
+                                <span>All</span>
+                              </label>
+                              <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="genre-match-mode"
+                                  value="any"
+                                  className="h-3 w-3"
+                                  checked={genreMatchMode === 'any'}
+                                  onChange={() => setGenreMatchMode('any')}
+                                />
+                                <span>Any</span>
+                              </label>
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs"
+                              onClick={() => setGenreFilters(new Set())}
+                            >
+                              Clear filters
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="card-base mt-3">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
                         aria-expanded={keyAccordionOpen}
                         onClick={() => setKeyAccordionOpen(prev => !prev)}
                       >
@@ -1543,6 +1680,7 @@ function SongsPage() {
             onChangeInstruments={setFormInstruments}
             onSetMyInstrumentUid={setFormMyInstrumentUid}
             onSetTechniques={setFormTechniques}
+            onToggleGenre={toggleFormGenre}
             onSetInstrumentDifficulty={setInstrumentDifficulty}
             onSetInstrumentTuning={setInstrumentTuning}
             onToggleTechnique={toggleFormTechnique}

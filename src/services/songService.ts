@@ -10,6 +10,7 @@ export type Song = {
   instrumentDifficulty?: Record<string, number | null>;
   artist: string;
   album?: string;
+  genre?: string[] | null;
   technique?: string[];
   pitchStandard?: number;
   instrumentTuning?: Record<string, string | null>;
