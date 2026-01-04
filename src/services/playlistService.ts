@@ -15,7 +15,9 @@ const API_BASE = '/api';
 export const playlistService = {
   // Get all playlists
   async getAllPlaylists(): Promise<Playlist[]> {
-    const response = await fetch(`${API_BASE}/playlists`);
+    const response = await fetch(`${API_BASE}/playlists`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch playlists');
     }
@@ -24,7 +26,9 @@ export const playlistService = {
 
   // Get single playlist by uid
   async getPlaylist(uid: string): Promise<Playlist> {
-    const response = await fetch(`${API_BASE}/playlists/${uid}`);
+    const response = await fetch(`${API_BASE}/playlists/${uid}`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch playlist');
     }
@@ -39,6 +43,7 @@ export const playlistService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(playlist),
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to create playlist');
@@ -54,6 +59,7 @@ export const playlistService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(playlist),
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to update playlist');
@@ -65,6 +71,7 @@ export const playlistService = {
   async deletePlaylist(uid: string): Promise<void> {
     const response = await fetch(`${API_BASE}/playlists/${uid}`, {
       method: 'DELETE',
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to delete playlist');

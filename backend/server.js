@@ -49,16 +49,36 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // Session configuration
+
+// Indique à Express qu'il est derrière un proxy (Fly.io)
+app.set('trust proxy', 1);
+// Session configuration avec SameSite adapté pour la prod
 app.use(session({
   secret: config.jwtsecret || 'musician-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production'
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   }
 }));
+
+// CORS middleware pour autoriser le frontend en production
+app.use((req, res, next) => {
+  const allowedOrigin = process.env.NODE_ENV === 'production'
+    ? 'https://musician-tools.app/'
+    : 'http://localhost:5173';
+  res.header('Access-Control-Allow-Origin', allowedOrigin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // CORS middleware for development
 if (process.env.NODE_ENV === 'development') {

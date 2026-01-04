@@ -22,6 +22,7 @@ export const songPlayService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(dto),
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to mark song as played');
@@ -30,7 +31,9 @@ export const songPlayService = {
   },
 
   async getPlays(songUid: string): Promise<SongPlay[]> {
-    const response = await fetch(`${API_BASE}/${songUid}/plays`);
+    const response = await fetch(`${API_BASE}/${songUid}/plays`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch song plays');
     }

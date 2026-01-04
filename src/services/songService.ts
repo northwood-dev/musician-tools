@@ -28,7 +28,9 @@ const API_BASE = '/api';
 export const songService = {
   // Get all songs
   async getAllSongs(): Promise<Song[]> {
-    const response = await fetch(`${API_BASE}/songs`);
+    const response = await fetch(`${API_BASE}/songs`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch songs');
     }
@@ -37,7 +39,9 @@ export const songService = {
 
   // Get single song by uid
   async getSong(uid: string): Promise<Song> {
-    const response = await fetch(`${API_BASE}/songs/${uid}`);
+    const response = await fetch(`${API_BASE}/songs/${uid}`, {
+      credentials: 'include'
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch song');
     }
@@ -52,6 +56,7 @@ export const songService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(song),
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to create song');
@@ -67,6 +72,7 @@ export const songService = {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(song),
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to update song');
@@ -78,6 +84,7 @@ export const songService = {
   async deleteSong(uid: string): Promise<void> {
     const response = await fetch(`${API_BASE}/songs/${uid}`, {
       method: 'DELETE',
+      credentials: 'include'
     });
     if (!response.ok) {
       throw new Error('Failed to delete song');

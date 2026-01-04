@@ -15,7 +15,9 @@ const API_BASE = '/api';
 
 export const instrumentService = {
   async getAll(): Promise<Instrument[]> {
-    const res = await fetch(`${API_BASE}/instruments`);
+    const res = await fetch(`${API_BASE}/instruments`, {
+      credentials: 'include'
+    });
     if (!res.ok) throw new Error('Failed to fetch instruments');
     return res.json();
   },
@@ -24,6 +26,7 @@ export const instrumentService = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      credentials: 'include'
     });
     if (!res.ok) throw new Error('Failed to create instrument');
     return res.json();
@@ -33,12 +36,13 @@ export const instrumentService = {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      credentials: 'include'
     });
     if (!res.ok) throw new Error('Failed to update instrument');
     return res.json();
   },
   async remove(uid: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/instruments/${uid}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/instruments/${uid}`, { method: 'DELETE', credentials: 'include' });
     if (!res.ok) throw new Error('Failed to delete instrument');
   },
 };
