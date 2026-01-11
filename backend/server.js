@@ -6,6 +6,8 @@ var morgan = require('morgan');
 var indexRouter = require('./routes/index');
 var app = express();
 var session = require('express-session');
+var pgSession = require('connect-pg-simple')(session);
+var pg = require('pg');
 const logger = require('./logger');
 const env = process.env.NODE_ENV || 'production';
 const config = require('./config/config')[env];
@@ -52,8 +54,9 @@ app.use(cookieParser());
 
 // Indique à Express qu'il est derrière un proxy (Fly.io)
 app.set('trust proxy', 1);
-// Session configuration avec SameSite adapté pour la prod
-app.use(session({
+
+// Session configuration
+const sessionConfig = {
   secret: config.jwtsecret || 'musician-secret',
   resave: false,
   saveUninitialized: false,
@@ -61,39 +64,47 @@ app.use(session({
     maxAge: 30 * 24 * 60 * 60 * 1000, // 30 jours
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    sameSite: 'lax' // 'lax' works for same-site requests
   }
-}));
+};
 
-// CORS middleware pour autoriser le frontend en production
+// Use PostgreSQL session store only in production
+if (process.env.NODE_ENV === 'production') {
+  const pgPool = new pg.Pool({
+    connectionString: config.url || process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+  
+  sessionConfig.store = new pgSession({
+    pool: pgPool,
+    tableName: 'session',
+    createTableIfMissing: true
+  });
+  
+  logger.info('Using PostgreSQL session store');
+} else {
+  logger.info('Using memory session store (development)');
+}
+
+app.use(session(sessionConfig));
+
+// CORS middleware
 app.use((req, res, next) => {
   const allowedOrigin = process.env.NODE_ENV === 'production'
-    ? 'https://musician-tools.app/'
+    ? 'https://musician-tools.app'
     : 'http://localhost:5173';
+  
   res.header('Access-Control-Allow-Origin', allowedOrigin);
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
+  
   next();
 });
-
-// CORS middleware for development
-if (process.env.NODE_ENV === 'development') {
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(200);
-    }
-    next();
-  });
-}
-
 
 // Serve static frontend (Vite build)
 app.use(express.static(path.join(__dirname, 'public')));

@@ -1,6 +1,3 @@
-[mounts]
-  source = "logs"
-  destination = "/app/logs"
 # fly.toml app configuration file generated for musician-tools on 2025-12-31T15:52:51Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
@@ -8,6 +5,10 @@
 
 app = 'musician-tools'
 primary_region = 'cdg'
+
+[mounts]
+  source = "logs"
+  destination = "/app/logs"
 
 
 [build]
