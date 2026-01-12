@@ -238,7 +238,7 @@ export function SongForm(props: SongFormProps) {
           disabled={loading}
         />
       </div>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-md">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
         <button
           type="button"
           className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
@@ -249,7 +249,7 @@ export function SongForm(props: SongFormProps) {
           <span>{detailsAccordionOpen ? '▾' : '▸'}</span>
         </button>
         {detailsAccordionOpen && (
-          <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800">
             <div>
               <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</span>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -341,7 +341,7 @@ export function SongForm(props: SongFormProps) {
             const instrumentTechniques = getAvailableTechniques(instrumentType);
             
             return (
-              <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md">
+              <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
                 <div className="flex items-center">
                   <button
                     type="button"
@@ -400,7 +400,7 @@ export function SongForm(props: SongFormProps) {
                   </div>
                 </div>
                 {isExpanded && (
-                  <div className="mt-0 space-y-4 p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                  <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800">
                     {filteredMyInstruments && filteredMyInstruments.length > 0 && (
                       <div>
                         <label htmlFor={`my-instrument-${instrumentType}`} className="block text-sm font-medium text-gray-700 dark:text-gray-100">My instrument</label>
