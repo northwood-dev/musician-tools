@@ -655,6 +655,20 @@ function SongsPage() {
       setLoading(true);
       setError(null);
 
+      // Vérifier si la chanson existe déjà (en mode add)
+      if (editingUid === null) {
+        const duplicate = songs.find(
+          song => 
+            song.artist?.toLowerCase().trim() === form.artist?.toLowerCase().trim() &&
+            song.title?.toLowerCase().trim() === form.title?.toLowerCase().trim()
+        );
+        if (duplicate) {
+          setError('This song already exists');
+          setLoading(false);
+          return;
+        }
+      }
+
       if (editingUid !== null) {
         const updatedSong = await songService.updateSong(editingUid, payload);
         setSongs(songs.map(song => (song.uid === editingUid ? updatedSong : song)));
