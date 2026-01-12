@@ -35,7 +35,6 @@ export interface TuningOption {
 
 export const instrumentTuningsMap: Record<string, TuningOption[]> = {
   'Guitar': [
-    { value: '', label: 'Select a tuning' },
     { value: 'EADGBE', label: 'EADGBE (Standard)' },
     { value: 'DADGBE', label: 'DADGBE (Drop D)' },
     { value: 'EbAbDbGbBbEb', label: 'EbAbDbGbBbEb (Half-step down)' },
@@ -44,7 +43,6 @@ export const instrumentTuningsMap: Record<string, TuningOption[]> = {
     { value: 'Other', label: 'Other' },
   ],
   'Bass': [
-    { value: '', label: 'Select a tuning' },
     { value: 'EADG', label: 'EADG (Standard 4-string)' },
     { value: 'BEADG', label: 'BEADG (Standard 5-string)' },
     { value: 'BEADGC', label: 'BEADGC (Standard 6-string)' },
@@ -52,18 +50,15 @@ export const instrumentTuningsMap: Record<string, TuningOption[]> = {
     { value: 'Other', label: 'Other' },
   ],
   'Ukulele': [
-    { value: '', label: 'Select a tuning' },
     { value: 'GCEA', label: 'GCEA (Standard)' },
     { value: 'DGBE', label: 'DGBE (Low G)' },
     { value: 'Other', label: 'Other' },
   ],
   'Violin': [
-    { value: '', label: 'Select a tuning' },
     { value: 'GDAE', label: 'GDAE (Standard)' },
     { value: 'Other', label: 'Other' },
   ],
   'Other': [
-    { value: '', label: 'Select a tuning' },
     { value: 'Other', label: 'Other' },
   ],
 };
