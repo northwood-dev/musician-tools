@@ -97,6 +97,7 @@ export function SongForm(props: SongFormProps) {
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
   const [newLinkInputs, setNewLinkInputs] = useState<Record<string, { label: string; url: string }>>({});
+  const [hoveredDifficulty, setHoveredDifficulty] = useState<Record<string, number | null>>({});
   // removed unused availableTechniques and filteredMyInstruments
   const allInstrumentLinks = Object.entries(form.instrumentLinks || {}).flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })));
 
@@ -424,7 +425,9 @@ export function SongForm(props: SongFormProps) {
                         <div className="flex items-center gap-1" role="radiogroup" aria-label="Difficulty" aria-live="polite">
                           {[1,2,3,4,5].map(n => {
                             const current = form.instrumentDifficulty ? form.instrumentDifficulty[instrumentType] : null;
-                            const active = typeof current === 'number' && n <= current;
+                            const hovered = hoveredDifficulty[instrumentType];
+                            const displayLevel = typeof hovered === 'number' ? hovered : current;
+                            const active = typeof displayLevel === 'number' && n <= displayLevel;
                             return (
                               <button
                                 key={n}
@@ -434,6 +437,8 @@ export function SongForm(props: SongFormProps) {
                                   const next = current === n ? null : n;
                                   onSetInstrumentDifficulty?.(instrumentType, next);
                                 }}
+                                onMouseEnter={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: n }))}
+                                onMouseLeave={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: null }))}
                                 disabled={loading}
                                 aria-pressed={active}
                                 aria-label={`${n} star${n > 1 ? 's' : ''}`}
