@@ -241,7 +241,7 @@ export function SongForm(props: SongFormProps) {
       <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
         <button
           type="button"
-          className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+          className="w-full flex items-center justify-between px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
           onClick={() => setDetailsAccordionOpen(!detailsAccordionOpen)}
           aria-expanded={detailsAccordionOpen}
         >
@@ -345,7 +345,7 @@ export function SongForm(props: SongFormProps) {
                 <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    className="flex-1 flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+                    className="flex-1 flex items-center gap-3 px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
                     onClick={() => {
                       const next = new Set(expandedInstruments);
                       if (next.has(instrumentType)) {
