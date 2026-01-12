@@ -190,7 +190,7 @@ function MyInstrumentsPage() {
                   <tbody>
                     {list.map(item => (
                       editingUid === item.uid ? (
-                        <tr key={item.uid} className="bg-yellow-50">
+                        <tr key={item.uid} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
                           <td className="p-2 align-top">
                             <select
                               value={editType}
