@@ -342,10 +342,10 @@ export function SongForm(props: SongFormProps) {
             
             return (
               <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
-                <div className="flex items-center">
+                <div className="flex items-center justify-between">
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+                    className="flex-1 flex items-center gap-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
                     onClick={() => {
                       const next = new Set(expandedInstruments);
                       if (next.has(instrumentType)) {
@@ -357,17 +357,14 @@ export function SongForm(props: SongFormProps) {
                     }}
                     aria-expanded={isExpanded}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium">{instrumentType}</span>
-                      {formatLastPlayed && (
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
-                        </span>
-                      )}
-                    </div>
-                    <span>{isExpanded ? '▾' : '▸'}</span>
+                    <span className="font-medium">{instrumentType}</span>
+                    {formatLastPlayed && (
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
+                      </span>
+                    )}
                   </button>
-                  <div className="flex items-center gap-2 ml-2">
+                  <div className="flex items-center gap-2">
                     {onMarkAsPlayedNow && mode === 'edit' && (
                       <button
                         type="button"
@@ -397,6 +394,9 @@ export function SongForm(props: SongFormProps) {
                     >
                       ✕
                     </button>
+                    <span className="text-gray-600 dark:text-gray-400 px-2">
+                      {isExpanded ? '▾' : '▸'}
+                    </span>
                   </div>
                 </div>
                 {isExpanded && (
