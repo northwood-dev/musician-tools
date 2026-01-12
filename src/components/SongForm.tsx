@@ -98,6 +98,8 @@ export function SongForm(props: SongFormProps) {
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
   const [newLinkInputs, setNewLinkInputs] = useState<Record<string, { label: string; url: string }>>({});
   const [hoveredDifficulty, setHoveredDifficulty] = useState<Record<string, number | null>>({});
+  const [genreSearchOpen, setGenreSearchOpen] = useState(false);
+  const [genreSearchQuery, setGenreSearchQuery] = useState('');
   // removed unused availableTechniques and filteredMyInstruments
   const allInstrumentLinks = Object.entries(form.instrumentLinks || {}).flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })));
 
@@ -238,10 +240,10 @@ export function SongForm(props: SongFormProps) {
           disabled={loading}
         />
       </div>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700">
         <button
           type="button"
-          className="w-full flex items-center justify-between px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
+          className="w-full flex items-center justify-between px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100 overflow-hidden rounded-t-md"
           onClick={() => setDetailsAccordionOpen(!detailsAccordionOpen)}
           aria-expanded={detailsAccordionOpen}
         >
@@ -249,27 +251,68 @@ export function SongForm(props: SongFormProps) {
           <span>{detailsAccordionOpen ? '▾' : '▸'}</span>
         </button>
         {detailsAccordionOpen && (
-          <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800">
+          <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800 overflow-hidden rounded-b-md">
             <div>
-              <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</span>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {genreOptions.map(genre => (
-                  <label
-                    key={genre}
-                    className="flex items-center gap-2 rounded-md px-2 py-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={currentGenres.includes(genre)}
-                      onChange={() => onToggleGenre(genre)}
-                      disabled={loading}
-                      className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
+              <label htmlFor="genres-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</label>
+              <div className="relative z-30">
+                <input
+                  id="genres-search"
+                  type="text"
+                  placeholder="Search or select a genre"
+                  value={genreSearchQuery}
+                  onChange={(e) => setGenreSearchQuery(e.target.value)}
+                  onFocus={() => setGenreSearchOpen(true)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  disabled={loading}
+                />
+                {genreSearchOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setGenreSearchOpen(false)}
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-100 truncate">{genre}</span>
-                  </label>
-                ))}
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
+                      {genreOptions
+                        .filter(g => !currentGenres.includes(g) && g.toLowerCase().includes(genreSearchQuery.toLowerCase()))
+                        .map(genre => (
+                          <button
+                            key={genre}
+                            type="button"
+                            onClick={() => {
+                              onToggleGenre(genre);
+                              setGenreSearchQuery('');
+                              setGenreSearchOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100"
+                            disabled={loading}
+                          >
+                            {genre}
+                          </button>
+                        ))}
+                      {genreOptions.filter(g => !currentGenres.includes(g) && g.toLowerCase().includes(genreSearchQuery.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No genres found</div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Select one or more styles.</p>
+              {currentGenres.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {currentGenres.map(genre => (
+                    <button
+                      key={genre}
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
+                      onClick={() => onToggleGenre(genre)}
+                      disabled={loading}
+                      title={genre}
+                    >
+                      <span className="truncate">{genre}</span>
+                      <span>✕</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label htmlFor="song-album" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Album</label>
