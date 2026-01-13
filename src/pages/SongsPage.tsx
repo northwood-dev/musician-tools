@@ -159,6 +159,9 @@ function SongsPage() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPitchAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
+  // States for editing song plays and playlists
+  const [editingSongPlays, setEditingSongPlays] = useState<SongPlay[]>([]);
+  const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
   // Removed unused user, logout from useAuth
 
   const hasActiveFilters = Boolean(
@@ -455,8 +458,68 @@ function SongsPage() {
     } catch { /* ignore */ }
   }, [selectedSongs]);
 
+  // Load plays and playlists for song being edited
+  useEffect(() => {
+    if (!editingUid) {
+      setEditingSongPlays([]);
+      setSelectedPlaylistUids(new Set());
+      return;
+    }
+
+    const loadEditingData = async () => {
+      try {
+        // Load plays for the song being edited
+        const plays = await songPlayService.getPlays(editingUid);
+        setEditingSongPlays(plays);
+
+        // Find playlists that contain this song
+        const songPlaylists = playlists.filter(pl => 
+          pl.songUids?.includes(editingUid)
+        );
+        setSelectedPlaylistUids(new Set(songPlaylists.map(pl => pl.uid)));
+      } catch (err) {
+        console.error('Error loading editing data:', err);
+      }
+    };
+
+    loadEditingData();
+  }, [editingUid, playlists]);
 
 
+
+
+  const handleTogglePlaylist = (playlistUid: string) => {
+    const next = new Set(selectedPlaylistUids);
+    if (next.has(playlistUid)) {
+      next.delete(playlistUid);
+    } else {
+      next.add(playlistUid);
+    }
+    setSelectedPlaylistUids(next);
+  };
+
+  const handleMarkAsPlayedNow = async (instrumentType: string) => {
+    if (!editingUid) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      await songPlayService.markPlayed(editingUid, { instrumentType });
+      const plays = await songPlayService.getPlays(editingUid);
+      setEditingSongPlays(plays);
+      const now = new Date().toISOString();
+      await songService.updateSong(editingUid, { lastPlayed: now });
+      // Update the song in the list
+      setSongs(songs.map(song => 
+        song.uid === editingUid ? { ...song, lastPlayed: now } : song
+      ));
+    } catch (err) {
+      setError('Error while marking as played');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMarkSelectedAsPlayedNow = async () => {
     try {
@@ -672,6 +735,26 @@ function SongsPage() {
       if (editingUid !== null) {
         const updatedSong = await songService.updateSong(editingUid, payload);
         setSongs(songs.map(song => (song.uid === editingUid ? updatedSong : song)));
+        
+        // Update playlists for the edited song
+        const latestPlaylists = await playlistService.getAllPlaylists();
+        setPlaylists(latestPlaylists);
+
+        await Promise.all(
+          latestPlaylists.map(async playlist => {
+            const hasSong = (playlist.songUids || []).includes(editingUid);
+            const shouldHaveSong = selectedPlaylistUids.has(playlist.uid);
+
+            if (shouldHaveSong && !hasSong) {
+              const nextSongUids = [...(playlist.songUids || []), editingUid];
+              await playlistService.updatePlaylist(playlist.uid, { songUids: nextSongUids });
+            } else if (!shouldHaveSong && hasSong) {
+              const nextSongUids = (playlist.songUids || []).filter(uid => uid !== editingUid);
+              await playlistService.updatePlaylist(playlist.uid, { songUids: nextSongUids });
+            }
+          })
+        );
+
         setEditingUid(null);
       } else {
         const newSong = await songService.createSong(payload);
@@ -1614,7 +1697,14 @@ function SongsPage() {
                                   type="button"
                                   className="btn-secondary text-xs"
                                   onClick={() => {
-                                    navigate(`/song/${toSlug(song.artist)}/${toSlug(song.title)}`);
+                                    setEditingUid(song.uid);
+                                    setForm({
+                                      ...song,
+                                      instrument: Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []),
+                                      technique: Array.isArray(song.technique) ? song.technique : [],
+                                      genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
+                                    });
+                                    setPage('form');
                                   }}
                                   disabled={loading}
                                 >
@@ -1663,6 +1753,55 @@ function SongsPage() {
               setPage('list');
             }}
             onDelete={editingUid ? () => handleDelete(editingUid) : undefined}
+            onMarkAsPlayedNow={editingUid ? handleMarkAsPlayedNow : undefined}
+            songPlays={editingUid ? editingSongPlays : undefined}
+            formatLastPlayed={formatLastPlayed}
+            myInstruments={myInstruments.map(i => ({
+              uid: i.uid,
+              name: i.name,
+              type: i.type,
+            }))}
+            playlistSlot={editingUid ? (
+              <div className="mt-8 space-y-3">
+                <h2 className="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-100">Add to playlists</h2>
+                {playlists.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No playlists found.{' '}
+                    <Link
+                      to="/my-playlists"
+                      className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300"
+                    >
+                      Create one
+                    </Link>
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {playlists.map(playlist => (
+                      <label
+                        key={playlist.uid}
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPlaylistUids.has(playlist.uid)}
+                          onChange={() => handleTogglePlaylist(playlist.uid)}
+                          className="rounded border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{playlist.name}</p>
+                          {playlist.description && (
+                            <p className="text-sm text-gray-600 dark:text-gray-400">{playlist.description}</p>
+                          )}
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {(playlist.songUids || []).length} songs
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : undefined}
           />
           </div>
         </div>

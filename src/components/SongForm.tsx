@@ -154,7 +154,7 @@ export function SongForm(props: SongFormProps) {
                   className="btn-secondary text-xs whitespace-nowrap"
                   onClick={async () => {
                     if (typeof onSetStreamingLinks === 'function') {
-                      // Simulate the logic from SongsPage/SongDetailPage
+                      // Auto-generate streaming links
                       const searchQuery = `${form.artist || ''} ${form.title || ''}`.trim();
                       if (!searchQuery) return;
                       const links = [
