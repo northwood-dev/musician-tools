@@ -99,6 +99,15 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: null,
       field: 'streaming_links'
+    },
+    timeSignature: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: 'time_signature'
+    },
+    mode: {
+      type: DataTypes.STRING,
+      allowNull: true
     }
   }, {
     tableName: 'Songs',

@@ -26,6 +26,8 @@ const initialSong: CreateSongDTO = {
   genre: [],
   technique: [],
   pitchStandard: 440,
+  timeSignature: '',
+  mode: '',
   lastPlayed: undefined,
 };
 

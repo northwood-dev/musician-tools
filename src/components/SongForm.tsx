@@ -34,6 +34,8 @@ type SongFormProps = {
 };
 
 const keyOptions = ['C','C#','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','B'];
+const timeSignatureOptions = ['2/4', '3/4', '4/4', '5/4', '6/8', '7/8', '9/8', '12/8', '5/8', '7/4', '3/8', 'Other'];
+const modeOptions = ['Major', 'Minor', 'Dorian', 'Phrygian', 'Lydian', 'Mixolydian', 'Aeolian', 'Locrian', 'Other'];
 const genreOptions = [
   'Acoustic',
   'Alternative',
@@ -305,7 +307,7 @@ export function SongForm(props: SongFormProps) {
       <div className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700">
         <button
           type="button"
-          className="w-full flex items-center justify-between px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100 overflow-hidden rounded-t-md"
+          className={`w-full flex items-center justify-between px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100 overflow-hidden ${detailsAccordionOpen ? 'rounded-t-md' : 'rounded-md'}`}
           onClick={() => setDetailsAccordionOpen(!detailsAccordionOpen)}
           aria-expanded={detailsAccordionOpen}
         >
@@ -397,10 +399,12 @@ export function SongForm(props: SongFormProps) {
                     if (e.target.value.length === 0) {
                       setAlbumSearchOpen(suggestedAlbums.length > 0);
                     } else {
-                      const hasMatch = suggestedAlbums.some(album => 
+                      const filteredAlbums = suggestedAlbums.filter(album => 
                         album.toLowerCase().includes(e.target.value.toLowerCase())
                       );
-                      setAlbumSearchOpen(hasMatch);
+                      const hasMatch = filteredAlbums.length > 0;
+                      const isSingleExactMatch = filteredAlbums.length === 1 && filteredAlbums[0] === e.target.value;
+                      setAlbumSearchOpen(hasMatch && !isSingleExactMatch);
                     }
                     setSelectedAlbumIndex(-1);
                   }}
@@ -432,7 +436,13 @@ export function SongForm(props: SongFormProps) {
                       setSelectedAlbumIndex(-1);
                     }
                   }}
-                  onFocus={() => setAlbumSearchOpen(true)}
+                  onFocus={() => {
+                    const filteredAlbums = suggestedAlbums.filter(album => 
+                      !form.album || album.toLowerCase().includes(form.album.toLowerCase())
+                    );
+                    const isSingleExactMatch = filteredAlbums.length === 1 && filteredAlbums[0] === form.album;
+                    setAlbumSearchOpen(filteredAlbums.length > 0 && !isSingleExactMatch);
+                  }}
                   onBlur={() => setTimeout(() => setAlbumSearchOpen(false), 200)}
                   disabled={loading}
                   autoComplete="off"
@@ -467,7 +477,7 @@ export function SongForm(props: SongFormProps) {
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="song-bpm" className="block text-sm font-medium text-gray-700 dark:text-gray-100">BPM</label>
                 <input
@@ -480,6 +490,22 @@ export function SongForm(props: SongFormProps) {
                   min={0}
                   disabled={loading}
                 />
+              </div>
+              <div>
+                <label htmlFor="song-time-signature" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Time Signature</label>
+                <select
+                  id="song-time-signature"
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  name="timeSignature"
+                  value={form.timeSignature || ''}
+                  onChange={onChange}
+                  disabled={loading}
+                >
+                  <option value="">Select a time signature</option>
+                  {timeSignatureOptions.map(ts => (
+                    <option key={ts} value={ts}>{ts}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label htmlFor="song-key" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Key</label>
@@ -498,6 +524,22 @@ export function SongForm(props: SongFormProps) {
                 </select>
               </div>
               <div>
+                <label htmlFor="song-mode" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Mode</label>
+                <select
+                  id="song-mode"
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  name="mode"
+                  value={form.mode || ''}
+                  onChange={onChange}
+                  disabled={loading}
+                >
+                  <option value="">Select a mode</option>
+                  {modeOptions.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-span-2">
                 <label htmlFor="song-pitch-standard" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Pitch Standard (Hz)</label>
                 <input
                   id="song-pitch-standard"

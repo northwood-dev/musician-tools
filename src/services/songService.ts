@@ -3,6 +3,8 @@ export type Song = {
   title: string;
   bpm: number | null;
   key: string;
+  timeSignature?: string;
+  mode?: string;
   notes: string;
   instrument: string[] | null;
   instrumentLinks?: Record<string, Array<{ label?: string; url: string }>>;
