@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import type React from 'react';
 import type { CreateSongDTO } from '../services/songService';
 import type { SongPlay } from '../services/songPlayService';
-import { instrumentTypeOptions, instrumentTechniquesMap, instrumentTuningsMap } from '../constants/instrumentTypes';
+import { instrumentTypeOptions, instrumentTechniquesMap } from '../constants/instrumentTypes';
+import SongFormInstruments from './SongFormInstruments';
 
 type Mode = 'add' | 'edit';
 
@@ -77,29 +78,14 @@ const getAvailableTechniques = (instrumentType: string) => {
   return [...list].sort((a, b) => a.localeCompare(b));
 };
 
-const getAvailableTunings = (instrumentType: string) => {
-  if (!instrumentType) return [];
-  return instrumentTuningsMap[instrumentType] || [];
-};
-
-
-const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = [], formatter: (date: string | undefined) => string = (d) => d || '-'): string => {
-  if (!plays || plays.length === 0) return '-';
-  const instrumentPlays = plays.filter(p => p.instrumentType === instrumentType);
-  if (instrumentPlays.length === 0) return '-';
-  return formatter(instrumentPlays[0].playedAt);
-};
-
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [] } = props;
+  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [] } = props;
   const currentInstruments = useMemo(() => Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
   const [selectedInstrumentType, setSelectedInstrumentType] = useState('');
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
-  const [newLinkInputs, setNewLinkInputs] = useState<Record<string, { label: string; url: string }>>({});
-  const [hoveredDifficulty, setHoveredDifficulty] = useState<Record<string, number | null>>({});
   const [genreSearchOpen, setGenreSearchOpen] = useState(false);
   const [genreSearchQuery, setGenreSearchQuery] = useState('');
   const [albumSearchOpen, setAlbumSearchOpen] = useState(false);
@@ -189,7 +175,6 @@ export function SongForm(props: SongFormProps) {
         </>
       )}
       {form.streamingLinks && form.streamingLinks.length > 0 && (
-        <>
           <div className="flex flex-wrap gap-2">
             {form.streamingLinks.map((link, idx) => (
               <div
@@ -221,7 +206,6 @@ export function SongForm(props: SongFormProps) {
               </div>
             ))}
           </div>
-        </>
       )}
       <div>
         <label htmlFor="song-artist" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Artist</label>
@@ -533,280 +517,50 @@ export function SongForm(props: SongFormProps) {
       </div>
       <div>
         <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</span>
-        <div className="space-y-2">
-          {currentInstruments.map((instrumentType) => {
-            const isExpanded = expandedInstruments.has(instrumentType);
-            const filteredMyInstruments = instrumentType && myInstruments && myInstruments.length > 0
-              ? myInstruments.filter(mi => (mi.type || '').toLowerCase() === instrumentType.toLowerCase())
-              : [];
-            const instrumentTechniques = getAvailableTechniques(instrumentType);
-            
-            return (
-              <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
-                <div className="flex items-center justify-between">
-                  <button
-                    type="button"
-                    className="flex-1 flex items-center gap-3 px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
-                    onClick={() => {
-                      const next = new Set(expandedInstruments);
-                      if (next.has(instrumentType)) {
-                        next.delete(instrumentType);
-                      } else {
-                        next.add(instrumentType);
-                      }
-                      setExpandedInstruments(next);
-                    }}
-                    aria-expanded={isExpanded}
-                  >
-                    <span className="font-medium">{instrumentType}</span>
-                    {formatLastPlayed && (
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
-                      </span>
-                    )}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    {onMarkAsPlayedNow && mode === 'edit' && (
-                      <button
-                        type="button"
-                        className="inline-flex items-center rounded-md bg-brand-500 text-white px-2 py-1 text-sm hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMarkAsPlayedNow(instrumentType);
-                        }}
-                        disabled={loading}
-                        title="Mark this instrument as played"
-                      >
-                        Mark as played
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-2 py-1 text-sm hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onChangeInstruments(currentInstruments.filter(i => i !== instrumentType));
-                        const next = new Set(expandedInstruments);
-                        next.delete(instrumentType);
-                        setExpandedInstruments(next);
-                      }}
-                      disabled={loading}
-                      title="Remove this instrument"
-                    >
-                      ✕
-                    </button>
-                    <span className="text-gray-600 dark:text-gray-400 px-2">
-                      {isExpanded ? '▾' : '▸'}
-                    </span>
-                  </div>
-                </div>
-                {isExpanded && (
-                  <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800">
-                    {filteredMyInstruments && filteredMyInstruments.length > 0 && (
-                      <div>
-                        <label htmlFor={`my-instrument-${instrumentType}`} className="block text-sm font-medium text-gray-700 dark:text-gray-100">My instrument</label>
-                        <select
-                          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-                          name="myInstrumentUid"
-                          value={form.myInstrumentUid || ''}
-                          onChange={onChange}
-                          disabled={loading}
-                        >
-                          <option value="">Select my instrument</option>
-                          {filteredMyInstruments.map(mi => (
-                            <option key={mi.uid} value={mi.uid}>{mi.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="block text-sm font-medium text-gray-700 dark:text-gray-100">Difficulty (1-5)</span>
-                        <div className="flex items-center gap-1" role="radiogroup" aria-label="Difficulty" aria-live="polite">
-                          {[1,2,3,4,5].map(n => {
-                            const current = form.instrumentDifficulty ? form.instrumentDifficulty[instrumentType] : null;
-                            const hovered = hoveredDifficulty[instrumentType];
-                            const displayLevel = typeof hovered === 'number' ? hovered : current;
-                            const active = typeof displayLevel === 'number' && n <= displayLevel;
-                            return (
-                              <button
-                                key={n}
-                                type="button"
-                                className={`text-lg leading-none ${active ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 focus:outline-none`}
-                                onClick={() => {
-                                  const next = current === n ? null : n;
-                                  onSetInstrumentDifficulty?.(instrumentType, next);
-                                }}
-                                onMouseEnter={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: n }))}
-                                onMouseLeave={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: null }))}
-                                disabled={loading}
-                                aria-pressed={active}
-                                aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                              >
-                                ★
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {getAvailableTunings(instrumentType).length > 0 && (
-                      <div>
-                        <label htmlFor={`tuning-${instrumentType}`} className="block text-sm font-medium text-gray-700 dark:text-gray-100">Tuning</label>
-                        <select
-                          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-                          value={(form.instrumentTuning && form.instrumentTuning[instrumentType] !== undefined && form.instrumentTuning[instrumentType] !== null)
-                            ? form.instrumentTuning[instrumentType]
-                            : ''}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? null : e.target.value;
-                            onSetInstrumentTuning?.(instrumentType, val);
-                          }}
-                          disabled={loading}
-                        >
-                          <option value="">Select tuning</option>
-                          {getAvailableTunings(instrumentType).map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-
-                    {instrumentTechniques && instrumentTechniques.length > 0 && (
-                      <div>
-                        <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Techniques</span>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {instrumentTechniques.map(technique => (
-                            <label
-                              key={technique}
-                              className="flex items-center gap-2 rounded-md px-2 py-1 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={currentTechniques.includes(technique)}
-                                onChange={() => onToggleTechnique(technique)}
-                                disabled={loading}
-                                className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
-                              />
-                              <span className="text-sm text-gray-700 dark:text-gray-100 truncate">{technique}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Links</span>
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          {(form.instrumentLinks?.[instrumentType] ?? []).map((lnk, idx) => (
-                            <div
-                              key={`${instrumentType}-link-${lnk.url}-${lnk.label ?? ''}`}
-                              className="inline-flex items-stretch overflow-hidden rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700"
-                            >
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-2 px-3 py-1 text-sm text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50"
-                                onClick={() => {
-                                  const u = (lnk.url || '').trim();
-                                  if (u && (u.startsWith('http://') || u.startsWith('https://'))) {
-                                    window.open(u, '_blank');
-                                  }
-                                }}
-                                title={lnk.label || lnk.url}
-                                disabled={loading}
-                              >
-                                <span className="truncate max-w-[11rem]">{lnk.label || lnk.url}</span>
-                              </button>
-                              <button
-                                type="button"
-                                className="inline-flex items-center justify-center px-2 text-gray-700 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border-l border-gray-300 dark:border-gray-600"
-                                onClick={() => {
-                                  const currentLinks = form.instrumentLinks?.[instrumentType] ?? [];
-                                  const nextLinks = currentLinks.filter((_, i) => i !== idx);
-                                  if (onSetInstrumentLinksForInstrument) {
-                                    onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
-                                  }
-                                }}
-                                disabled={loading}
-                                title="Remove link"
-                              >
-                                <span className="sr-only">Remove link</span>
-                                <span aria-hidden="true">✕</span>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-                            type="text"
-                            placeholder="Label (ex, Tabs video)"
-                            value={(newLinkInputs[instrumentType]?.label) || ''}
-                            onChange={(e) => setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), label: e.target.value } }))}
-                            disabled={loading}
-                          />
-                          <input
-                            className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-                            type="url"
-                            placeholder="https://example.com"
-                            value={(newLinkInputs[instrumentType]?.url) || ''}
-                            onChange={(e) => setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), url: e.target.value } }))}
-                            disabled={loading}
-                          />
-                          <button
-                            type="button"
-                            className="inline-flex items-center rounded-md bg-brand-500 text-white px-2 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                            onClick={() => {
-                              const val = newLinkInputs[instrumentType] || { label: '', url: '' };
-                              const url = (val.url || '').trim();
-                              if (!url) return;
-                              const label = (val.label || '').trim();
-                              const currentLinks = form.instrumentLinks?.[instrumentType] ?? [];
-                              const nextLinks = [...currentLinks, { url, label: label || undefined }];
-                              if (onSetInstrumentLinksForInstrument) {
-                                onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
-                              }
-                              setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { label: '', url: '' } }));
-                            }}
-                            disabled={loading}
-                          >
-                            Add link
-                          </button>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Add resources for this instrument (videos, tabs, lessons).</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          
-          <div>
-            <label htmlFor="add-instrument" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Add an instrument</label>
-            <select
-              id="add-instrument"
-              value={selectedInstrumentType}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value && !currentInstruments.includes(value)) {
-                  onChangeInstruments([...currentInstruments, value]);
-                  setExpandedInstruments(new Set([...expandedInstruments, value]));
-                }
-                setSelectedInstrumentType('');
-              }}
-              className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-              disabled={loading}
-            >
-              <option value="">Select an instrument to add</option>
-              {instrumentTypeOptions.filter(inst => !currentInstruments.includes(inst)).map(inst => (
-                <option key={inst} value={inst}>{inst}</option>
-              ))}
-            </select>
-          </div>
+        <SongFormInstruments
+          currentInstruments={currentInstruments}
+          instrumentDifficulty={form.instrumentDifficulty || {}}
+          instrumentTuning={form.instrumentTuning || {}}
+          currentTechniques={currentTechniques}
+          instrumentLinks={form.instrumentLinks || null}
+          myInstrumentUid={form.myInstrumentUid}
+          onChangeInstruments={onChangeInstruments}
+          onSetInstrumentDifficulty={onSetInstrumentDifficulty}
+          onSetInstrumentTuning={onSetInstrumentTuning}
+          onToggleTechnique={onToggleTechnique}
+          onSetInstrumentLinksForInstrument={onSetInstrumentLinksForInstrument}
+          onSetMyInstrumentUid={onSetMyInstrumentUid}
+          onMarkAsPlayedNow={onMarkAsPlayedNow}
+          myInstruments={myInstruments}
+          songPlays={songPlays}
+          formatLastPlayed={formatLastPlayed}
+          mode={mode}
+          loading={loading}
+          expandedInstruments={expandedInstruments}
+          setExpandedInstruments={setExpandedInstruments}
+        />
+        
+        <div className="mt-4">
+          <label htmlFor="add-instrument" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Add an instrument</label>
+          <select
+            id="add-instrument"
+            value={selectedInstrumentType}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value && !currentInstruments.includes(value)) {
+                onChangeInstruments([...currentInstruments, value]);
+                setExpandedInstruments(new Set([...expandedInstruments, value]));
+              }
+              setSelectedInstrumentType('');
+            }}
+            className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+            disabled={loading}
+          >
+            <option value="">Select an instrument to add</option>
+            {instrumentTypeOptions.filter(inst => !currentInstruments.includes(inst)).map(inst => (
+              <option key={inst} value={inst}>{inst}</option>
+            ))}
+          </select>
         </div>
       </div>
       

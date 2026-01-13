@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
+import SongsList from '../components/SongsList';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
@@ -398,6 +399,40 @@ function Songs() {
     } catch { /* ignore */ }
   }, [sortDirection]);
 
+  // When returning to the list page, reload songs from server
+  useEffect(() => {
+    if (page === 'list') {
+      const reloadData = async () => {
+        try {
+          const data = await songService.getAllSongs();
+          setSongs(data);
+
+          // Reload playlists
+          const playlists = await playlistService.getAllPlaylists();
+          setPlaylists(playlists);
+
+          // Reload song plays
+          const playsMap = new Map<string, SongPlay[]>();
+          await Promise.all(
+            data.map(async (song) => {
+              try {
+                const plays = await songPlayService.getPlays(song.uid);
+                playsMap.set(song.uid, plays);
+              } catch (err) {
+                console.error(`Failed to load plays for ${song.uid}:`, err);
+                playsMap.set(song.uid, []);
+              }
+            })
+          );
+          setSongPlays(playsMap);
+        } catch (err) {
+          console.error('Error reloading data:', err);
+        }
+      };
+      reloadData();
+    }
+  }, [page]);
+
   useEffect(() => {
     try {
       window.localStorage.setItem('songsSearchQuery', searchQuery);
@@ -794,7 +829,21 @@ function Songs() {
         setEditingUid(null);
       } else {
         const newSong = await songService.createSong(payload);
-        setSongs([...songs, newSong]);
+
+        // Add new song to selected playlists
+        await Promise.all(
+          playlists.map(async playlist => {
+            const shouldHaveSong = selectedPlaylistUids.has(playlist.uid);
+
+            if (shouldHaveSong) {
+              const nextSongUids = [...(playlist.songUids || []), newSong.uid];
+              await playlistService.updatePlaylist(playlist.uid, { songUids: nextSongUids });
+            }
+          })
+        );
+
+        // Reset playlist filter so the new song is visible
+        setPlaylistFilter('');
       }
 
       setForm(initialSong);
@@ -1046,7 +1095,7 @@ function Songs() {
   const availableTechniqueFilters = instrumentFilter ? instrumentTechniquesMap[instrumentFilter] || [] : [];
   const availableTuningFilters = instrumentFilter ? instrumentTuningsMap[instrumentFilter] || [] : [];
   const tuningFilterOptions = availableTuningFilters.filter(opt => opt.value);
-  const showTuningFilters = instrumentFilter && instrumentFilter !== 'Drums';
+  const showTuningFilters = !!(instrumentFilter && instrumentFilter !== 'Drums');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
@@ -1087,675 +1136,98 @@ function Songs() {
       {toastMessage}
 
       {page === 'list' ? (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-            <div className="flex flex-col lg:flex-row gap-6 items-start">
-              <aside
-                id="songs-sidebar"
-                className={`${sidebarExpanded ? 'w-full lg:w-80' : 'w-12 lg:w-12'} shrink-0 min-w-[48px] overflow-hidden transition-all duration-300 card-base glass-effect lg:sticky lg:top-24`}
-                aria-hidden={false}
-              >
-                {/* Collapsed rail shows only toggle button */}
-                {!sidebarExpanded ? (
-                  <div className="p-2 flex items-center justify-center">
-                    <button
-                      type="button"
-                      className="btn-secondary text-xs px-2 py-1"
-                      aria-label="Expand sidebar"
-                      onClick={() => setSidebarExpanded(true)}
-                    >
-                      »
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
-                        {hasActiveFilters && (
-                          <button
-                            type="button"
-                            className="btn-secondary text-xs px-2 py-1"
-                            onClick={clearAllFilters}
-                          >
-                            Clear all
-                          </button>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-secondary text-xs px-2 py-1"
-                        aria-label="Collapse sidebar"
-                        onClick={() => setSidebarExpanded(false)}
-                      >
-                        «
-                      </button>
-                    </div>
-                    <div className="card-base">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                        aria-expanded={filtersAccordionOpen}
-                        onClick={() => setFiltersAccordionOpen(prev => !prev)}
-                      >
-                        <span>Instrument filters</span>
-                        <span className="text-xl">{filtersAccordionOpen ? '▾' : '▴'}</span>
-                      </button>
-                      {filtersAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                          <div>
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by instrument</div>
-                            <select
-                              value={instrumentFilter}
-                              onChange={(e) => setInstrumentFilter(e.target.value)}
-                              className="input-base text-sm"
-                            >
-                              <option value="">All instruments</option>
-                              {instrumentTypeOptions.map(inst => (
-                                <option key={inst} value={inst}>{inst}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by my instrument</div>
-                            <select
-                              value={myInstrumentFilter}
-                              onChange={(e) => setMyInstrumentFilter(e.target.value)}
-                              className="input-base text-sm"
-                            >
-                              <option value="">All my instruments</option>
-                              {myInstruments.map(mi => (
-                                <option key={mi.uid} value={mi.uid}>{mi.type ? `${mi.type} - ${mi.name}` : mi.name}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div className="pt-2">
-                            <button
-                              type="button"
-                              className="btn-secondary text-xs"
-                              onClick={() => {
-                                setInstrumentFilter('');
-                                setMyInstrumentFilter('');
-                                setInstrumentDifficultyFilter('');
-                              }}
-                            >
-                              Clear filters
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-base mt-3">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                        aria-expanded={playlistAccordionOpen}
-                        onClick={() => setPlaylistAccordionOpen(prev => !prev)}
-                      >
-                        <span>Playlist filters</span>
-                        <span className="text-xl">{playlistAccordionOpen ? '▾' : '▴'}</span>
-                      </button>
-                      {playlistAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by playlist</div>
-                          <select
-                            className="input-base text-sm"
-                            value={playlistFilter}
-                            onChange={e => setPlaylistFilter(e.target.value)}
-                          >
-                            <option value="">All playlists</option>
-                            {playlists.map(playlist => (
-                              <option key={playlist.uid} value={playlist.uid}>{playlist.name}</option>
-                            ))}
-                          </select>
-                          {playlistFilter && (
-                            <div className="pt-1">
-                              <button
-                                type="button"
-                                className="btn-secondary text-xs"
-                                onClick={() => setPlaylistFilter('')}
-                              >
-                                Clear filter
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="card-base mt-3">
-                      <div className="p-4">
-                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
-                        <select
-                          value={instrumentDifficultyFilter === '' ? '' : instrumentDifficultyFilter}
-                          onChange={(e) => {
-                            const val = e.target.value === '' ? '' : Number(e.target.value);
-                            setInstrumentDifficultyFilter(val as number | '');
-                          }}
-                          className="input-base text-sm"
-                          disabled={!instrumentFilter}
-                        >
-                          <option value="">All difficulties</option>
-                          {[1,2,3,4,5].map(n => (
-                            <option key={n} value={n}>{`Up to ${n} ★`}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    {showTuningFilters && (
-                      <div className="card-base mt-3">
-                        <button
-                          type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                          aria-expanded={tuningAccordionOpen}
-                          onClick={() => setTuningAccordionOpen(prev => !prev)}
-                        >
-                          <span>Tuning filters</span>
-                          <span className="text-xl">{tuningAccordionOpen ? '▾' : '▴'}</span>
-                        </button>
-                        {tuningAccordionOpen && (
-                          <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
-                            {tuningFilterOptions.length === 0 ? (
-                              <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {instrumentFilter}.</p>
-                            ) : (
-                              <select
-                                className="input-base text-sm"
-                                value={tuningFilter}
-                                onChange={e => setTuningFilter(e.target.value)}
-                              >
-                                <option value="">All tunings</option>
-                                {tuningFilterOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {instrumentFilter && (
-                      <div className="card-base mt-3">
-                        <button
-                          type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                          aria-expanded={techniqueAccordionOpen}
-                          onClick={() => setTechniqueAccordionOpen(prev => !prev)}
-                        >
-                          <span>Technique filters</span>
-                          <span className="text-xl">{techniqueAccordionOpen ? '▾' : '▴'}</span>
-                        </button>
-                        {techniqueAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by technique</div>
-                          {availableTechniqueFilters.length === 0 ? (
-                            <p className="text-sm text-gray-600 dark:text-gray-400">No techniques available for {instrumentFilter}.</p>
-                          ) : (
-                            <>
-                              <div className="flex flex-col gap-2">
-                                {availableTechniqueFilters.map(tech => (
-                                  <label key={tech} className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
-                                      checked={techniqueFilters.has(tech)}
-                                      onChange={() => toggleTechniqueFilter(tech)}
-                                    />
-                                    <span className="cursor-pointer">{tech}</span>
-                                  </label>
-                                ))}
-                              </div>
-                              <div className="mt-3">
-                                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
-                                <div className="flex items-center gap-3">
-                                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name="technique-match-mode"
-                                      value="all"
-                                      className="h-3 w-3"
-                                      checked={techniqueMatchMode === 'all'}
-                                      onChange={() => setTechniqueMatchMode('all')}
-                                    />
-                                    <span>All</span>
-                                  </label>
-                                  <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                                    <input
-                                      type="radio"
-                                      name="technique-match-mode"
-                                      value="any"
-                                      className="h-3 w-3"
-                                      checked={techniqueMatchMode === 'any'}
-                                      onChange={() => setTechniqueMatchMode('any')}
-                                    />
-                                    <span>Any</span>
-                                  </label>
-                                </div>
-                              </div>
-                              <div className="mt-3">
-                                <button
-                                  type="button"
-                                  className="btn-secondary text-xs"
-                                  onClick={() => setTechniqueFilters(new Set())}
-                                >
-                                  Clear filters
-                                </button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        )}
-                      </div>
-                    )}
-                    <div className="card-base mt-3">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                        aria-expanded={genreAccordionOpen}
-                        onClick={() => setGenreAccordionOpen(prev => !prev)}
-                      >
-                        <span>Genre filters</span>
-                        <span className="text-xl">{genreAccordionOpen ? '▾' : '▴'}</span>
-                      </button>
-                      {genreAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by genre</div>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            {genreOptions.map(genre => (
-                              <label key={genre} className="inline-flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
-                                  checked={genreFilters.has(genre)}
-                                  onChange={() => toggleGenreFilter(genre)}
-                                />
-                                <span className="truncate">{genre}</span>
-                              </label>
-                            ))}
-                          </div>
-                          <div className="mt-3">
-                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
-                            <div className="flex items-center gap-3">
-                              <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="genre-match-mode"
-                                  value="all"
-                                  className="h-3 w-3"
-                                  checked={genreMatchMode === 'all'}
-                                  onChange={() => setGenreMatchMode('all')}
-                                />
-                                <span>All</span>
-                              </label>
-                              <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name="genre-match-mode"
-                                  value="any"
-                                  className="h-3 w-3"
-                                  checked={genreMatchMode === 'any'}
-                                  onChange={() => setGenreMatchMode('any')}
-                                />
-                                <span>Any</span>
-                              </label>
-                            </div>
-                          </div>
-                          <div className="mt-3">
-                            <button
-                              type="button"
-                              className="btn-secondary text-xs"
-                              onClick={() => setGenreFilters(new Set())}
-                            >
-                              Clear filters
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-base mt-3">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                        aria-expanded={keyAccordionOpen}
-                        onClick={() => setKeyAccordionOpen(prev => !prev)}
-                      >
-                        <span>Key filters</span>
-                        <span className="text-xl">{keyAccordionOpen ? '▾' : '▴'}</span>
-                      </button>
-                      {keyAccordionOpen && (
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                          <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by key</div>
-                          <select
-                            className="input-base text-sm"
-                            value={keyFilter}
-                            onChange={e => setKeyFilter(e.target.value)}
-                          >
-                            <option value="">All keys</option>
-                            <option value="C">C</option>
-                            <option value="C#">C#</option>
-                            <option value="Db">Db</option>
-                            <option value="D">D</option>
-                            <option value="Eb">Eb</option>
-                            <option value="E">E</option>
-                            <option value="F">F</option>
-                            <option value="F#">F#</option>
-                            <option value="Gb">Gb</option>
-                            <option value="G">G</option>
-                            <option value="Ab">Ab</option>
-                            <option value="A">A</option>
-                            <option value="Bb">Bb</option>
-                            <option value="B">B</option>
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                    <div className="card-base mt-3">
-                      <button
-                        type="button"
-                          className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                        aria-expanded={bpmAccordionOpen}
-                        onClick={() => setBpmAccordionOpen(prev => !prev)}
-                      >
-                        <span>BPM filters</span>
-                        <span className="text-xl">{bpmAccordionOpen ? '▾' : '▴'}</span>
-                      </button>
-                      {bpmAccordionOpen && (
-                      <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by BPM</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label htmlFor="bpm-min" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Min</label>
-                            <input
-                              id="bpm-min"
-                              type="number"
-                              min={1}
-                              placeholder="e.g. 90"
-                              className="input-base text-sm"
-                              value={bpmMinFilter}
-                              onChange={e => setBpmMinFilter(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="bpm-max" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Max</label>
-                            <input
-                              id="bpm-max"
-                              type="number"
-                              min={1}
-                              placeholder="e.g. 140"
-                              className="input-base text-sm"
-                              value={bpmMaxFilter}
-                              onChange={e => setBpmMaxFilter(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      )}
-                    </div>
-                    <div className="card-base mt-3">
-                      <button
-                        type="button"
-                        className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
-                        aria-expanded={pitchAccordionOpen}
-                        onClick={() => setPitchAccordionOpen(prev => !prev)}
-                      >
-                        <span>Pitch standard filters</span>
-                        <span className="text-xl">{pitchAccordionOpen ? '▾' : '▴'}</span>
-                      </button>
-                      {pitchAccordionOpen && (
-                      <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by pitch standard (Hz)</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label htmlFor="pitch-min" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Min</label>
-                            <input
-                              id="pitch-min"
-                              type="number"
-                              min={400}
-                              max={500}
-                              placeholder="e.g. 440"
-                              className="input-base text-sm"
-                              value={pitchStandardMinFilter}
-                              onChange={e => setPitchStandardMinFilter(e.target.value)}
-                            />
-                          </div>
-                          <div>
-                            <label htmlFor="pitch-max" className="block text-xs text-gray-700 dark:text-gray-300 mb-2">Max</label>
-                            <input
-                              id="pitch-max"
-                              type="number"
-                              min={400}
-                              max={500}
-                              placeholder="e.g. 452"
-                              className="input-base text-sm"
-                              value={pitchStandardMaxFilter}
-                              onChange={e => setPitchStandardMaxFilter(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </aside>
-              <div className="flex-1 space-y-4">
-                <div className="card-base glass-effect p-4 sm:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-semibold text-gray-900">Song list</h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Manage your songs, filters, and playlists.</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={() => {
-                        setForm(initialSong);
-                        setEditingUid(null);
-                        setPage('form');
-                      }}
-                      disabled={loading}
-                    >
-                      Add a song
-                    </button>
-                  </div>
-                  <div className="mt-4 relative">
-                    <input
-                      type="text"
-                      placeholder="Search by title, artist, or album..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      className="input-base pr-10"
-                    />
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
-                        aria-label="Clear search"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {selectedSongs.size > 0 && (
-                  <div className="card-base glass-effect p-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{selectedSongs.size} song(s) selected</span>
-                      <div className="flex flex-wrap gap-2">
-                        <div className="relative">
-                          <button
-                            type="button"
-                            className="btn-primary text-sm px-3 py-1.5"
-                            onClick={() => setBulkPlaylistOpen(prev => !prev)}
-                            disabled={loading || playlists.length === 0}
-                          >
-                            Add to playlist
-                          </button>
-                          {bulkPlaylistOpen && (
-                            <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
-                                <button
-                                  type="button"
-                                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                                  onClick={() => setBulkPlaylistOpen(false)}
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                              {playlists.length === 0 ? (
-                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                  No playlists found.{' '}
-                                  <Link to="/my-playlists" className="text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">Create one</Link>
-                                </p>
-                              ) : (
-                                <>
-                                  <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
-                                    {playlists.map(pl => (
-                                      <label
-                                        key={pl.uid}
-                                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
-                                      >
-                                        <input
-                                          type="checkbox"
-                                          checked={bulkPlaylistSelection.has(pl.uid)}
-                                          onChange={() => toggleBulkPlaylistSelection(pl.uid)}
-                                          className="rounded border-gray-300 accent-brand-500 dark:accent-brand-400"
-                                        />
-                                        <span className="text-sm text-gray-900 dark:text-gray-100">{pl.name}</span>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">{(pl.songUids || []).length}</span>
-                                      </label>
-                                    ))}
-                                  </div>
-                                  <div className="flex justify-end gap-2">
-                                    <button
-                                      type="button"
-                                      className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                      onClick={() => setBulkPlaylistOpen(false)}
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="text-sm px-3 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
-                                      onClick={handleApplySelectedToPlaylists}
-                                      disabled={bulkPlaylistSelection.size === 0 || loading}
-                                    >
-                                      Add
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {instrumentFilter && (
-                          <button
-                            type="button"
-                            className="btn-primary text-sm px-3 py-1.5"
-                            onClick={handleMarkSelectedAsPlayedNow}
-                            disabled={loading}
-                          >
-                            {`Mark as played on ${instrumentFilter}`}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 disabled:opacity-50"
-                          onClick={handleDeleteSelected}
-                          disabled={loading}
-                        >
-                          Delete selected
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {loading ? (
-                  <div className="card-base p-6 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
-                ) : filteredSongs.length === 0 ? (
-                  <div className="card-base p-6 text-center text-gray-600 dark:text-gray-400">
-                    {searchQuery ? 'No songs match your search.' : 'No songs saved.'}
-                  </div>
-                ) : (
-                  <div className="card-base overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50 dark:bg-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm">
-                          <tr>
-                            <th className="text-center p-2 border-b dark:border-gray-700 w-12">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
-                                checked={allDisplayedSelected}
-                                onChange={toggleSelectAll}
-                                disabled={loading}
-                                title={allDisplayedSelected ? "Deselect all" : "Select all"}
-                              />
-                            </th>
-                            <SortHeader column="artist" label="Artist" />
-                            <SortHeader column="title" label="Title" />
-                            <SortHeader column="lastPlayed" label="Last played" />
-                            <th className="text-left p-2 border-b dark:border-gray-700">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {displayedSongs.map(song => (
-                            <tr
-                              key={song.uid}
-                              className={`border-b dark:border-gray-700 cursor-pointer ${selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                              onClick={() => toggleSelectSong(song.uid)}
-                            >
-                              <td
-                                className="p-2 text-center w-12"
-                                onClick={e => e.stopPropagation()}
-                                onKeyDown={e => e.stopPropagation()}
-                                tabIndex={-1}
-                              >
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
-                                  checked={selectedSongs.has(song.uid)}
-                                  onChange={() => toggleSelectSong(song.uid)}
-                                  disabled={loading}
-                                />
-                              </td>
-                              <td className="p-2 align-middle max-w-xs truncate" title={song.artist}>{song.artist}</td>
-                              <td className="p-2 align-middle max-w-sm truncate" title={song.title}>{song.title}</td>
-                              <td className="p-2 align-middle max-w-32">
-                                {instrumentFilter ? formatLastPlayed(getLastPlayedForSong(song.uid)) : 'Select instrument'}
-                              </td>
-                              <td className="p-2 align-middle">
-                                <button
-                                  type="button"
-                                  className="btn-secondary text-xs"
-                                  onClick={() => {
-                                    setEditingUid(song.uid);
-                                    setForm({
-                                      ...song,
-                                      instrument: Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []),
-                                      technique: Array.isArray(song.technique) ? song.technique : [],
-                                      genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
-                                    });
-                                    setPage('form');
-                                  }}
-                                  disabled={loading}
-                                >
-                                  Edit
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+        <SongsList
+          songs={songs}
+          filteredSongs={filteredSongs}
+          displayedSongs={displayedSongs}
+          loading={loading}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          instrumentFilter={instrumentFilter}
+          setInstrumentFilter={setInstrumentFilter}
+          myInstrumentFilter={myInstrumentFilter}
+          setMyInstrumentFilter={setMyInstrumentFilter}
+          instrumentDifficultyFilter={instrumentDifficultyFilter}
+          setInstrumentDifficultyFilter={setInstrumentDifficultyFilter}
+          tuningFilter={tuningFilter}
+          setTuningFilter={setTuningFilter}
+          technicianFilters={techniqueFilters}
+          toggleTechniqueFilter={toggleTechniqueFilter}
+          techniqueMatchMode={techniqueMatchMode}
+          setTechniqueMatchMode={setTechniqueMatchMode}
+          genreFilters={genreFilters}
+          toggleGenreFilter={toggleGenreFilter}
+          genreMatchMode={genreMatchMode}
+          setGenreMatchMode={setGenreMatchMode}
+          keyFilter={keyFilter}
+          setKeyFilter={setKeyFilter}
+          bpmMinFilter={bpmMinFilter}
+          setBpmMinFilter={setBpmMinFilter}
+          bpmMaxFilter={bpmMaxFilter}
+          setBpmMaxFilter={setBpmMaxFilter}
+          pitchStandardMinFilter={pitchStandardMinFilter}
+          setPitchStandardMinFilter={setPitchStandardMinFilter}
+          pitchStandardMaxFilter={pitchStandardMaxFilter}
+          setPitchStandardMaxFilter={setPitchStandardMaxFilter}
+          playlistFilter={playlistFilter}
+          setPlaylistFilter={setPlaylistFilter}
+          selectedSongs={selectedSongs}
+          sidebarExpanded={sidebarExpanded}
+          setSidebarExpanded={setSidebarExpanded}
+          filtersAccordionOpen={filtersAccordionOpen}
+          setFiltersAccordionOpen={setFiltersAccordionOpen}
+          playlistAccordionOpen={playlistAccordionOpen}
+          setPlaylistAccordionOpen={setPlaylistAccordionOpen}
+          tuningAccordionOpen={tuningAccordionOpen}
+          setTuningAccordionOpen={setTuningAccordionOpen}
+          techniqueAccordionOpen={techniqueAccordionOpen}
+          setTechniqueAccordionOpen={setTechniqueAccordionOpen}
+          genreAccordionOpen={genreAccordionOpen}
+          setGenreAccordionOpen={setGenreAccordionOpen}
+          keyAccordionOpen={keyAccordionOpen}
+          setKeyAccordionOpen={setKeyAccordionOpen}
+          bpmAccordionOpen={bpmAccordionOpen}
+          setBpmAccordionOpen={setBpmAccordionOpen}
+          pitchAccordionOpen={pitchAccordionOpen}
+          setPitchAccordionOpen={setPitchAccordionOpen}
+          bulkPlaylistOpen={bulkPlaylistOpen}
+          setBulkPlaylistOpen={setBulkPlaylistOpen}
+          playlists={playlists}
+          myInstruments={myInstruments}
+          instrumentTypeOptions={instrumentTypeOptions}
+          tuningFilterOptions={tuningFilterOptions}
+          genreOptions={genreOptions}
+          availableTechniqueFilters={availableTechniqueFilters}
+          allDisplayedSelected={allDisplayedSelected}
+          hasActiveFilters={hasActiveFilters}
+          showTuningFilters={showTuningFilters}
+          bulkPlaylistSelection={bulkPlaylistSelection}
+          toggleSelectSong={toggleSelectSong}
+          toggleSelectAll={toggleSelectAll}
+          toggleBulkPlaylistSelection={toggleBulkPlaylistSelection}
+          handleApplySelectedToPlaylists={handleApplySelectedToPlaylists}
+          handleMarkSelectedAsPlayedNow={handleMarkSelectedAsPlayedNow}
+          handleDeleteSelected={handleDeleteSelected}
+          clearAllFilters={clearAllFilters}
+          onEdit={(song) => {
+            setEditingUid(song.uid);
+            setForm({
+              ...song,
+              instrument: Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []),
+              technique: Array.isArray(song.technique) ? song.technique : [],
+              genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
+            });
+            setPage('form');
+          }}
+          onAddNew={() => {
+            setForm(initialSong);
+            setEditingUid(null);
+            setPage('form');
+          }}
+          getLastPlayedForSong={getLastPlayedForSong}
+          formatLastPlayed={formatLastPlayed}
+          SortHeader={SortHeader}
+        />
       ) : (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="card-base glass-effect p-6">

@@ -1,99 +1,365 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 import type { Song } from '../services/songService';
+import type { ReactNode } from 'react';
+import SongsSidebar from './SongsSidebar';
 
-type SongsListProps = {
+export interface SongsListProps {
+  // State
   songs: Song[];
+  filteredSongs: Song[];
+  displayedSongs: Song[];
   loading: boolean;
-  selectedSongs: Set<string>;
-  sortColumn: string | null;
-  sortDirection: 'asc' | 'desc';
-  sidebarExpanded: boolean;
-  // Filters
+  
+  // Search & filters
   searchQuery: string;
   instrumentFilter: string;
   myInstrumentFilter: string;
-  instrumentDifficultyFilter: number | null;
+  instrumentDifficultyFilter: number | '';
   tuningFilter: string;
+  technicianFilters: Set<string>;
+  techniqueMatchMode: 'all' | 'any';
+  genreFilters: Set<string>;
+  genreMatchMode: 'all' | 'any';
   keyFilter: string;
   bpmMinFilter: string;
   bpmMaxFilter: string;
   pitchStandardMinFilter: string;
   pitchStandardMaxFilter: string;
   playlistFilter: string;
-  genreFilters: Set<string>;
-  techniqueFilters: Set<string>;
-  instrumentMatchMode: 'any' | 'all';
-  hasActiveFilters: boolean;
-  filteredAndSortedSongs: Song[];
-  songPlays: Map<string, any>;
-  // Handlers
-  onToggleSelectSong: (uid: string) => void;
-  onToggleSelectAll: () => void;
-  onSortClick: (column: string) => void;
-  onToggleSidebar: () => void;
-  onEdit: (song: Song) => void;
-  onDelete: (uid: string) => void;
-  onMarkSelectedAsPlayedNow: () => void;
-  onToggleBulkPlaylist: () => void;
+  selectedSongs: Set<string>;
+  
+  // UI state
+  sidebarExpanded: boolean;
+  filtersAccordionOpen: boolean;
+  playlistAccordionOpen: boolean;
+  tuningAccordionOpen: boolean;
+  techniqueAccordionOpen: boolean;
+  genreAccordionOpen: boolean;
+  keyAccordionOpen: boolean;
+  bpmAccordionOpen: boolean;
+  pitchAccordionOpen: boolean;
   bulkPlaylistOpen: boolean;
+  
+  // Data
+  playlists: Array<{ uid: string; name: string; songUids?: string[] }>;
+  myInstruments: Array<{ uid: string; type?: string; name: string }>;
+  instrumentTypeOptions: string[];
+  tuningFilterOptions: Array<{ value: string; label: string }>;
+  genreOptions: string[];
+  availableTechniqueFilters: string[];
+  allDisplayedSelected: boolean;
+  hasActiveFilters: boolean;
+  showTuningFilters: boolean;
   bulkPlaylistSelection: Set<string>;
-  onToggleBulkPlaylistSelection: (uid: string) => void;
-  onApplySelectedToPlaylists: () => void;
-  playlists: any[];
-  // Others
-  myInstruments: any[];
-  instrumentTypeOptions: any[];
-  formatLastPlayed: (date: string | undefined) => string;
+  
+  // Handlers
+  setSearchQuery: (q: string) => void;
+  setInstrumentFilter: (f: string) => void;
+  setMyInstrumentFilter: (f: string) => void;
+  setInstrumentDifficultyFilter: (f: number | '') => void;
+  setTuningFilter: (f: string) => void;
+  toggleTechniqueFilter: (t: string) => void;
+  setTechniqueMatchMode: (m: 'all' | 'any') => void;
+  toggleGenreFilter: (g: string) => void;
+  setGenreMatchMode: (m: 'all' | 'any') => void;
+  setKeyFilter: (f: string) => void;
+  setBpmMinFilter: (v: string) => void;
+  setBpmMaxFilter: (v: string) => void;
+  setPitchStandardMinFilter: (v: string) => void;
+  setPitchStandardMaxFilter: (v: string) => void;
+  setPlaylistFilter: (f: string) => void;
+  setSidebarExpanded: (e: boolean) => void;
+  setFiltersAccordionOpen: (o: boolean) => void;
+  setPlaylistAccordionOpen: (o: boolean) => void;
+  setTuningAccordionOpen: (o: boolean) => void;
+  setTechniqueAccordionOpen: (o: boolean) => void;
+  setGenreAccordionOpen: (o: boolean) => void;
+  setKeyAccordionOpen: (o: boolean) => void;
+  setBpmAccordionOpen: (o: boolean) => void;
+  setPitchAccordionOpen: (o: boolean) => void;
+  setBulkPlaylistOpen: (o: boolean) => void;
+  toggleSelectSong: (uid: string) => void;
+  toggleSelectAll: () => void;
+  toggleBulkPlaylistSelection: (uid: string) => void;
+  handleApplySelectedToPlaylists: () => void;
+  handleMarkSelectedAsPlayedNow: () => void;
+  handleDeleteSelected: () => void;
+  clearAllFilters: () => void;
+  
+  // Callbacks
+  onEdit: (song: Song) => void;
+  onAddNew: () => void;
+  
+  // Additional handlers
   getLastPlayedForSong: (uid: string) => string | undefined;
-};
+  formatLastPlayed: (date: string | undefined) => string;
+  SortHeader: (props: { column: string; label: string }) => ReactNode;
+}
 
-export function SongsList(props: SongsListProps) {
-  const {
-    songs,
-    loading,
-    selectedSongs,
-    sortColumn,
-    sortDirection,
-    sidebarExpanded,
-    searchQuery,
-    instrumentFilter,
-    myInstrumentFilter,
-    instrumentDifficultyFilter,
-    tuningFilter,
-    keyFilter,
-    bpmMinFilter,
-    bpmMaxFilter,
-    pitchStandardMinFilter,
-    pitchStandardMaxFilter,
-    playlistFilter,
-    genreFilters,
-    techniqueFilters,
-    instrumentMatchMode,
-    hasActiveFilters,
-    filteredAndSortedSongs,
-    songPlays,
-    onToggleSelectSong,
-    onToggleSelectAll,
-    onSortClick,
-    onToggleSidebar,
-    onEdit,
-    onDelete,
-    onMarkSelectedAsPlayedNow,
-    onToggleBulkPlaylist,
-    bulkPlaylistOpen,
-    bulkPlaylistSelection,
-    onToggleBulkPlaylistSelection,
-    onApplySelectedToPlaylists,
-    playlists,
-    myInstruments,
-    instrumentTypeOptions,
-    formatLastPlayed,
-    getLastPlayedForSong,
-  } = props;
-
+export default function SongsList(props: SongsListProps) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-      <p>SongsList component - TODO: Extract list UI here</p>
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <SongsSidebar
+          sidebarExpanded={props.sidebarExpanded}
+          setSidebarExpanded={props.setSidebarExpanded}
+          filtersAccordionOpen={props.filtersAccordionOpen}
+          setFiltersAccordionOpen={props.setFiltersAccordionOpen}
+          playlistAccordionOpen={props.playlistAccordionOpen}
+          setPlaylistAccordionOpen={props.setPlaylistAccordionOpen}
+          tuningAccordionOpen={props.tuningAccordionOpen}
+          setTuningAccordionOpen={props.setTuningAccordionOpen}
+          techniqueAccordionOpen={props.techniqueAccordionOpen}
+          setTechniqueAccordionOpen={props.setTechniqueAccordionOpen}
+          genreAccordionOpen={props.genreAccordionOpen}
+          setGenreAccordionOpen={props.setGenreAccordionOpen}
+          keyAccordionOpen={props.keyAccordionOpen}
+          setKeyAccordionOpen={props.setKeyAccordionOpen}
+          bpmAccordionOpen={props.bpmAccordionOpen}
+          setBpmAccordionOpen={props.setBpmAccordionOpen}
+          pitchAccordionOpen={props.pitchAccordionOpen}
+          setPitchAccordionOpen={props.setPitchAccordionOpen}
+          instrumentFilter={props.instrumentFilter}
+          myInstrumentFilter={props.myInstrumentFilter}
+          instrumentDifficultyFilter={props.instrumentDifficultyFilter}
+          tuningFilter={props.tuningFilter}
+          technicianFilters={props.technicianFilters}
+          techniqueMatchMode={props.techniqueMatchMode}
+          genreFilters={props.genreFilters}
+          genreMatchMode={props.genreMatchMode}
+          keyFilter={props.keyFilter}
+          bpmMinFilter={props.bpmMinFilter}
+          bpmMaxFilter={props.bpmMaxFilter}
+          pitchStandardMinFilter={props.pitchStandardMinFilter}
+          pitchStandardMaxFilter={props.pitchStandardMaxFilter}
+          playlistFilter={props.playlistFilter}
+          setInstrumentFilter={props.setInstrumentFilter}
+          setMyInstrumentFilter={props.setMyInstrumentFilter}
+          setInstrumentDifficultyFilter={props.setInstrumentDifficultyFilter}
+          setTuningFilter={props.setTuningFilter}
+          toggleTechniqueFilter={props.toggleTechniqueFilter}
+          setTechniqueMatchMode={props.setTechniqueMatchMode}
+          toggleGenreFilter={props.toggleGenreFilter}
+          setGenreMatchMode={props.setGenreMatchMode}
+          setKeyFilter={props.setKeyFilter}
+          setBpmMinFilter={props.setBpmMinFilter}
+          setBpmMaxFilter={props.setBpmMaxFilter}
+          setPitchStandardMinFilter={props.setPitchStandardMinFilter}
+          setPitchStandardMaxFilter={props.setPitchStandardMaxFilter}
+          setPlaylistFilter={props.setPlaylistFilter}
+          playlists={props.playlists}
+          myInstruments={props.myInstruments}
+          instrumentTypeOptions={props.instrumentTypeOptions}
+          tuningFilterOptions={props.tuningFilterOptions}
+          genreOptions={props.genreOptions}
+          availableTechniqueFilters={props.availableTechniqueFilters}
+          hasActiveFilters={props.hasActiveFilters}
+          showTuningFilters={props.showTuningFilters}
+          clearAllFilters={props.clearAllFilters}
+        />
+        <div className="flex-1 space-y-4">
+          <div className="card-base glass-effect p-4 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Song list</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Manage your songs, filters, and playlists.</p>
+              </div>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={props.onAddNew}
+                disabled={props.loading}
+              >
+                Add a song
+              </button>
+            </div>
+            <div className="mt-4 relative">
+              <input
+                type="text"
+                placeholder="Search by title, artist, or album..."
+                value={props.searchQuery}
+                onChange={e => props.setSearchQuery(e.target.value)}
+                className="input-base pr-10"
+              />
+              {props.searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => props.setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+                  aria-label="Clear search"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+          {props.selectedSongs.size > 0 && (
+            <div className="card-base glass-effect p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{props.selectedSongs.size} song(s) selected</span>
+                <div className="flex flex-wrap gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="btn-primary text-sm px-3 py-1.5"
+                      onClick={() => props.setBulkPlaylistOpen(!props.bulkPlaylistOpen)}
+                      disabled={props.loading || props.playlists.length === 0}
+                    >
+                      Add to playlist
+                    </button>
+                    {props.bulkPlaylistOpen && (
+                      <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
+                          <button
+                            type="button"
+                            className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                            onClick={() => props.setBulkPlaylistOpen(false)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {props.playlists.length === 0 ? (
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            No playlists found.{' '}
+                            <Link to="/my-playlists" className="text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">Create one</Link>
+                          </p>
+                        ) : (
+                          <>
+                            <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
+                              {props.playlists.map(pl => (
+                                <label
+                                  key={pl.uid}
+                                  className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={props.bulkPlaylistSelection.has(pl.uid)}
+                                    onChange={() => props.toggleBulkPlaylistSelection(pl.uid)}
+                                    className="rounded border-gray-300 accent-brand-500 dark:accent-brand-400"
+                                  />
+                                  <span className="text-sm text-gray-900 dark:text-gray-100">{pl.name}</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">{(pl.songUids || []).length}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                onClick={() => props.setBulkPlaylistOpen(false)}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="text-sm px-3 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+                                onClick={props.handleApplySelectedToPlaylists}
+                                disabled={props.bulkPlaylistSelection.size === 0 || props.loading}
+                              >
+                                Add
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {props.instrumentFilter && (
+                    <button
+                      type="button"
+                      className="btn-primary text-sm px-3 py-1.5"
+                      onClick={props.handleMarkSelectedAsPlayedNow}
+                      disabled={props.loading}
+                    >
+                      {`Mark as played on ${props.instrumentFilter}`}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 disabled:opacity-50"
+                    onClick={props.handleDeleteSelected}
+                    disabled={props.loading}
+                  >
+                    Delete selected
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {props.loading ? (
+            <div className="card-base p-6 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
+          ) : props.filteredSongs.length === 0 ? (
+            <div className="card-base p-6 text-center text-gray-600 dark:text-gray-400">
+              {props.searchQuery ? 'No songs match your search.' : 'No songs saved.'}
+            </div>
+          ) : (
+            <div className="card-base overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 shadow-sm">
+                    <tr>
+                      <th className="text-center p-2 border-b dark:border-gray-700 w-12">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
+                          checked={props.allDisplayedSelected}
+                          onChange={props.toggleSelectAll}
+                          disabled={props.loading}
+                          title={props.allDisplayedSelected ? "Deselect all" : "Select all"}
+                        />
+                      </th>
+                      <props.SortHeader column="artist" label="Artist" />
+                      <props.SortHeader column="title" label="Title" />
+                      <props.SortHeader column="lastPlayed" label="Last played" />
+                      <th className="text-left p-2 border-b dark:border-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {props.displayedSongs.map(song => (
+                      <tr
+                        key={song.uid}
+                        className={`border-b dark:border-gray-700 cursor-pointer ${props.selectedSongs.has(song.uid) ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900 dark:hover:bg-blue-800' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                        onClick={() => props.toggleSelectSong(song.uid)}
+                      >
+                        <td
+                          className="p-2 text-center w-12"
+                          onClick={e => e.stopPropagation()}
+                          onKeyDown={e => e.stopPropagation()}
+                          tabIndex={-1}
+                        >
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 cursor-pointer accent-brand-500 dark:accent-brand-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded"
+                            checked={props.selectedSongs.has(song.uid)}
+                            onChange={() => props.toggleSelectSong(song.uid)}
+                            disabled={props.loading}
+                          />
+                        </td>
+                        <td className="p-2 align-middle max-w-xs truncate" title={song.artist}>{song.artist}</td>
+                        <td className="p-2 align-middle max-w-sm truncate" title={song.title}>{song.title}</td>
+                        <td className="p-2 align-middle max-w-32">
+                          {props.instrumentFilter ? props.formatLastPlayed(props.getLastPlayedForSong(song.uid)) : 'Select instrument'}
+                        </td>
+                        <td className="p-2 align-middle">
+                          <button
+                            type="button"
+                            className="btn-secondary text-xs"
+                            onClick={() => props.onEdit(song)}
+                            disabled={props.loading}
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
