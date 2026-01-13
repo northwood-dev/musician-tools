@@ -29,6 +29,7 @@ type SongFormProps = {
   myInstruments?: Array<{ uid: string; name: string; type?: string | null }>;
   playlistSlot?: React.ReactNode;
   suggestedAlbums?: string[];
+  suggestedArtists?: string[];
 };
 
 const keyOptions = ['C','C#','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','B'];
@@ -90,7 +91,7 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
 };
 
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [] } = props;
+  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [] } = props;
   const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
   const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
@@ -103,6 +104,8 @@ export function SongForm(props: SongFormProps) {
   const [genreSearchQuery, setGenreSearchQuery] = useState('');
   const [albumSearchOpen, setAlbumSearchOpen] = useState(false);
   const [selectedAlbumIndex, setSelectedAlbumIndex] = useState(-1);
+  const [artistSearchOpen, setArtistSearchOpen] = useState(false);
+  const [selectedArtistIndex, setSelectedArtistIndex] = useState(-1);
   // removed unused availableTechniques and filteredMyInstruments
   const allInstrumentLinks = Object.entries(form.instrumentLinks || {}).flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })));
 
@@ -222,14 +225,86 @@ export function SongForm(props: SongFormProps) {
       )}
       <div>
         <label htmlFor="song-artist" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Artist</label>
-        <input
-          id="song-artist"
-          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-          name="artist"
-          value={form.artist}
-          onChange={onChange}
-          disabled={loading}
-        />
+        <div className="relative">
+          <input
+            id="song-artist"
+            className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+            name="artist"
+            value={form.artist}
+            onChange={(e) => {
+              onChange(e);
+              if (e.target.value.length === 0) {
+                setArtistSearchOpen(suggestedArtists.length > 0);
+              } else {
+                const hasMatch = suggestedArtists.some(artist => 
+                  artist.toLowerCase().includes(e.target.value.toLowerCase())
+                );
+                setArtistSearchOpen(hasMatch);
+              }
+              setSelectedArtistIndex(-1);
+            }}
+            onKeyDown={(e) => {
+              const filteredArtists = suggestedArtists.filter(artist => 
+                !form.artist || artist.toLowerCase().includes(form.artist.toLowerCase())
+              );
+              
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setArtistSearchOpen(true);
+                setSelectedArtistIndex(prev => 
+                  prev < filteredArtists.length - 1 ? prev + 1 : prev
+                );
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedArtistIndex(prev => prev > 0 ? prev - 1 : -1);
+              } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (selectedArtistIndex >= 0 && filteredArtists[selectedArtistIndex]) {
+                  onChange({
+                    target: { name: 'artist', value: filteredArtists[selectedArtistIndex] }
+                  } as React.ChangeEvent<HTMLInputElement>);
+                  setArtistSearchOpen(false);
+                  setSelectedArtistIndex(-1);
+                }
+              } else if (e.key === 'Escape') {
+                setArtistSearchOpen(false);
+                setSelectedArtistIndex(-1);
+              }
+            }}
+            onFocus={() => setArtistSearchOpen(true)}
+            onBlur={() => setTimeout(() => setArtistSearchOpen(false), 200)}
+            disabled={loading}
+            autoComplete="off"
+          />
+          {artistSearchOpen && suggestedArtists.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
+              {suggestedArtists
+                .filter(artist => 
+                  !form.artist || artist.toLowerCase().includes(form.artist.toLowerCase())
+                )
+                .map((artist, index) => (
+                <button
+                  key={artist}
+                  type="button"
+                  className={`w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-600 last:border-b-0 ${
+                    index === selectedArtistIndex 
+                      ? 'bg-brand-100 dark:bg-brand-900/40' 
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-600'
+                  }`}
+                  onClick={() => {
+                    onChange({
+                      target: { name: 'artist', value: artist }
+                    } as React.ChangeEvent<HTMLInputElement>);
+                    setArtistSearchOpen(false);
+                    setSelectedArtistIndex(-1);
+                  }}
+                >
+                  {artist}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       <div>
         <label htmlFor="song-title" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Title</label>

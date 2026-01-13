@@ -161,6 +161,7 @@ function SongsPage() {
   const [editingSongPlays, setEditingSongPlays] = useState<SongPlay[]>([]);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
   const [suggestedAlbums, setSuggestedAlbums] = useState<string[]>([]);
+  const [suggestedArtists, setSuggestedArtists] = useState<string[]>([]);
   // Removed unused user, logout from useAuth
 
   const hasActiveFilters = Boolean(
@@ -542,6 +543,21 @@ function SongsPage() {
     setSuggestedAlbums(getSuggestedAlbums());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.artist, songs]);
+
+  // Update suggested artists when songs change
+  useEffect(() => {
+    const artists = songs
+      .map(song => song.artist)
+      .filter((artist): artist is string => !!artist && artist.trim() !== '')
+      .reduce((unique, artist) => {
+        if (!unique.includes(artist)) {
+          unique.push(artist);
+        }
+        return unique;
+      }, [] as string[])
+      .sort();
+    setSuggestedArtists(artists);
+  }, [songs]);
 
   const handleMarkSelectedAsPlayedNow = async () => {
     try {
@@ -1784,6 +1800,7 @@ function SongsPage() {
               type: i.type,
             }))}
             suggestedAlbums={suggestedAlbums}
+            suggestedArtists={suggestedArtists}
             playlistSlot={editingUid ? (
               <div className="mt-8 space-y-3">
                 <h2 className="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-100">Add to playlists</h2>
