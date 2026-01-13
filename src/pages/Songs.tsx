@@ -28,7 +28,7 @@ const initialSong: CreateSongDTO = {
   lastPlayed: undefined,
 };
 
-function SongsPage() {
+function Songs() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   const [editingUid, setEditingUid] = useState<string | null>(null);
@@ -521,8 +521,12 @@ function SongsPage() {
     }
   };
 
-  const getSuggestedAlbums = () => {
-    if (!form.artist) return [];
+  // Update suggested albums when artist changes
+  useEffect(() => {
+    if (!form.artist) {
+      setSuggestedAlbums([]);
+      return;
+    }
     // Get all unique albums from songs with the same artist
     const artistAlbums = songs
       .filter(song => song.artist?.toLowerCase().trim() === form.artist?.toLowerCase().trim())
@@ -535,13 +539,7 @@ function SongsPage() {
         return unique;
       }, [] as string[])
       .sort();
-    return artistAlbums;
-  };
-
-  // Update suggested albums when artist changes
-  useEffect(() => {
-    setSuggestedAlbums(getSuggestedAlbums());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSuggestedAlbums(artistAlbums);
   }, [form.artist, songs]);
 
   // Update suggested artists when songs change
@@ -1089,7 +1087,6 @@ function SongsPage() {
       {toastMessage}
 
       {page === 'list' ? (
-        <>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               <aside
@@ -1759,7 +1756,6 @@ function SongsPage() {
               </div>
             </div>
           </div>
-        </>
       ) : (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="card-base glass-effect p-6">
@@ -1850,4 +1846,4 @@ function SongsPage() {
   );
 }
 
-export default SongsPage;
+export default Songs;

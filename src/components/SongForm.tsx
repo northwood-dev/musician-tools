@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type React from 'react';
 import type { CreateSongDTO } from '../services/songService';
 import type { SongPlay } from '../services/songPlayService';
@@ -92,8 +92,8 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
 
 export function SongForm(props: SongFormProps) {
   const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [] } = props;
-  const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
-  const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
+  const currentInstruments = useMemo(() => Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []), [form.instrument]);
+  const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
   const [selectedInstrumentType, setSelectedInstrumentType] = useState('');
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
@@ -345,9 +345,17 @@ export function SongForm(props: SongFormProps) {
                 />
                 {genreSearchOpen && (
                   <>
-                    <div
+                    <button
+                      type="button"
                       className="fixed inset-0 z-10"
                       onClick={() => setGenreSearchOpen(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape' || e.key === 'Enter') {
+                          setGenreSearchOpen(false);
+                        }
+                      }}
+                      aria-label="Close genre dropdown"
+                      tabIndex={-1}
                     />
                     <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
                       {genreOptions

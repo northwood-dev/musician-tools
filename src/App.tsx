@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import SongsPage from './pages/SongsPage';
+import Songs from './pages/Songs';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MyInstrumentsPage from './pages/MyInstrumentsPage';
@@ -58,7 +58,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route
             path="/songs"
-            element={isAuthenticated ? <SongsPage /> : <Navigate to="/login" replace />}
+            element={isAuthenticated ? <Songs /> : <Navigate to="/login" replace />}
           />
           <Route
             path="/my-instruments"
