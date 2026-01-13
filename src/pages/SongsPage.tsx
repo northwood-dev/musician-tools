@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, type Playlist } from '../services/playlistService';
-import { toSlug } from '../utils/slug';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
 
@@ -30,7 +29,6 @@ const initialSong: CreateSongDTO = {
 };
 
 function SongsPage() {
-  const navigate = useNavigate();
   const [songs, setSongs] = useState<Song[]>([]);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   const [editingUid, setEditingUid] = useState<string | null>(null);
@@ -162,6 +160,7 @@ function SongsPage() {
   // States for editing song plays and playlists
   const [editingSongPlays, setEditingSongPlays] = useState<SongPlay[]>([]);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
+  const [suggestedAlbums, setSuggestedAlbums] = useState<string[]>([]);
   // Removed unused user, logout from useAuth
 
   const hasActiveFilters = Boolean(
@@ -520,6 +519,29 @@ function SongsPage() {
       setLoading(false);
     }
   };
+
+  const getSuggestedAlbums = () => {
+    if (!form.artist) return [];
+    // Get all unique albums from songs with the same artist
+    const artistAlbums = songs
+      .filter(song => song.artist?.toLowerCase().trim() === form.artist?.toLowerCase().trim())
+      .map(song => song.album)
+      .filter((album): album is string => !!album && album.trim() !== '')
+      .reduce((unique, album) => {
+        if (!unique.includes(album)) {
+          unique.push(album);
+        }
+        return unique;
+      }, [] as string[])
+      .sort();
+    return artistAlbums;
+  };
+
+  // Update suggested albums when artist changes
+  useEffect(() => {
+    setSuggestedAlbums(getSuggestedAlbums());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.artist, songs]);
 
   const handleMarkSelectedAsPlayedNow = async () => {
     try {
@@ -1761,6 +1783,7 @@ function SongsPage() {
               name: i.name,
               type: i.type,
             }))}
+            suggestedAlbums={suggestedAlbums}
             playlistSlot={editingUid ? (
               <div className="mt-8 space-y-3">
                 <h2 className="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-100">Add to playlists</h2>

@@ -28,6 +28,7 @@ type SongFormProps = {
   formatLastPlayed?: (dateString: string | undefined) => string;
   myInstruments?: Array<{ uid: string; name: string; type?: string | null }>;
   playlistSlot?: React.ReactNode;
+  suggestedAlbums?: string[];
 };
 
 const keyOptions = ['C','C#','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','B'];
@@ -89,7 +90,7 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
 };
 
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot } = props;
+  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [] } = props;
   const currentInstruments = Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []);
   const currentTechniques = Array.isArray(form.technique) ? form.technique : [];
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
@@ -100,6 +101,8 @@ export function SongForm(props: SongFormProps) {
   const [hoveredDifficulty, setHoveredDifficulty] = useState<Record<string, number | null>>({});
   const [genreSearchOpen, setGenreSearchOpen] = useState(false);
   const [genreSearchQuery, setGenreSearchQuery] = useState('');
+  const [albumSearchOpen, setAlbumSearchOpen] = useState(false);
+  const [selectedAlbumIndex, setSelectedAlbumIndex] = useState(-1);
   // removed unused availableTechniques and filteredMyInstruments
   const allInstrumentLinks = Object.entries(form.instrumentLinks || {}).flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })));
 
@@ -251,7 +254,7 @@ export function SongForm(props: SongFormProps) {
           <span>{detailsAccordionOpen ? '▾' : '▸'}</span>
         </button>
         {detailsAccordionOpen && (
-          <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800 overflow-hidden rounded-b-md">
+          <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800 overflow-visible rounded-b-md">
             <div>
               <label htmlFor="genres-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</label>
               <div className="relative z-30">
@@ -316,14 +319,86 @@ export function SongForm(props: SongFormProps) {
             </div>
             <div>
               <label htmlFor="song-album" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Album</label>
-              <input
-                id="song-album"
-                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
-                name="album"
-                value={typeof form.album === 'string' ? form.album : ''}
-                onChange={onChange}
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  id="song-album"
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  name="album"
+                  value={typeof form.album === 'string' ? form.album : ''}
+                  onChange={(e) => {
+                    onChange(e);
+                    if (e.target.value.length === 0) {
+                      setAlbumSearchOpen(suggestedAlbums.length > 0);
+                    } else {
+                      const hasMatch = suggestedAlbums.some(album => 
+                        album.toLowerCase().includes(e.target.value.toLowerCase())
+                      );
+                      setAlbumSearchOpen(hasMatch);
+                    }
+                    setSelectedAlbumIndex(-1);
+                  }}
+                  onKeyDown={(e) => {
+                    const filteredAlbums = suggestedAlbums.filter(album => 
+                      !form.album || album.toLowerCase().includes(form.album.toLowerCase())
+                    );
+                    
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault();
+                      setAlbumSearchOpen(true);
+                      setSelectedAlbumIndex(prev => 
+                        prev < filteredAlbums.length - 1 ? prev + 1 : prev
+                      );
+                    } else if (e.key === 'ArrowUp') {
+                      e.preventDefault();
+                      setSelectedAlbumIndex(prev => prev > 0 ? prev - 1 : -1);
+                    } else if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (selectedAlbumIndex >= 0 && filteredAlbums[selectedAlbumIndex]) {
+                        onChange({
+                          target: { name: 'album', value: filteredAlbums[selectedAlbumIndex] }
+                        } as React.ChangeEvent<HTMLInputElement>);
+                        setAlbumSearchOpen(false);
+                        setSelectedAlbumIndex(-1);
+                      }
+                    } else if (e.key === 'Escape') {
+                      setAlbumSearchOpen(false);
+                      setSelectedAlbumIndex(-1);
+                    }
+                  }}
+                  onFocus={() => setAlbumSearchOpen(true)}
+                  onBlur={() => setTimeout(() => setAlbumSearchOpen(false), 200)}
+                  disabled={loading}
+                  autoComplete="off"
+                />
+                {albumSearchOpen && suggestedAlbums.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
+                    {suggestedAlbums
+                      .filter(album => 
+                        !form.album || album.toLowerCase().includes(form.album.toLowerCase())
+                      )
+                      .map((album, index) => (
+                      <button
+                        key={album}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-600 last:border-b-0 ${
+                          index === selectedAlbumIndex 
+                            ? 'bg-brand-100 dark:bg-brand-900/40' 
+                            : 'hover:bg-gray-100 dark:hover:bg-gray-600'
+                        }`}
+                        onClick={() => {
+                          onChange({
+                            target: { name: 'album', value: album }
+                          } as React.ChangeEvent<HTMLInputElement>);
+                          setAlbumSearchOpen(false);
+                          setSelectedAlbumIndex(-1);
+                        }}
+                      >
+                        {album}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
