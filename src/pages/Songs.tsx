@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
 import SongsList from '../components/SongsList';
 import { songService, type CreateSongDTO, type Song } from '../services/songService';
@@ -160,12 +160,30 @@ function Songs() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPitchAccordionOpen') : null;
     return saved === 'false' ? false : true;
   });
+  const [timeSignatureAccordionOpen, setTimeSignatureAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTimeSignatureAccordionOpen') : null;
+    return saved === 'false' ? false : true;
+  });
+  const [modeAccordionOpen, setModeAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsModeAccordionOpen') : null;
+    return saved === 'false' ? false : true;
+  });
+  const [timeSignatureFilter, setTimeSignatureFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsTimeSignatureFilter') : null;
+    return saved || '';
+  });
+  const [modeFilter, setModeFilter] = useState<string>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsModeFilter') : null;
+    return saved || '';
+  });
   // States for editing song plays and playlists
   const [editingSongPlays, setEditingSongPlays] = useState<SongPlay[]>([]);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
   const [suggestedAlbums, setSuggestedAlbums] = useState<string[]>([]);
   const [suggestedArtists, setSuggestedArtists] = useState<string[]>([]);
   // Removed unused user, logout from useAuth
+  
+  const location = useLocation();
 
   const hasActiveFilters = Boolean(
     instrumentFilter ||
@@ -177,6 +195,8 @@ function Songs() {
     bpmMaxFilter ||
     pitchStandardMinFilter ||
     pitchStandardMaxFilter ||
+    timeSignatureFilter ||
+    modeFilter ||
     playlistFilter ||
     techniqueFilters.size > 0 ||
     genreFilters.size > 0
@@ -197,6 +217,8 @@ function Songs() {
     setBpmMaxFilter('');
     setPitchStandardMinFilter('');
     setPitchStandardMaxFilter('');
+    setTimeSignatureFilter('');
+    setModeFilter('');
     setPlaylistFilter('');
   };
 
@@ -220,6 +242,15 @@ function Songs() {
     });
   };
 
+  // Reset to list view when clicking on Songs in header
+  useEffect(() => {
+    if (location.state?.resetToList) {
+      setPage('list');
+      setEditingUid(null);
+      // Clear the state to avoid triggering again
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
 
 
@@ -355,6 +386,18 @@ function Songs() {
 
   useEffect(() => {
     try {
+      window.localStorage.setItem('songsTimeSignatureAccordionOpen', timeSignatureAccordionOpen ? 'true' : 'false');
+    } catch { /* ignore */ }
+  }, [timeSignatureAccordionOpen]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsModeAccordionOpen', modeAccordionOpen ? 'true' : 'false');
+    } catch { /* ignore */ }
+  }, [modeAccordionOpen]);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem('songsTechniqueFilters', JSON.stringify(Array.from(techniqueFilters)));
     } catch { /* ignore */ }
   }, [techniqueFilters]);
@@ -476,6 +519,18 @@ function Songs() {
       window.localStorage.setItem('songsPitchStandardMaxFilter', pitchStandardMaxFilter);
     } catch { /* ignore */ }
   }, [pitchStandardMaxFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsTimeSignatureFilter', timeSignatureFilter);
+    } catch { /* ignore */ }
+  }, [timeSignatureFilter]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsModeFilter', modeFilter);
+    } catch { /* ignore */ }
+  }, [modeFilter]);
 
   useEffect(() => {
     try {
@@ -994,8 +1049,10 @@ function Songs() {
       (pitchMin === undefined || (typeof pitch === 'number' && pitch >= pitchMin)) &&
       (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
     );
+    const passesTimeSignature = !timeSignatureFilter || song.timeSignature === timeSignatureFilter;
+    const passesMode = !modeFilter || song.mode === modeFilter;
     const passesPlaylist = !playlistFilter || (playlists.find(p => p.uid === playlistFilter)?.songUids || []).includes(song.uid);
-    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesKey && passesBpm && passesPitch && passesPlaylist;
+    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesKey && passesBpm && passesPitch && passesTimeSignature && passesMode && passesPlaylist;
   });
 
   const handleSort = (column: string) => {
@@ -1192,6 +1249,14 @@ function Songs() {
           setBpmAccordionOpen={setBpmAccordionOpen}
           pitchAccordionOpen={pitchAccordionOpen}
           setPitchAccordionOpen={setPitchAccordionOpen}
+          timeSignatureAccordionOpen={timeSignatureAccordionOpen}
+          setTimeSignatureAccordionOpen={setTimeSignatureAccordionOpen}
+          modeAccordionOpen={modeAccordionOpen}
+          setModeAccordionOpen={setModeAccordionOpen}
+          timeSignatureFilter={timeSignatureFilter}
+          setTimeSignatureFilter={setTimeSignatureFilter}
+          modeFilter={modeFilter}
+          setModeFilter={setModeFilter}
           bulkPlaylistOpen={bulkPlaylistOpen}
           setBulkPlaylistOpen={setBulkPlaylistOpen}
           playlists={playlists}

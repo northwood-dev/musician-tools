@@ -26,6 +26,8 @@ export interface SongsListProps {
   pitchStandardMinFilter: string;
   pitchStandardMaxFilter: string;
   playlistFilter: string;
+  timeSignatureFilter: string;
+  modeFilter: string;
   selectedSongs: Set<string>;
   
   // UI state
@@ -38,6 +40,8 @@ export interface SongsListProps {
   keyAccordionOpen: boolean;
   bpmAccordionOpen: boolean;
   pitchAccordionOpen: boolean;
+  timeSignatureAccordionOpen: boolean;
+  modeAccordionOpen: boolean;
   bulkPlaylistOpen: boolean;
   
   // Data
@@ -68,6 +72,8 @@ export interface SongsListProps {
   setPitchStandardMinFilter: (v: string) => void;
   setPitchStandardMaxFilter: (v: string) => void;
   setPlaylistFilter: (f: string) => void;
+  setTimeSignatureFilter: (f: string) => void;
+  setModeFilter: (f: string) => void;
   setSidebarExpanded: (e: boolean) => void;
   setFiltersAccordionOpen: (o: boolean) => void;
   setPlaylistAccordionOpen: (o: boolean) => void;
@@ -77,6 +83,8 @@ export interface SongsListProps {
   setKeyAccordionOpen: (o: boolean) => void;
   setBpmAccordionOpen: (o: boolean) => void;
   setPitchAccordionOpen: (o: boolean) => void;
+  setTimeSignatureAccordionOpen: (o: boolean) => void;
+  setModeAccordionOpen: (o: boolean) => void;
   setBulkPlaylistOpen: (o: boolean) => void;
   toggleSelectSong: (uid: string) => void;
   toggleSelectAll: () => void;
@@ -119,6 +127,10 @@ export default function SongsList(props: SongsListProps) {
           setBpmAccordionOpen={props.setBpmAccordionOpen}
           pitchAccordionOpen={props.pitchAccordionOpen}
           setPitchAccordionOpen={props.setPitchAccordionOpen}
+          timeSignatureAccordionOpen={props.timeSignatureAccordionOpen}
+          setTimeSignatureAccordionOpen={props.setTimeSignatureAccordionOpen}
+          modeAccordionOpen={props.modeAccordionOpen}
+          setModeAccordionOpen={props.setModeAccordionOpen}
           instrumentFilter={props.instrumentFilter}
           myInstrumentFilter={props.myInstrumentFilter}
           instrumentDifficultyFilter={props.instrumentDifficultyFilter}
@@ -133,6 +145,8 @@ export default function SongsList(props: SongsListProps) {
           pitchStandardMinFilter={props.pitchStandardMinFilter}
           pitchStandardMaxFilter={props.pitchStandardMaxFilter}
           playlistFilter={props.playlistFilter}
+          timeSignatureFilter={props.timeSignatureFilter}
+          modeFilter={props.modeFilter}
           setInstrumentFilter={props.setInstrumentFilter}
           setMyInstrumentFilter={props.setMyInstrumentFilter}
           setInstrumentDifficultyFilter={props.setInstrumentDifficultyFilter}
@@ -147,6 +161,8 @@ export default function SongsList(props: SongsListProps) {
           setPitchStandardMinFilter={props.setPitchStandardMinFilter}
           setPitchStandardMaxFilter={props.setPitchStandardMaxFilter}
           setPlaylistFilter={props.setPlaylistFilter}
+          setTimeSignatureFilter={props.setTimeSignatureFilter}
+          setModeFilter={props.setModeFilter}
           playlists={props.playlists}
           myInstruments={props.myInstruments}
           instrumentTypeOptions={props.instrumentTypeOptions}

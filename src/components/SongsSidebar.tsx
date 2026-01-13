@@ -18,6 +18,10 @@ export interface SongsSidebarProps {
   setBpmAccordionOpen: (o: boolean) => void;
   pitchAccordionOpen: boolean;
   setPitchAccordionOpen: (o: boolean) => void;
+  timeSignatureAccordionOpen: boolean;
+  setTimeSignatureAccordionOpen: (o: boolean) => void;
+  modeAccordionOpen: boolean;
+  setModeAccordionOpen: (o: boolean) => void;
 
   // Filter values
   instrumentFilter: string;
@@ -34,6 +38,8 @@ export interface SongsSidebarProps {
   pitchStandardMinFilter: string;
   pitchStandardMaxFilter: string;
   playlistFilter: string;
+  timeSignatureFilter: string;
+  modeFilter: string;
 
   // Filter setters
   setInstrumentFilter: (f: string) => void;
@@ -50,6 +56,8 @@ export interface SongsSidebarProps {
   setPitchStandardMinFilter: (v: string) => void;
   setPitchStandardMaxFilter: (v: string) => void;
   setPlaylistFilter: (f: string) => void;
+  setTimeSignatureFilter: (f: string) => void;
+  setModeFilter: (f: string) => void;
 
   // Data
   playlists: Array<{ uid: string; name: string; songUids?: string[] }>;
@@ -422,6 +430,73 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                   <option value="A">A</option>
                   <option value="Bb">Bb</option>
                   <option value="B">B</option>
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="card-base mt-3">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              aria-expanded={props.modeAccordionOpen}
+              onClick={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
+            >
+              <span>Mode filters</span>
+              <span className="text-xl">{props.modeAccordionOpen ? '▾' : '▴'}</span>
+            </button>
+            {props.modeAccordionOpen && (
+              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by mode</div>
+                <select
+                  className="input-base text-sm"
+                  value={props.modeFilter}
+                  onChange={e => props.setModeFilter(e.target.value)}
+                >
+                  <option value="">All modes</option>
+                  <option value="Major">Major</option>
+                  <option value="Minor">Minor</option>
+                  <option value="Dorian">Dorian</option>
+                  <option value="Phrygian">Phrygian</option>
+                  <option value="Lydian">Lydian</option>
+                  <option value="Mixolydian">Mixolydian</option>
+                  <option value="Aeolian">Aeolian</option>
+                  <option value="Locrian">Locrian</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="card-base mt-3">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              aria-expanded={props.timeSignatureAccordionOpen}
+              onClick={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
+            >
+              <span>Time signature filters</span>
+              <span className="text-xl">{props.timeSignatureAccordionOpen ? '▾' : '▴'}</span>
+            </button>
+            {props.timeSignatureAccordionOpen && (
+              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by time signature</div>
+                <select
+                  className="input-base text-sm"
+                  value={props.timeSignatureFilter}
+                  onChange={e => props.setTimeSignatureFilter(e.target.value)}
+                >
+                  <option value="">All time signatures</option>
+                  <option value="2/4">2/4</option>
+                  <option value="3/4">3/4</option>
+                  <option value="4/4">4/4</option>
+                  <option value="5/4">5/4</option>
+                  <option value="6/8">6/8</option>
+                  <option value="7/8">7/8</option>
+                  <option value="9/8">9/8</option>
+                  <option value="12/8">12/8</option>
+                  <option value="5/8">5/8</option>
+                  <option value="7/4">7/4</option>
+                  <option value="3/8">3/8</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
             )}

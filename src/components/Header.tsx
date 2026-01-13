@@ -59,6 +59,7 @@ function Header() {
               <>
                 <Link
                   to="/songs"
+                  state={{ resetToList: true }}
                   className="text-gray-700 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:text-brand-400"
                 >
                   Songs
