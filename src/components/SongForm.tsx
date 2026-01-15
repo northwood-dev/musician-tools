@@ -222,10 +222,12 @@ export function SongForm(props: SongFormProps) {
               if (e.target.value.length === 0) {
                 setArtistSearchOpen(suggestedArtists.length > 0);
               } else {
-                const hasMatch = suggestedArtists.some(artist => 
+                const filteredArtists = suggestedArtists.filter(artist => 
                   artist.toLowerCase().includes(e.target.value.toLowerCase())
                 );
-                setArtistSearchOpen(hasMatch);
+                const hasMatch = filteredArtists.length > 0;
+                const isSingleExactMatch = filteredArtists.length === 1 && filteredArtists[0] === e.target.value;
+                setArtistSearchOpen(hasMatch && !isSingleExactMatch);
               }
               setSelectedArtistIndex(-1);
             }}
@@ -257,7 +259,13 @@ export function SongForm(props: SongFormProps) {
                 setSelectedArtistIndex(-1);
               }
             }}
-            onFocus={() => setArtistSearchOpen(true)}
+            onFocus={() => {
+              const filteredArtists = suggestedArtists.filter(artist => 
+                !form.artist || artist.toLowerCase().includes(form.artist.toLowerCase())
+              );
+              const isSingleExactMatch = filteredArtists.length === 1 && filteredArtists[0] === form.artist;
+              setArtistSearchOpen(filteredArtists.length > 0 && !isSingleExactMatch);
+            }}
             onBlur={() => setTimeout(() => setArtistSearchOpen(false), 200)}
             disabled={loading}
             autoComplete="off"
