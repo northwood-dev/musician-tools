@@ -185,6 +185,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Tuning</label>
                     <select
                       className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      aria-label="Tuning"
                       value={instrumentTuning[instrumentType] || ''}
                       onChange={(e) => {
                         if (onSetInstrumentTuning) {

@@ -12,6 +12,19 @@ const logger = require('./logger');
 const env = process.env.NODE_ENV || 'production';
 const config = require('./config/config')[env];
 const PORT = process.env.PORT || 3001;
+const { sequelize } = require('./models');
+
+// Run migrations on startup
+(async () => {
+  try {
+    logger.log('info', 'Running database migrations...');
+    await sequelize.sync({ alter: false });
+    logger.log('info', 'Database migrations completed successfully');
+  } catch (error) {
+    logger.error('Database migration failed:', error);
+    process.exit(1);
+  }
+})();
 
 // Configure log output style for HTTP requests
 const selectAllButSuccess = function (req, res) {

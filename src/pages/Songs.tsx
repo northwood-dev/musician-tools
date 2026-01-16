@@ -9,6 +9,130 @@ import { playlistService, type Playlist } from '../services/playlistService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
 
+export function applySongFilters(
+  songs: Song[],
+  opts: {
+    searchQuery: string;
+    instrumentFilter: string;
+    instrumentMatchMode: 'all' | 'any';
+    myInstrumentFilter: string;
+    tuningFilter: string;
+    instrumentDifficultyFilter: number | '';
+    techniqueFilters: Set<string>;
+    techniqueMatchMode: 'all' | 'any';
+    genreFilters: Set<string>;
+    genreMatchMode: 'all' | 'any';
+    keyFilter: string;
+    bpmMinFilter: string;
+    bpmMaxFilter: string;
+    pitchStandardMinFilter: string;
+    pitchStandardMaxFilter: string;
+    timeSignatureFilter: string;
+    modeFilter: string;
+    playlistFilter: string;
+    playlists: Playlist[];
+    instrumentMatchModeAll?: boolean;
+  }
+): Song[] {
+  const {
+    searchQuery,
+    instrumentFilter,
+    instrumentMatchMode,
+    myInstrumentFilter,
+    tuningFilter,
+    instrumentDifficultyFilter,
+    techniqueFilters,
+    techniqueMatchMode,
+    genreFilters,
+    genreMatchMode,
+    keyFilter,
+    bpmMinFilter,
+    bpmMaxFilter,
+    pitchStandardMinFilter,
+    pitchStandardMaxFilter,
+    timeSignatureFilter,
+    modeFilter,
+    playlistFilter,
+    playlists,
+  } = opts;
+
+  const query = searchQuery.toLowerCase();
+
+  return songs.filter(song => {
+    const passesSearch = (
+      song.title.toLowerCase().includes(query) ||
+      song.artist?.toLowerCase().includes(query) ||
+      song.album?.toLowerCase().includes(query)
+    );
+
+    const selected = instrumentFilter ? [instrumentFilter] : [];
+    const songInstruments = Array.isArray(song.instrument)
+      ? song.instrument
+      : (song.instrument ? [song.instrument] : []);
+    const passesInstrument =
+      selected.length === 0 ||
+      (instrumentMatchMode === 'all'
+        ? selected.every(inst => songInstruments.includes(inst))
+        : selected.some(inst => songInstruments.includes(inst)));
+
+    const passesMyInstrument = !myInstrumentFilter || song.myInstrumentUid === myInstrumentFilter;
+
+    const passesTuning = !tuningFilter || (instrumentFilter && song.instrumentTuning && song.instrumentTuning[instrumentFilter] === tuningFilter);
+
+    const songDifficulty = instrumentFilter && song.instrumentDifficulty ? song.instrumentDifficulty[instrumentFilter] : undefined;
+    const passesDifficulty = !instrumentDifficultyFilter || (
+      instrumentFilter
+        ? (songDifficulty !== undefined && songDifficulty !== null && songDifficulty <= instrumentDifficultyFilter)
+        : false
+    );
+
+    const selectedTech = Array.from(techniqueFilters);
+    const songTechniques = Array.isArray(song.technique)
+      ? song.technique
+      : (song.technique ? [song.technique] : []);
+    const passesTechnique =
+      selectedTech.length === 0 ||
+      (techniqueMatchMode === 'all'
+        ? selectedTech.every(t => songTechniques.includes(t))
+        : selectedTech.some(t => songTechniques.includes(t)));
+
+    const selectedGenres = Array.from(genreFilters);
+    const songGenres = Array.isArray(song.genre)
+      ? song.genre
+      : (song.genre ? [song.genre] : []);
+    const passesGenre =
+      selectedGenres.length === 0 ||
+      (genreMatchMode === 'all'
+        ? selectedGenres.every(g => songGenres.includes(g))
+        : selectedGenres.some(g => songGenres.includes(g)));
+
+    const passesKey = !keyFilter || song.key === keyFilter;
+
+    const min = bpmMinFilter ? parseInt(bpmMinFilter, 10) : undefined;
+    const max = bpmMaxFilter ? parseInt(bpmMaxFilter, 10) : undefined;
+    const bpm = song.bpm;
+    const passesBpm = (
+      (min === undefined || (typeof bpm === 'number' && bpm >= min)) &&
+      (max === undefined || (typeof bpm === 'number' && bpm <= max))
+    );
+
+    const pitchMin = pitchStandardMinFilter ? parseInt(pitchStandardMinFilter, 10) : undefined;
+    const pitchMax = pitchStandardMaxFilter ? parseInt(pitchStandardMaxFilter, 10) : undefined;
+    const pitch = song.pitchStandard;
+    const passesPitch = (
+      (pitchMin === undefined || (typeof pitch === 'number' && pitch >= pitchMin)) &&
+      (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
+    );
+
+    const passesTimeSignature = !timeSignatureFilter || song.timeSignature === timeSignatureFilter;
+    const passesMode = !modeFilter || song.mode === modeFilter;
+
+    const passesPlaylist = !playlistFilter || (playlists.find(p => p.uid === playlistFilter)?.songUids || []).includes(song.uid);
+
+    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesKey && passesBpm && passesPitch && passesTimeSignature && passesMode && passesPlaylist;
+  });
+}
+
 const genreOptions = [
   'Acoustic','Alternative','Ambient','Blues','Classical','Country','Disco','Drum & Bass','EDM','Electronic','Folk','Funk','Gospel','Hard Rock','Hip-Hop','House','Indie','Jazz','K-Pop','Latin','Metal','Pop','Progressive','Punk','R&B / Soul','Rap','Reggae','Rock','Singer-Songwriter','Ska','Soundtrack','Techno','Trap','World','Other'
 ];
@@ -992,67 +1116,26 @@ function Songs() {
 
   const sortedSongs = songs;
 
-  const filteredSongs = sortedSongs.filter(song => {
-    const query = searchQuery.toLowerCase();
-    const passesSearch = (
-      song.title.toLowerCase().includes(query) ||
-      song.artist?.toLowerCase().includes(query) ||
-      song.album?.toLowerCase().includes(query)
-    );
-    const selected = instrumentFilter ? [instrumentFilter] : [];
-    const songInstruments = Array.isArray(song.instrument)
-      ? song.instrument
-      : (song.instrument ? [song.instrument] : []);
-    const passesInstrument =
-      selected.length === 0 ||
-      (instrumentMatchMode === 'all'
-        ? selected.every(inst => songInstruments.includes(inst))
-        : selected.some(inst => songInstruments.includes(inst)));
-    const passesMyInstrument = !myInstrumentFilter || song.myInstrumentUid === myInstrumentFilter;
-    const passesTuning = !tuningFilter || (instrumentFilter && song.instrumentTuning && song.instrumentTuning[instrumentFilter] === tuningFilter);
-    const songDifficulty = instrumentFilter && song.instrumentDifficulty ? song.instrumentDifficulty[instrumentFilter] : undefined;
-    const passesDifficulty = !instrumentDifficultyFilter || (
-      instrumentFilter
-        ? (songDifficulty !== undefined && songDifficulty !== null && songDifficulty <= instrumentDifficultyFilter)
-        : false
-    );
-    const selectedTech = Array.from(techniqueFilters);
-    const songTechniques = Array.isArray(song.technique)
-      ? song.technique
-      : (song.technique ? [song.technique] : []);
-    const passesTechnique =
-      selectedTech.length === 0 ||
-      (techniqueMatchMode === 'all'
-        ? selectedTech.every(t => songTechniques.includes(t))
-        : selectedTech.some(t => songTechniques.includes(t)));
-    const selectedGenres = Array.from(genreFilters);
-    const songGenres = Array.isArray(song.genre)
-      ? song.genre
-      : (song.genre ? [song.genre] : []);
-    const passesGenre =
-      selectedGenres.length === 0 ||
-      (genreMatchMode === 'all'
-        ? selectedGenres.every(g => songGenres.includes(g))
-        : selectedGenres.some(g => songGenres.includes(g)));
-    const passesKey = !keyFilter || song.key === keyFilter;
-    const min = bpmMinFilter ? parseInt(bpmMinFilter, 10) : undefined;
-    const max = bpmMaxFilter ? parseInt(bpmMaxFilter, 10) : undefined;
-    const bpm = song.bpm;
-    const passesBpm = (
-      (min === undefined || (typeof bpm === 'number' && bpm >= min)) &&
-      (max === undefined || (typeof bpm === 'number' && bpm <= max))
-    );
-    const pitchMin = pitchStandardMinFilter ? parseInt(pitchStandardMinFilter, 10) : undefined;
-    const pitchMax = pitchStandardMaxFilter ? parseInt(pitchStandardMaxFilter, 10) : undefined;
-    const pitch = song.pitchStandard;
-    const passesPitch = (
-      (pitchMin === undefined || (typeof pitch === 'number' && pitch >= pitchMin)) &&
-      (pitchMax === undefined || (typeof pitch === 'number' && pitch <= pitchMax))
-    );
-    const passesTimeSignature = !timeSignatureFilter || song.timeSignature === timeSignatureFilter;
-    const passesMode = !modeFilter || song.mode === modeFilter;
-    const passesPlaylist = !playlistFilter || (playlists.find(p => p.uid === playlistFilter)?.songUids || []).includes(song.uid);
-    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesKey && passesBpm && passesPitch && passesTimeSignature && passesMode && passesPlaylist;
+  const filteredSongs = applySongFilters(sortedSongs, {
+    searchQuery,
+    instrumentFilter,
+    instrumentMatchMode,
+    myInstrumentFilter,
+    tuningFilter,
+    instrumentDifficultyFilter,
+    techniqueFilters,
+    techniqueMatchMode,
+    genreFilters,
+    genreMatchMode,
+    keyFilter,
+    bpmMinFilter,
+    bpmMaxFilter,
+    pitchStandardMinFilter,
+    pitchStandardMaxFilter,
+    timeSignatureFilter,
+    modeFilter,
+    playlistFilter,
+    playlists,
   });
 
   const handleSort = (column: string) => {
