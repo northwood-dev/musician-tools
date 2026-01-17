@@ -31,6 +31,9 @@ type SongFormProps = {
   playlistSlot?: React.ReactNode;
   suggestedAlbums?: string[];
   suggestedArtists?: string[];
+  metadataLoading?: boolean;
+  metadataSource?: string | null;
+  onAutoFillMetadata?: () => Promise<void>;
 };
 
 const keyOptions = ['C','C#','Db','D','Eb','E','F','F#','Gb','G','Ab','A','Bb','B'];
@@ -81,7 +84,7 @@ const getAvailableTechniques = (instrumentType: string) => {
 };
 
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [] } = props;
+  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata } = props;
   const currentInstruments = useMemo(() => Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
@@ -118,61 +121,27 @@ export function SongForm(props: SongFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {/* Top quick links aggregated from all instruments + bouton auto-add streaming links à droite */}
-      {(allInstrumentLinks.length > 0 || (form.title?.trim() && form.artist?.trim())) && (
+      {/* Top quick links aggregated from all instruments */}
+      {allInstrumentLinks.length > 0 && (
         <>
           <div className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Links</div>
-          <div className="flex mb-2 gap-2">
-            <div className="flex flex-wrap gap-2 flex-1 min-w-0">
-              {allInstrumentLinks.map((lnk) => (
-                <button
-                  key={`quick-link-${lnk.url}-${lnk.label ?? ''}`}
-                  type="button"
-                  className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                  onClick={() => {
-                    if (lnk.url && (lnk.url.startsWith('http://') || lnk.url.startsWith('https://'))) {
-                      window.open(lnk.url, '_blank');
-                    }
-                  }}
-                  title={`${lnk.label || lnk.url} • ${lnk.type}`}
-                >
-                  <span className="mr-2 inline-flex items-center rounded bg-white/20 px-2 py-0.5 text-xs">{lnk.type}</span>
-                  <span className="truncate max-w-[12rem]">{lnk.label || lnk.url}</span>
-                </button>
-              ))}
-            </div>
-            {(form.title?.trim() && form.artist?.trim() && typeof onSetStreamingLinks === 'function') && (
-              <div className="flex items-start h-full">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs whitespace-nowrap"
-                  onClick={async () => {
-                    if (typeof onSetStreamingLinks === 'function') {
-                      // Auto-generate streaming links
-                      const searchQuery = `${form.artist || ''} ${form.title || ''}`.trim();
-                      if (!searchQuery) return;
-                      const links = [
-                        { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
-                        { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
-                        { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
-                        { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
-                        { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
-                        { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
-                      ];
-                      const currentLinks = form.streamingLinks || [];
-                      const existingUrls = new Set(currentLinks.map(l => l.url));
-                      const newLinks = links.filter(link => !existingUrls.has(link.url));
-                      if (newLinks.length > 0) {
-                        onSetStreamingLinks([...currentLinks, ...newLinks]);
-                      }
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  {loading ? 'Fetching...' : '🔗 Auto-add streaming links'}
-                </button>
-              </div>
-            )}
+          <div className="flex flex-wrap gap-2">
+            {allInstrumentLinks.map((lnk) => (
+              <button
+                key={`quick-link-${lnk.url}-${lnk.label ?? ''}`}
+                type="button"
+                className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
+                onClick={() => {
+                  if (lnk.url && (lnk.url.startsWith('http://') || lnk.url.startsWith('https://'))) {
+                    window.open(lnk.url, '_blank');
+                  }
+                }}
+                title={`${lnk.label || lnk.url} • ${lnk.type}`}
+              >
+                <span className="mr-2 inline-flex items-center rounded bg-white/20 px-2 py-0.5 text-xs">{lnk.type}</span>
+                <span className="truncate max-w-[12rem]">{lnk.label || lnk.url}</span>
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -311,6 +280,19 @@ export function SongForm(props: SongFormProps) {
           required
           disabled={loading}
         />
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={onAutoFillMetadata}
+          disabled={loading || metadataLoading || !form.title || !form.artist}
+        >
+          {metadataLoading ? 'Auto-filling...' : 'Auto-fill metadata & links'}
+        </button>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {metadataSource ? `Metadata found: ${metadataSource}` : 'Title + artist required'}
+        </p>
       </div>
       <div className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700">
         <button

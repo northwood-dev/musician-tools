@@ -92,4 +92,23 @@ export const songService = {
       throw new Error('Failed to delete song');
     }
   },
+
+  async lookupMetadata(title: string, artist: string): Promise<{
+    bpm: number | null;
+    key: string | null;
+    mode: string | null;
+    timeSignature: string | null;
+    genres: string[];
+    album: string | null;
+    source: string;
+  }> {
+    const params = new URLSearchParams({ title, artist });
+    const response = await fetch(`${API_BASE}/songs/lookup?${params.toString()}`, {
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      throw new Error('Failed to lookup song metadata');
+    }
+    return response.json();
+  },
 };

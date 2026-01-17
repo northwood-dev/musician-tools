@@ -1,6 +1,7 @@
 const { Song, SongPlay } = require('../models');
 const createError = require('http-errors');
 const logger = require('../logger');
+const { fetchSongMetadata } = require('../services/songMetadataService');
 
 // GET all songs for logged-in user
 const getAllSongs = async (req, res, next) => {
@@ -219,6 +220,27 @@ const getSongPlays = async (req, res, next) => {
   }
 };
 
+// GET lookup metadata for a song (bpm/key/genres/album)
+const lookupSongMetadata = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+
+    const { title, artist } = req.query;
+    if (!title || !artist) {
+      return next(createError(400, 'title and artist are required'));
+    }
+
+    const metadata = await fetchSongMetadata({ title, artist });
+    res.json(metadata);
+  } catch (error) {
+    logger.error('Error looking up song metadata:', error);
+    next(createError(500, 'Error looking up song metadata'));
+  }
+};
+
 module.exports = {
   getAllSongs,
   getSong,
@@ -227,4 +249,5 @@ module.exports = {
   deleteSong,
   markSongPlayed,
   getSongPlays,
+  lookupSongMetadata,
 };

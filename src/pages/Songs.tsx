@@ -189,6 +189,8 @@ function Songs() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'single' | 'multiple' | null>(null);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
+  const [metadataSource, setMetadataSource] = useState<string | null>(null);
   const [sidebarExpanded, setSidebarExpanded] = useState<boolean>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsSidebarExpanded') : null;
     return saved === 'false' ? false : true; // default to expanded unless persisted false
@@ -1028,6 +1030,7 @@ function Songs() {
       }
 
       setForm(initialSong);
+      setMetadataSource(null);
       setPage('list');
     } catch (err) {
       setError('Error while saving');
@@ -1067,6 +1070,21 @@ function Songs() {
     setDeleteMode('multiple');
   };
 
+  const generateStreamingLinks = (title: string, artist: string) => {
+    const searchQuery = `${artist || ''} ${title || ''}`.trim();
+    if (!searchQuery) return [];
+    
+    const links = [
+      { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
+      { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
+      { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
+      { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
+      { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
+      { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
+    ];
+    return links;
+  };
+
   const handleConfirmDeleteSelected = async () => {
     try {
       setLoading(true);
@@ -1083,6 +1101,79 @@ function Songs() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLookupMetadata = async () => {
+    if (!form.title?.trim() || !form.artist?.trim()) {
+      setToastMessage('Add a title and artist to auto-fill.');
+      setTimeout(() => setToastMessage(null), 2500);
+      return;
+    }
+
+    console.log('>>> Frontend: Calling lookupMetadata with:', {
+      title: form.title.trim(),
+      artist: form.artist.trim()
+    });
+
+    setMetadataLoading(true);
+    try {
+      const meta = await songService.lookupMetadata(form.title.trim(), form.artist.trim());
+      console.log('>>> Frontend: Metadata response:', meta);
+      setMetadataSource(meta?.source || null);
+
+      // Generate streaming links regardless of metadata found
+      const newStreamingLinks = generateStreamingLinks(form.title.trim(), form.artist.trim());
+      const currentStreamingLinks = form.streamingLinks || [];
+      const existingUrls = new Set(currentStreamingLinks.map(l => l.url));
+      const linksToAdd = newStreamingLinks.filter(link => !existingUrls.has(link.url));
+      const mergedStreamingLinks = [...currentStreamingLinks, ...linksToAdd];
+
+      // Check if meta has any useful data
+      const hasUsefulData = meta && (
+        meta.bpm || meta.key || meta.mode || meta.timeSignature || meta.album || 
+        (Array.isArray(meta.genres) && meta.genres.length > 0)
+      );
+
+      if (!meta || (!hasUsefulData && meta.source === 'none')) {
+        console.log('>>> Frontend: No metadata found, but adding streaming links');
+        setToastMessage('No metadata found online.');
+        setTimeout(() => setToastMessage(null), 2500);
+        
+        // Still add streaming links even if no metadata
+        setForm(prev => ({
+          ...prev,
+          streamingLinks: mergedStreamingLinks,
+        }));
+        return;
+      }
+
+      console.log('>>> Frontend: Album from API:', meta.album);
+      console.log('>>> Frontend: Genres from API:', meta.genres);
+
+      const mergedGenres = (Array.isArray(form.genre) && form.genre.length > 0)
+        ? form.genre
+        : (Array.isArray(meta.genres) && meta.genres.length > 0 ? meta.genres : form.genre);
+
+      console.log('>>> Frontend: Merged genres:', mergedGenres);
+
+      // Fill form with all available data from meta
+      setForm(prev => ({
+        ...prev,
+        bpm: prev.bpm ?? meta.bpm ?? prev.bpm,
+        key: prev.key || meta.key || '',
+        mode: prev.mode || meta.mode || '',
+        timeSignature: prev.timeSignature || meta.timeSignature || '',
+        album: prev.album || meta.album || '',
+        genre: mergedGenres,
+        streamingLinks: mergedStreamingLinks,
+      }));
+    } catch (err) {
+      console.error('>>> Frontend: Error during lookup:', err);
+      setToastMessage('Auto-fill unavailable at the moment.');
+      setTimeout(() => setToastMessage(null), 2500);
+    } finally {
+      setMetadataLoading(false);
     }
   };
 
@@ -1275,7 +1366,11 @@ function Songs() {
         </div>
       )}
 
-      {toastMessage}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 animate-fade-in">
+          {toastMessage}
+        </div>
+      )}
 
       {page === 'list' ? (
         <SongsList
@@ -1367,11 +1462,13 @@ function Songs() {
               technique: Array.isArray(song.technique) ? song.technique : [],
               genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
             });
+            setMetadataSource(null);
             setPage('form');
           }}
           onAddNew={() => {
             setForm(initialSong);
             setEditingUid(null);
+            setMetadataSource(null);
             setPage('form');
           }}
           getLastPlayedForSong={getLastPlayedForSong}
@@ -1406,6 +1503,7 @@ function Songs() {
             onCancel={() => {
               setEditingUid(null);
               setForm(initialSong);
+              setMetadataSource(null);
               setPage('list');
             }}
             onDelete={editingUid ? () => handleDelete(editingUid) : undefined}
@@ -1419,6 +1517,9 @@ function Songs() {
             }))}
             suggestedAlbums={suggestedAlbums}
             suggestedArtists={suggestedArtists}
+            metadataLoading={metadataLoading}
+            metadataSource={metadataSource}
+            onAutoFillMetadata={handleLookupMetadata}
             playlistSlot={editingUid ? (
               <div className="mt-8 space-y-3">
                 <h2 className="text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-100">Add to playlists</h2>

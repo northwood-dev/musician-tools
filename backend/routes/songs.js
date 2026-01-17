@@ -9,6 +9,7 @@ router.use(bodyParser.json());
 
 // All song routes require authentication
 router.get('/', authsess, songController.getAllSongs);
+router.get('/lookup', authsess, songController.lookupSongMetadata);
 router.get('/:uid', authsess, songController.getSong);
 router.post('/', authsess, songController.createSong);
 router.put('/:uid', authsess, songController.updateSong);

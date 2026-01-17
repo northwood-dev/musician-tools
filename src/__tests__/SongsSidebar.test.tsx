@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import SongsSidebar, { SongsSidebarProps } from '../components/SongsSidebar';
+import SongsSidebar, { type SongsSidebarProps } from '../components/SongsSidebar';
 
 function makeProps(overrides: Partial<SongsSidebarProps> = {}): SongsSidebarProps {
   return {
