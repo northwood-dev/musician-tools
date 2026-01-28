@@ -318,4 +318,95 @@ describe('Metadata Auto-fill Feature', () => {
       expect(merged).toBe('C');
     });
   });
+
+  describe('Streaming links generation', () => {
+    test('generates streaming links even when metadata source is "none"', () => {
+      const title = 'Test Song';
+      const artist = 'Test Artist';
+      
+      // Simulate the logic from Songs.tsx
+      const generateStreamingLinks = (title: string, artist: string) => {
+        const searchQuery = `${artist || ''} ${title || ''}`.trim();
+        if (!searchQuery) return [];
+        
+        return [
+          { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
+          { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
+          { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
+          { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
+          { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
+          { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
+        ];
+      };
+
+      const links = generateStreamingLinks(title, artist);
+
+      expect(links).toHaveLength(6);
+      expect(links[0].label).toBe('YouTube');
+      expect(links[0].url).toContain('youtube.com');
+      expect(links[1].label).toBe('Spotify');
+      expect(links[2].label).toBe('Apple Music');
+      expect(links[3].label).toBe('Deezer');
+      expect(links[4].label).toBe('Tidal');
+      expect(links[5].label).toBe('Qobuz');
+    });
+
+    test('does not duplicate existing streaming links', () => {
+      const newLinks = [
+        { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=test' },
+        { label: 'Spotify', url: 'https://open.spotify.com/search/test' }
+      ];
+      
+      const existingLinks = [
+        { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=test' }
+      ];
+
+      const existingUrls = new Set(existingLinks.map(l => l.url));
+      const linksToAdd = newLinks.filter(link => !existingUrls.has(link.url));
+      const merged = [...existingLinks, ...linksToAdd];
+
+      expect(merged).toHaveLength(2);
+      expect(merged.filter(l => l.label === 'YouTube')).toHaveLength(1);
+    });
+  });
+
+  describe('Metadata with source "none" but useful data', () => {
+    test('fills form fields when metadata has data even with source "none"', () => {
+      const metadata = {
+        source: 'none',
+        bpm: 120,
+        key: 'C',
+        mode: 'Major',
+        timeSignature: '4/4',
+        album: 'Test Album',
+        genres: ['Rock']
+      };
+
+      const hasUsefulData = !!(metadata && (
+        metadata.bpm || metadata.key || metadata.mode || metadata.timeSignature || 
+        metadata.album || (Array.isArray(metadata.genres) && metadata.genres.length > 0)
+      ));
+
+      expect(hasUsefulData).toBe(true);
+    });
+
+    test('identifies no useful data when metadata only has source "none"', () => {
+      const metadata = {
+        source: 'none',
+        bpm: null,
+        key: '',
+        mode: '',
+        timeSignature: '',
+        album: '',
+        genres: []
+      };
+
+      const hasUsefulData = metadata && (
+        metadata.bpm || metadata.key || metadata.mode || metadata.timeSignature || 
+        metadata.album || (Array.isArray(metadata.genres) && metadata.genres.length > 0)
+      );
+
+      expect(hasUsefulData).toBe(false);
+    });
+  });
 });

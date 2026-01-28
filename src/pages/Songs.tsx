@@ -1054,9 +1054,24 @@ function Songs() {
       setError(null);
       await songService.deleteSong(uidToDelete);
       setSongs(songs.filter(song => song.uid !== uidToDelete));
+      
+      // Remove from selected songs if it was selected
+      setSelectedSongs(prev => {
+        const next = new Set(prev);
+        next.delete(uidToDelete);
+        return next;
+      });
+      
       setDeleteDialogOpen(false);
       setDeleteUid(null);
       setDeleteMode(null);
+      
+      // If we're editing this song, return to list
+      if (editingUid === uidToDelete) {
+        setEditingUid(null);
+        setForm(initialSong);
+        setPage('list');
+      }
     } catch (err) {
       setError('Error while deleting');
       console.error(err);
