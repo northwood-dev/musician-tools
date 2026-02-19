@@ -1,4 +1,4 @@
-import { applySongFilters } from '../pages/Songs';
+import { applySongFilters } from '../utils/songFilters';
 import type { Song } from '../services/songService';
 
 const baseSong: Song = {
@@ -71,5 +71,25 @@ test('filters by playlist membership', () => {
 
   const playlists = [{ uid: 'p1', name: 'Set', songUids: ['2'] }];
   const result = applySongFilters(songs, makeOpts({ playlistFilter: 'p1', playlists }));
+  expect(result.map(s => s.uid)).toEqual(['2']);
+});
+
+test('does not treat empty-string difficulty as 0', () => {
+  const songs: Song[] = [
+    {
+      ...baseSong,
+      uid: '1',
+      instrument: ['Guitar'],
+      instrumentDifficulty: { Guitar: '' as unknown as number },
+    },
+    {
+      ...baseSong,
+      uid: '2',
+      instrument: ['Guitar'],
+      instrumentDifficulty: { Guitar: 2 },
+    },
+  ];
+
+  const result = applySongFilters(songs, makeOpts({ instrumentFilter: 'Guitar', instrumentDifficultyFilter: 2 }));
   expect(result.map(s => s.uid)).toEqual(['2']);
 });

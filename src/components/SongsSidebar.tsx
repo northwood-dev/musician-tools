@@ -208,25 +208,26 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             )}
           </div>
 
-          <div className="card-base mt-3">
-            <div className="p-4">
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
-              <select
-                value={props.instrumentDifficultyFilter === '' ? '' : props.instrumentDifficultyFilter}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? '' : Number(e.target.value);
-                  props.setInstrumentDifficultyFilter(val as number | '');
-                }}
-                className="input-base text-sm"
-                disabled={!props.instrumentFilter}
-              >
-                <option value="">All difficulties</option>
-                {[1,2,3,4,5].map(n => (
-                  <option key={n} value={n}>{`Up to ${n} ★`}</option>
-                ))}
-              </select>
+          {props.instrumentFilter && (
+            <div className="card-base mt-3">
+              <div className="p-4">
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
+                <select
+                  value={props.instrumentDifficultyFilter === '' ? '' : props.instrumentDifficultyFilter}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    props.setInstrumentDifficultyFilter(val as number | '');
+                  }}
+                  className="input-base text-sm"
+                >
+                  <option value="">All difficulties</option>
+                  {[1,2,3,4,5].map(n => (
+                    <option key={n} value={n}>{`Up to ${n} ★`}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
           {props.showTuningFilters && (
             <div className="card-base mt-3">
               <button
