@@ -24,7 +24,17 @@ function Footer() {
           <div className="flex flex-col sm:flex-row items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
             <span>v{appVersion}</span>
             <span className="hidden sm:inline">•</span>
-            <span>Made with ❤️ by fantomtracks</span>
+            <span className="inline-flex items-center gap-1 flex-wrap justify-center">
+              <span>Made with ❤️ by</span>
+              <a
+                href="https://github.com/northwood-dev"
+                target="_blank"
+                rel="noreferrer"
+                className="font-medium text-brand-400 hover:text-brand-300 underline-offset-2 hover:underline transition-colors whitespace-nowrap"
+              >
+                northwood.dev
+              </a>
+            </span>
           </div>
         </div>
       </div>
