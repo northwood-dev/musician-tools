@@ -13,6 +13,7 @@ type SongFormProps = {
   loading: boolean;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onToggleGenre: (genre: string) => void;
+  onToggleLanguage: (language: string) => void;
   onChangeInstruments: (instruments: string[]) => void;
   onSetTechniques: (techniques: string[]) => void;
   onSetInstrumentDifficulty?: (instrumentType: string, difficulty: number | null) => void;
@@ -77,6 +78,24 @@ const genreOptions = [
   'Other',
 ];
 
+const languageOptions = [
+  'Afrikaans', 'Albanian', 'Amharic', 'Arabic', 'Armenian', 'Azerbaijani',
+  'Basque', 'Belarusian', 'Bengali', 'Bosnian', 'Bulgarian', 'Burmese',
+  'Catalan', 'Chinese (Cantonese)', 'Chinese (Mandarin)', 'Croatian', 'Czech',
+  'Danish', 'Dutch', 'English', 'Estonian', 'Farsi', 'Finnish', 'French',
+  'Galician', 'Georgian', 'German', 'Greek', 'Gujarati', 'Haitian Creole',
+  'Hausa', 'Hebrew', 'Hindi', 'Hungarian', 'Icelandic', 'Igbo', 'Indonesian',
+  'Irish', 'Italian', 'Japanese', 'Javanese', 'Kannada', 'Kazakh', 'Khmer',
+  'Kinyarwanda', 'Korean', 'Kurdish', 'Lao', 'Latvian', 'Lithuanian',
+  'Macedonian', 'Malay', 'Malayalam', 'Maltese', 'Maori', 'Marathi',
+  'Mongolian', 'Nepali', 'Norwegian', 'Odia', 'Pashto', 'Polish',
+  'Portuguese', 'Punjabi', 'Quechua', 'Romanian', 'Russian', 'Serbian',
+  'Sinhala', 'Slovak', 'Slovenian', 'Somali', 'Spanish', 'Swahili',
+  'Swedish', 'Tagalog', 'Tamil', 'Tatar', 'Telugu', 'Thai', 'Turkish',
+  'Ukrainian', 'Urdu', 'Uzbek', 'Vietnamese', 'Welsh', 'Wolof', 'Xhosa',
+  'Yoruba', 'Zulu', 'Other'
+];
+
 const getAvailableTechniques = (instrumentType: string) => {
   if (!instrumentType) return [];
   const list = instrumentTechniquesMap[instrumentType] || [];
@@ -84,15 +103,18 @@ const getAvailableTechniques = (instrumentType: string) => {
 };
 
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata } = props;
+  const { mode, form, loading, onChange, onChangeInstruments, onSetTechniques, onToggleGenre, onToggleLanguage, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onCancel, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata } = props;
   const currentInstruments = useMemo(() => Array.isArray(form.instrument) ? form.instrument : (form.instrument ? [form.instrument] : []), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
+  const currentLanguages = Array.isArray(form.language) ? form.language : (form.language ? [form.language] : []);
   const [selectedInstrumentType, setSelectedInstrumentType] = useState('');
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
   const [genreSearchOpen, setGenreSearchOpen] = useState(false);
   const [genreSearchQuery, setGenreSearchQuery] = useState('');
+  const [languageSearchOpen, setLanguageSearchOpen] = useState(false);
+  const [languageSearchQuery, setLanguageSearchQuery] = useState('');
   const [albumSearchOpen, setAlbumSearchOpen] = useState(false);
   const [selectedAlbumIndex, setSelectedAlbumIndex] = useState(-1);
   const [artistSearchOpen, setArtistSearchOpen] = useState(false);
@@ -467,6 +489,76 @@ export function SongForm(props: SongFormProps) {
                 )}
               </div>
             </div>
+            <div>
+              <label htmlFor="language-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Languages</label>
+              <div className="relative z-20">
+                <input
+                  id="language-search"
+                  type="text"
+                  placeholder="Search or select a language"
+                  value={languageSearchQuery}
+                  onChange={(e) => setLanguageSearchQuery(e.target.value)}
+                  onFocus={() => setLanguageSearchOpen(true)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  disabled={loading}
+                />
+                {languageSearchOpen && (
+                  <>
+                    <button
+                      type="button"
+                      className="fixed inset-0 z-10"
+                      onClick={() => setLanguageSearchOpen(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape' || e.key === 'Enter') {
+                          setLanguageSearchOpen(false);
+                        }
+                      }}
+                      aria-label="Close language dropdown"
+                      tabIndex={-1}
+                    />
+                    <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
+                      {languageOptions
+                        .filter(language => !currentLanguages.includes(language) && language.toLowerCase().includes(languageSearchQuery.toLowerCase()))
+                        .map(language => (
+                          <button
+                            key={language}
+                            type="button"
+                            onClick={() => {
+                              onToggleLanguage(language);
+                              setLanguageSearchQuery('');
+                              setLanguageSearchOpen(false);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100"
+                            disabled={loading}
+                          >
+                            {language}
+                          </button>
+                        ))}
+                      {languageOptions.filter(language => !currentLanguages.includes(language) && language.toLowerCase().includes(languageSearchQuery.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No languages found</div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+              {currentLanguages.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {currentLanguages.map(language => (
+                    <button
+                      key={language}
+                      type="button"
+                      className="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
+                      onClick={() => onToggleLanguage(language)}
+                      disabled={loading}
+                      title={language}
+                    >
+                      <span className="truncate">{language}</span>
+                      <span>✕</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="song-bpm" className="block text-sm font-medium text-gray-700 dark:text-gray-100">BPM</label>
@@ -551,6 +643,7 @@ export function SongForm(props: SongFormProps) {
         <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</span>
         <SongFormInstruments
           currentInstruments={currentInstruments}
+          capo={form.capo ?? null}
           instrumentDifficulty={form.instrumentDifficulty || {}}
           instrumentTuning={form.instrumentTuning || {}}
           currentTechniques={currentTechniques}
@@ -558,6 +651,14 @@ export function SongForm(props: SongFormProps) {
           myInstrumentUid={form.myInstrumentUid}
           onChangeInstruments={onChangeInstruments}
           onSetInstrumentDifficulty={onSetInstrumentDifficulty}
+          onSetCapo={(capo) => {
+            onChange({
+              target: {
+                name: 'capo',
+                value: capo === null ? '' : String(capo),
+              },
+            } as React.ChangeEvent<HTMLInputElement>);
+          }}
           onSetInstrumentTuning={onSetInstrumentTuning}
           onToggleTechnique={onToggleTechnique}
           onSetInstrumentLinksForInstrument={onSetInstrumentLinksForInstrument}
@@ -595,7 +696,7 @@ export function SongForm(props: SongFormProps) {
           </select>
         </div>
       </div>
-      
+
       {playlistSlot}
 
       <div>

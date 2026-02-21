@@ -10,20 +10,18 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
 import { applySongFilters } from '../utils/songFilters';
 
-const genreOptions = [
-  'Acoustic','Alternative','Ambient','Blues','Classical','Country','Disco','Drum & Bass','EDM','Electronic','Folk','Funk','Gospel','Hard Rock','Hip-Hop','House','Indie','Jazz','K-Pop','Latin','Metal','Pop','Progressive','Punk','R&B / Soul','Rap','Reggae','Rock','Singer-Songwriter','Ska','Soundtrack','Techno','Trap','World','Other'
-];
-
 const initialSong: CreateSongDTO = {
   title: '',
   bpm: null,
   key: '',
+  capo: null,
   notes: '',
   instrument: [],
   instrumentDifficulty: {},
   instrumentTuning: {},
   artist: '',
   album: '',
+  language: [],
   genre: [],
   technique: [],
   pitchStandard: 440,
@@ -33,6 +31,13 @@ const initialSong: CreateSongDTO = {
 };
 
 function Songs() {
+  const normalizeCapoValue = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 12) return null;
+    return parsed;
+  };
+
   const [songs, setSongs] = useState<Song[]>([]);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   const [editingUid, setEditingUid] = useState<string | null>(null);
@@ -79,6 +84,11 @@ function Songs() {
   const [instrumentDifficultyFilter, setInstrumentDifficultyFilter] = useState<number | ''>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsInstrumentDifficultyFilter') : null;
     return saved ? Number(saved) : '';
+  });
+  const [capoFilter, setCapoFilter] = useState<number | ''>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsCapoFilter') : null;
+    const normalized = saved !== null ? normalizeCapoValue(saved) : null;
+    return normalized === null ? '' : normalized;
   });
   const [myInstrumentFilter, setMyInstrumentFilter] = useState<string>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsMyInstrumentFilter') : null;
@@ -179,11 +189,25 @@ function Songs() {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsModeFilter') : null;
     return saved || '';
   });
+  const [languageFilters, setLanguageFilters] = useState<Set<string>>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsLanguageFilters') : null;
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+  const [languageMatchMode, setLanguageMatchMode] = useState<'any' | 'all'>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsLanguageMatchMode') : null;
+    return saved === 'any' ? 'any' : 'all';
+  });
+  const [languageAccordionOpen, setLanguageAccordionOpen] = useState<boolean>(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsLanguageAccordionOpen') : null;
+    return saved === 'false' ? false : true;
+  });
   // States for editing song plays and playlists
   const [editingSongPlays, setEditingSongPlays] = useState<SongPlay[]>([]);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
   const [suggestedAlbums, setSuggestedAlbums] = useState<string[]>([]);
   const [suggestedArtists, setSuggestedArtists] = useState<string[]>([]);
+  const [languageFilterOptions, setLanguageFilterOptions] = useState<string[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   // Removed unused user, logout from useAuth
   
   const location = useLocation();
@@ -192,6 +216,7 @@ function Songs() {
     instrumentFilter ||
     myInstrumentFilter ||
     instrumentDifficultyFilter ||
+    capoFilter !== '' ||
     tuningFilter ||
     keyFilter ||
     bpmMinFilter ||
@@ -200,6 +225,7 @@ function Songs() {
     pitchStandardMaxFilter ||
     timeSignatureFilter ||
     modeFilter ||
+    languageFilters.size > 0 ||
     playlistFilter ||
     techniqueFilters.size > 0 ||
     genreFilters.size > 0
@@ -209,6 +235,7 @@ function Songs() {
     setInstrumentFilter('');
     setMyInstrumentFilter('');
     setInstrumentDifficultyFilter('');
+    setCapoFilter('');
     setInstrumentMatchMode('all');
     setTechniqueFilters(new Set());
     setTechniqueMatchMode('all');
@@ -222,6 +249,8 @@ function Songs() {
     setPitchStandardMaxFilter('');
     setTimeSignatureFilter('');
     setModeFilter('');
+    setLanguageFilters(new Set());
+    setLanguageMatchMode('all');
     setPlaylistFilter('');
   };
 
@@ -241,6 +270,15 @@ function Songs() {
       const next = new Set(prev);
       if (next.has(genre)) next.delete(genre);
       else next.add(genre);
+      return next;
+    });
+  };
+
+  const toggleLanguageFilter = (language: string) => {
+    setLanguageFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(language)) next.delete(language);
+      else next.add(language);
       return next;
     });
   };
@@ -334,6 +372,20 @@ function Songs() {
   }, [instrumentDifficultyFilter]);
 
   useEffect(() => {
+    try {
+      if (capoFilter === '') {
+        window.localStorage.removeItem('songsCapoFilter');
+      } else {
+        window.localStorage.setItem('songsCapoFilter', String(capoFilter));
+      }
+    } catch { /* ignore */ }
+  }, [capoFilter]);
+
+  useEffect(() => {
+    if (instrumentFilter !== 'Guitar') {
+      setCapoFilter('');
+    }
+
     if (!instrumentFilter) {
       setInstrumentDifficultyFilter('');
       setTechniqueFilters(new Set());
@@ -538,6 +590,24 @@ function Songs() {
 
   useEffect(() => {
     try {
+      window.localStorage.setItem('songsLanguageFilters', JSON.stringify(Array.from(languageFilters)));
+    } catch { /* ignore */ }
+  }, [languageFilters]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsLanguageMatchMode', languageMatchMode);
+    } catch { /* ignore */ }
+  }, [languageMatchMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('songsLanguageAccordionOpen', languageAccordionOpen ? 'true' : 'false');
+    } catch { /* ignore */ }
+  }, [languageAccordionOpen]);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem('songsPlaylistFilter', playlistFilter);
     } catch { /* ignore */ }
   }, [playlistFilter]);
@@ -653,6 +723,34 @@ function Songs() {
     setSuggestedArtists(artists);
   }, [songs]);
 
+  useEffect(() => {
+    const languages = songs
+      .flatMap(song => Array.isArray(song.language) ? song.language : (song.language ? [song.language] : []))
+      .filter((language): language is string => !!language && language.trim() !== '')
+      .reduce((unique, language) => {
+        if (!unique.includes(language)) {
+          unique.push(language);
+        }
+        return unique;
+      }, [] as string[])
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    setLanguageFilterOptions(languages);
+  }, [songs]);
+
+  useEffect(() => {
+    const genres = songs
+      .flatMap(song => Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []))
+      .filter((genre): genre is string => !!genre && genre.trim() !== '')
+      .reduce((unique, genre) => {
+        if (!unique.includes(genre)) {
+          unique.push(genre);
+        }
+        return unique;
+      }, [] as string[])
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    setAvailableGenres(genres);
+  }, [songs]);
+
   const handleMarkSelectedAsPlayedNow = async () => {
     try {
       setLoading(true);
@@ -737,6 +835,8 @@ function Songs() {
     const { name, value } = e.target;
     if (name === 'bpm') {
       setForm({ ...form, bpm: value === '' ? null : Number(value) });
+    } else if (name === 'capo') {
+      setForm({ ...form, capo: normalizeCapoValue(value) });
     } else {
       setForm({ ...form, [name]: value });
     }
@@ -764,6 +864,16 @@ function Songs() {
     });
   };
 
+  const toggleFormLanguage = (language: string) => {
+    setForm(prevForm => {
+      const current = Array.isArray(prevForm.language) ? prevForm.language : (prevForm.language ? [prevForm.language] : []);
+      const updated = current.includes(language)
+        ? current.filter(l => l !== language)
+        : [...current, language];
+      return { ...prevForm, language: updated };
+    });
+  };
+
   const setFormInstruments = (instruments: string[]) => {
     setForm(prevForm => {
       const nextDifficulty = { ...(prevForm.instrumentDifficulty || {}) } as Record<string, number | null>;
@@ -773,7 +883,12 @@ function Songs() {
         }
       });
 
-      return { ...prevForm, instrument: instruments, instrumentDifficulty: nextDifficulty };
+      return {
+        ...prevForm,
+        instrument: instruments,
+        instrumentDifficulty: nextDifficulty,
+        capo: instruments.includes('Guitar') ? (prevForm.capo ?? null) : null,
+      };
     });
   };
 
@@ -1107,6 +1222,7 @@ function Songs() {
     myInstrumentFilter,
     tuningFilter,
     instrumentDifficultyFilter,
+    capoFilter,
     techniqueFilters,
     techniqueMatchMode,
     genreFilters,
@@ -1118,6 +1234,8 @@ function Songs() {
     pitchStandardMaxFilter,
     timeSignatureFilter,
     modeFilter,
+    languageFilters,
+    languageMatchMode,
     playlistFilter,
     playlists,
   });
@@ -1279,6 +1397,8 @@ function Songs() {
           setMyInstrumentFilter={setMyInstrumentFilter}
           instrumentDifficultyFilter={instrumentDifficultyFilter}
           setInstrumentDifficultyFilter={setInstrumentDifficultyFilter}
+          capoFilter={capoFilter}
+          setCapoFilter={setCapoFilter}
           tuningFilter={tuningFilter}
           setTuningFilter={setTuningFilter}
           technicianFilters={techniqueFilters}
@@ -1328,13 +1448,20 @@ function Songs() {
           setTimeSignatureFilter={setTimeSignatureFilter}
           modeFilter={modeFilter}
           setModeFilter={setModeFilter}
+          languageFilters={languageFilters}
+          toggleLanguageFilter={toggleLanguageFilter}
+          languageMatchMode={languageMatchMode}
+          setLanguageMatchMode={setLanguageMatchMode}
+          languageAccordionOpen={languageAccordionOpen}
+          setLanguageAccordionOpen={setLanguageAccordionOpen}
+          languageFilterOptions={languageFilterOptions}
           bulkPlaylistOpen={bulkPlaylistOpen}
           setBulkPlaylistOpen={setBulkPlaylistOpen}
           playlists={playlists}
           myInstruments={myInstruments}
           instrumentTypeOptions={instrumentTypeOptions}
           tuningFilterOptions={tuningFilterOptions}
-          genreOptions={genreOptions}
+          genreOptions={availableGenres}
           availableTechniqueFilters={availableTechniqueFilters}
           allDisplayedSelected={allDisplayedSelected}
           hasActiveFilters={hasActiveFilters}
@@ -1351,8 +1478,10 @@ function Songs() {
             setEditingUid(song.uid);
             setForm({
               ...song,
+              capo: normalizeCapoValue(song.capo),
               instrument: Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []),
               technique: Array.isArray(song.technique) ? song.technique : [],
+              language: Array.isArray(song.language) ? song.language : (song.language ? [song.language] : []),
               genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
             });
             setMetadataSource(null);
@@ -1387,6 +1516,7 @@ function Songs() {
             onSetMyInstrumentUid={setFormMyInstrumentUid}
             onSetTechniques={setFormTechniques}
             onToggleGenre={toggleFormGenre}
+            onToggleLanguage={toggleFormLanguage}
             onSetInstrumentDifficulty={setInstrumentDifficulty}
             onSetInstrumentTuning={setInstrumentTuning}
             onToggleTechnique={toggleFormTechnique}

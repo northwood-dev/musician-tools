@@ -22,11 +22,14 @@ export interface SongsSidebarProps {
   setTimeSignatureAccordionOpen: (o: boolean) => void;
   modeAccordionOpen: boolean;
   setModeAccordionOpen: (o: boolean) => void;
+  languageAccordionOpen: boolean;
+  setLanguageAccordionOpen: (o: boolean) => void;
 
   // Filter values
   instrumentFilter: string;
   myInstrumentFilter: string;
   instrumentDifficultyFilter: number | '';
+  capoFilter: number | '';
   tuningFilter: string;
   technicianFilters: Set<string>;
   techniqueMatchMode: 'all' | 'any';
@@ -40,11 +43,14 @@ export interface SongsSidebarProps {
   playlistFilter: string;
   timeSignatureFilter: string;
   modeFilter: string;
+  languageFilters: Set<string>;
+  languageMatchMode: 'all' | 'any';
 
   // Filter setters
   setInstrumentFilter: (f: string) => void;
   setMyInstrumentFilter: (f: string) => void;
   setInstrumentDifficultyFilter: (f: number | '') => void;
+  setCapoFilter: (f: number | '') => void;
   setTuningFilter: (f: string) => void;
   toggleTechniqueFilter: (t: string) => void;
   setTechniqueMatchMode: (m: 'all' | 'any') => void;
@@ -58,6 +64,8 @@ export interface SongsSidebarProps {
   setPlaylistFilter: (f: string) => void;
   setTimeSignatureFilter: (f: string) => void;
   setModeFilter: (f: string) => void;
+  toggleLanguageFilter: (l: string) => void;
+  setLanguageMatchMode: (m: 'all' | 'any') => void;
 
   // Data
   playlists: Array<{ uid: string; name: string; songUids?: string[] }>;
@@ -66,6 +74,7 @@ export interface SongsSidebarProps {
   tuningFilterOptions: Array<{ value: string; label: string }>;
   genreOptions: string[];
   availableTechniqueFilters: string[];
+  languageFilterOptions: string[];
   hasActiveFilters: boolean;
   showTuningFilters: boolean;
   clearAllFilters: () => void;
@@ -228,6 +237,26 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             </div>
           )}
+          {props.instrumentFilter === 'Guitar' && (
+            <div className="card-base mt-3">
+              <div className="p-4">
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by capo</div>
+                <select
+                  value={props.capoFilter === '' ? '' : props.capoFilter}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    props.setCapoFilter(val as number | '');
+                  }}
+                  className="input-base text-sm"
+                >
+                  <option value="">All capo positions</option>
+                  {Array.from({ length: 12 }, (_, idx) => idx + 1).map(n => (
+                    <option key={n} value={n}>{`Capo ${n}`}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
           {props.showTuningFilters && (
             <div className="card-base mt-3">
               <button
@@ -345,52 +374,141 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             </button>
             {props.genreAccordionOpen && (
               <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by genre</div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {props.genreOptions.map(genre => (
-                    <label key={genre} className="inline-flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
-                        checked={props.genreFilters.has(genre)}
-                        onChange={() => props.toggleGenreFilter(genre)}
-                      />
-                      <span className="truncate">{genre}</span>
-                    </label>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
-                  <div className="flex items-center gap-3">
-                    <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                      <input
-                        type="radio"
-                        name="genre-match-mode"
-                        value="all"
-                        className="h-3 w-3"
-                        checked={props.genreMatchMode === 'all'}
-                        onChange={() => props.setGenreMatchMode('all')}
-                      />
-                      <span>All</span>
-                    </label>
-                    <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                      <input
-                        type="radio"
-                        name="genre-match-mode"
-                        value="any"
-                        className="h-3 w-3"
-                        checked={props.genreMatchMode === 'any'}
-                        onChange={() => props.setGenreMatchMode('any')}
-                      />
-                      <span>Any</span>
-                    </label>
+                {props.genreOptions.length === 0 ? (
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    No genres available in the songs
                   </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by genre</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {props.genreOptions.map(genre => (
+                        <label key={genre} className="inline-flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
+                            checked={props.genreFilters.has(genre)}
+                            onChange={() => props.toggleGenreFilter(genre)}
+                          />
+                          <span className="truncate">{genre}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-3">
+                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                          <input
+                            type="radio"
+                            name="genre-match-mode"
+                            value="all"
+                            className="h-3 w-3"
+                            checked={props.genreMatchMode === 'all'}
+                            onChange={() => props.setGenreMatchMode('all')}
+                          />
+                          <span>All</span>
+                        </label>
+                        <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                          <input
+                            type="radio"
+                            name="genre-match-mode"
+                            value="any"
+                            className="h-3 w-3"
+                            checked={props.genreMatchMode === 'any'}
+                            onChange={() => props.setGenreMatchMode('any')}
+                          />
+                          <span>Any</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        className="btn-secondary text-xs"
+                        onClick={() => props.toggleGenreFilter('')}
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Language filter */}
+          <div className="card-base mt-3">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              aria-expanded={props.languageAccordionOpen}
+              onClick={() => props.setLanguageAccordionOpen(!props.languageAccordionOpen)}
+            >
+              <span>
+                Filter by language
+                {props.languageFilters.size > 0 && (
+                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                    ({props.languageFilters.size} selected)
+                  </span>
+                )}
+              </span>
+              <span className={`transition-transform ${props.languageAccordionOpen ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            {props.languageAccordionOpen && (
+              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {props.languageFilterOptions.length === 0 ? (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">No languages available</p>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {props.languageFilterOptions.map(language => (
+                        <label key={language} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition">
+                          <input
+                            type="checkbox"
+                            checked={props.languageFilters.has(language)}
+                            onChange={() => props.toggleLanguageFilter(language)}
+                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
+                          />
+                          <span className="text-gray-700 dark:text-gray-300">{language}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {props.languageFilters.size > 1 && (
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Match mode:</div>
+                        <div className="flex gap-3">
+                          <label className="flex items-center gap-1 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name="languageMatchMode"
+                              value="any"
+                              checked={props.languageMatchMode === 'any'}
+                              onChange={() => props.setLanguageMatchMode('any')}
+                              className="w-3 h-3 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
+                            />
+                            <span className="text-gray-700 dark:text-gray-300">Any</span>
+                          </label>
+                          <label className="flex items-center gap-1 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name="languageMatchMode"
+                              value="all"
+                              checked={props.languageMatchMode === 'all'}
+                              onChange={() => props.setLanguageMatchMode('all')}
+                              className="w-3 h-3 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
+                            />
+                            <span className="text-gray-700 dark:text-gray-300">All</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="mt-3">
                   <button
                     type="button"
                     className="btn-secondary text-xs"
-                    onClick={() => props.toggleGenreFilter('')}
+                    onClick={() => props.toggleLanguageFilter('')}
                   >
                     Clear filters
                   </button>
@@ -398,6 +516,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             )}
           </div>
+
           <div className="card-base mt-3">
             <button
               type="button"

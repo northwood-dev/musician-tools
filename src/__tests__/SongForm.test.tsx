@@ -32,6 +32,7 @@ function renderForm(overrides: Partial<CreateSongDTO> = {}, extraProps: Partial<
       loading={false}
       onChange={onChange}
       onToggleGenre={jest.fn()}
+      onToggleLanguage={jest.fn()}
       onChangeInstruments={jest.fn()}
       onSetTechniques={jest.fn()}
       onSetMyInstrumentUid={jest.fn()}

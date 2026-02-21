@@ -8,6 +8,7 @@ export type SongFilterOptions = {
   myInstrumentFilter: string;
   tuningFilter: string;
   instrumentDifficultyFilter: number | '';
+  capoFilter: number | '';
   techniqueFilters: Set<string>;
   techniqueMatchMode: 'all' | 'any';
   genreFilters: Set<string>;
@@ -19,6 +20,8 @@ export type SongFilterOptions = {
   pitchStandardMaxFilter: string;
   timeSignatureFilter: string;
   modeFilter: string;
+  languageFilters: Set<string>;
+  languageMatchMode: 'all' | 'any';
   playlistFilter: string;
   playlists: Playlist[];
   instrumentMatchModeAll?: boolean;
@@ -32,6 +35,7 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     myInstrumentFilter,
     tuningFilter,
     instrumentDifficultyFilter,
+    capoFilter,
     techniqueFilters,
     techniqueMatchMode,
     genreFilters,
@@ -43,6 +47,8 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     pitchStandardMaxFilter,
     timeSignatureFilter,
     modeFilter,
+    languageFilters,
+    languageMatchMode,
     playlistFilter,
     playlists,
   } = opts;
@@ -92,6 +98,23 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
         : false
     );
 
+    const rawSongCapo: unknown = song.capo;
+    const songCapo = (() => {
+      if (rawSongCapo === undefined || rawSongCapo === null) return undefined;
+      if (typeof rawSongCapo === 'number') {
+        return Number.isInteger(rawSongCapo) && rawSongCapo >= 1 && rawSongCapo <= 12 ? rawSongCapo : undefined;
+      }
+      if (typeof rawSongCapo === 'string') {
+        const trimmed = rawSongCapo.trim();
+        if (!trimmed) return undefined;
+        const parsed = Number(trimmed);
+        return Number.isInteger(parsed) && parsed >= 1 && parsed <= 12 ? parsed : undefined;
+      }
+      const parsed = Number(rawSongCapo);
+      return Number.isInteger(parsed) && parsed >= 1 && parsed <= 12 ? parsed : undefined;
+    })();
+    const passesCapo = capoFilter === '' || (typeof songCapo === 'number' && Number.isFinite(songCapo) && songCapo === capoFilter);
+
     const selectedTech = Array.from(techniqueFilters);
     const songTechniques = Array.isArray(song.technique)
       ? song.technique
@@ -132,9 +155,19 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
 
     const passesTimeSignature = !timeSignatureFilter || song.timeSignature === timeSignatureFilter;
     const passesMode = !modeFilter || song.mode === modeFilter;
+    
+    const selectedLanguages = Array.from(languageFilters);
+    const songLanguages = Array.isArray(song.language)
+      ? song.language
+      : (song.language ? [song.language] : []);
+    const passesLanguage =
+      selectedLanguages.length === 0 ||
+      (languageMatchMode === 'all'
+        ? selectedLanguages.every(l => songLanguages.includes(l))
+        : selectedLanguages.some(l => songLanguages.includes(l)));
 
     const passesPlaylist = !playlistFilter || (playlists.find(p => p.uid === playlistFilter)?.songUids || []).includes(song.uid);
 
-    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesKey && passesBpm && passesPitch && passesTimeSignature && passesMode && passesPlaylist;
+    return passesSearch && passesInstrument && passesMyInstrument && passesTechnique && passesGenre && passesTuning && passesDifficulty && passesCapo && passesKey && passesBpm && passesPitch && passesTimeSignature && passesMode && passesLanguage && passesPlaylist;
   });
 }

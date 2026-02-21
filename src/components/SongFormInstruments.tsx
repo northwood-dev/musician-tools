@@ -5,6 +5,7 @@ import { instrumentTechniquesMap, instrumentTuningsMap } from '../constants/inst
 interface SongFormInstrumentsProps {
   // Instruments data
   currentInstruments: string[];
+  capo: number | null;
   instrumentDifficulty: Record<string, number | null>;
   instrumentTuning: Record<string, string | null>;
   currentTechniques: string[];
@@ -14,6 +15,7 @@ interface SongFormInstrumentsProps {
   // Callbacks
   onChangeInstruments: (instruments: string[]) => void;
   onSetInstrumentDifficulty?: (instrumentType: string, difficulty: number | null) => void;
+  onSetCapo?: (capo: number | null) => void;
   onSetInstrumentTuning?: (instrumentType: string, tuning: string | null) => void;
   onToggleTechnique: (technique: string) => void;
   onSetInstrumentLinksForInstrument?: (instrumentType: string, links: Array<{ label?: string; url: string }>) => void;
@@ -53,6 +55,7 @@ const getLastPlayedForInstrument = (instrumentType: string, plays: SongPlay[] = 
 export default function SongFormInstruments(props: SongFormInstrumentsProps) {
   const {
     currentInstruments,
+    capo,
     instrumentDifficulty,
     instrumentTuning,
     currentTechniques,
@@ -60,6 +63,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
     myInstrumentUid,
     onChangeInstruments,
     onSetInstrumentDifficulty,
+    onSetCapo,
     onSetInstrumentTuning,
     onToggleTechnique,
     onSetInstrumentLinksForInstrument,
@@ -199,6 +203,27 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                         <option key={t.value} value={t.value}>{t.label}</option>
                       ))}
                     </select>
+                  </div>
+                )}
+
+                {/* Capo (Guitar only) */}
+                {instrumentType === 'Guitar' && (
+                  <div>
+                    <div className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Capo</div>
+                    <input
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      type="number"
+                      min={1}
+                      max={12}
+                      step={1}
+                      value={capo ?? ''}
+                      onChange={(e) => {
+                        if (onSetCapo) {
+                          onSetCapo(e.target.value === '' ? null : Number(e.target.value));
+                        }
+                      }}
+                      disabled={loading}
+                    />
                   </div>
                 )}
 

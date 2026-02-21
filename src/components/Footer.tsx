@@ -1,5 +1,5 @@
 function Footer() {
-  const appVersion = '0.0.1';
+  const appVersion = '1.1.0';
 
   return (
     <footer className="bg-gradient-to-t from-gray-900 to-gray-800 dark:from-gray-950 dark:to-gray-900 text-white border-t border-gray-700 dark:border-gray-800">

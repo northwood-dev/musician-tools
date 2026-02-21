@@ -4,6 +4,7 @@ import { instrumentTechniquesMap } from '../constants/instrumentTypes';
 
 const baseProps = {
   currentInstruments: ['Guitar'],
+  capo: null,
   instrumentDifficulty: {},
   instrumentTuning: {},
   currentTechniques: [],

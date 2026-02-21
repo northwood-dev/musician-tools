@@ -3,6 +3,43 @@ const createError = require('http-errors');
 const logger = require('../logger');
 const { fetchSongMetadata } = require('../services/songMetadataService');
 
+const normalizeCapo = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 12) return null;
+  return parsed;
+};
+
+const normalizeLanguage = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  
+  // Handle array of languages
+  if (Array.isArray(value)) {
+    const normalized = value
+      .map(lang => {
+        if (!lang) return null;
+        const trimmed = String(lang).trim();
+        if (!trimmed) return null;
+        return trimmed
+          .split(/\s+/)
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .join(' ');
+      })
+      .filter(lang => lang !== null);
+    return normalized.length > 0 ? normalized : null;
+  }
+  
+  // Handle single language string
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  return trimmed
+    .split(/\s+/)
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+};
+
 // GET all songs for logged-in user
 const getAllSongs = async (req, res, next) => {
   try {
@@ -44,17 +81,22 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body;
+    const { title, bpm, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body;
 
     if (!title) {
       return next(createError(400, 'Title is required'));
     }
+
+    const normalizedCapo = normalizeCapo(capo);
+
+    const normalizedLanguage = normalizeLanguage(language);
 
     const song = await Song.create({
       userUid: userId,
       title,
       bpm: bpm !== undefined ? bpm : null,
       key,
+      capo: normalizedCapo !== undefined ? normalizedCapo : null,
       notes,
       instrument,
       instrumentLinks,
@@ -62,6 +104,7 @@ const createSong = async (req, res, next) => {
       instrumentTuning,
       artist,
       album,
+      language: normalizedLanguage !== undefined ? normalizedLanguage : null,
       genre,
       pitchStandard,
       technique,
@@ -97,16 +140,22 @@ const updateSong = async (req, res, next) => {
       return next(createError(403, 'Forbidden'));
     }
 
-    const { title, bpm, key, notes, instrument, artist, album, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body;
+    const { title, bpm, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body;
+
+    const normalizedCapo = normalizeCapo(capo);
+
+    const normalizedLanguage = normalizeLanguage(language);
 
     await song.update({
       title: title || song.title,
       bpm: bpm !== undefined ? bpm : song.bpm,
       key: key !== undefined ? key : song.key,
+      capo: normalizedCapo !== undefined ? normalizedCapo : song.capo,
       notes: notes !== undefined ? notes : song.notes,
       instrument: instrument !== undefined ? instrument : song.instrument,
       artist: artist !== undefined ? artist : song.artist,
       album: album !== undefined ? album : song.album,
+      language: normalizedLanguage !== undefined ? normalizedLanguage : song.language,
       genre: genre !== undefined ? genre : song.genre,
       pitchStandard: pitchStandard !== undefined ? pitchStandard : song.pitchStandard,
       instrumentTuning: instrumentTuning !== undefined ? instrumentTuning : song.instrumentTuning,

@@ -18,10 +18,11 @@ const { sequelize } = require('./models');
 (async () => {
   try {
     logger.log('info', 'Running database migrations...');
-    await sequelize.sync({ alter: false });
-    logger.log('info', 'Database migrations completed successfully');
+    // Use sequelize-cli migrations instead of sync
+    // await sequelize.sync({ alter: false });
+    logger.log('info', 'Database ready (using sequelize-cli migrations)');
   } catch (error) {
-    logger.error('Database migration failed:', error);
+    logger.error('Database initialization failed:', error);
     process.exit(1);
   }
 })();

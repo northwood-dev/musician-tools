@@ -3,6 +3,7 @@ export type Song = {
   title: string;
   bpm: number | null;
   key: string;
+  capo?: number | null;
   timeSignature?: string;
   mode?: string;
   notes: string;
@@ -11,6 +12,7 @@ export type Song = {
   instrumentDifficulty?: Record<string, number | null>;
   artist: string;
   album?: string;
+  language?: string[] | string | null;
   genre?: string[] | null;
   technique?: string[];
   pitchStandard?: number;

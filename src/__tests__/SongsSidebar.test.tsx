@@ -26,11 +26,14 @@ function makeProps(overrides: Partial<SongsSidebarProps> = {}): SongsSidebarProp
     setTimeSignatureAccordionOpen: jest.fn(),
     modeAccordionOpen: true,
     setModeAccordionOpen: jest.fn(),
+    languageAccordionOpen: false,
+    setLanguageAccordionOpen: jest.fn(),
 
     // Filters
     instrumentFilter: '',
     myInstrumentFilter: '',
     instrumentDifficultyFilter: '',
+    capoFilter: '',
     tuningFilter: '',
     technicianFilters: new Set<string>(),
     techniqueMatchMode: 'any',
@@ -44,11 +47,14 @@ function makeProps(overrides: Partial<SongsSidebarProps> = {}): SongsSidebarProp
     playlistFilter: '',
     timeSignatureFilter: '',
     modeFilter: '',
+    languageFilters: new Set<string>(),
+    languageMatchMode: 'any',
 
     // Filter setters
     setInstrumentFilter: jest.fn(),
     setMyInstrumentFilter: jest.fn(),
     setInstrumentDifficultyFilter: jest.fn(),
+    setCapoFilter: jest.fn(),
     setTuningFilter: jest.fn(),
     toggleTechniqueFilter: jest.fn(),
     setTechniqueMatchMode: jest.fn(),
@@ -62,6 +68,8 @@ function makeProps(overrides: Partial<SongsSidebarProps> = {}): SongsSidebarProp
     setPlaylistFilter: jest.fn(),
     setTimeSignatureFilter: jest.fn(),
     setModeFilter: jest.fn(),
+    toggleLanguageFilter: jest.fn(),
+    setLanguageMatchMode: jest.fn(),
 
     // Data
     playlists: [],
@@ -70,6 +78,7 @@ function makeProps(overrides: Partial<SongsSidebarProps> = {}): SongsSidebarProp
     tuningFilterOptions: [],
     genreOptions: [],
     availableTechniqueFilters: [],
+    languageFilterOptions: [],
     hasActiveFilters: false,
     showTuningFilters: false,
     clearAllFilters: jest.fn(),

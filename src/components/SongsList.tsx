@@ -15,6 +15,7 @@ export interface SongsListProps {
   instrumentFilter: string;
   myInstrumentFilter: string;
   instrumentDifficultyFilter: number | '';
+  capoFilter: number | '';
   tuningFilter: string;
   technicianFilters: Set<string>;
   techniqueMatchMode: 'all' | 'any';
@@ -28,6 +29,9 @@ export interface SongsListProps {
   playlistFilter: string;
   timeSignatureFilter: string;
   modeFilter: string;
+  languageFilters: Set<string>;
+  languageMatchMode: 'all' | 'any';
+  languageFilterOptions: string[];
   selectedSongs: Set<string>;
   
   // UI state
@@ -42,6 +46,7 @@ export interface SongsListProps {
   pitchAccordionOpen: boolean;
   timeSignatureAccordionOpen: boolean;
   modeAccordionOpen: boolean;
+  languageAccordionOpen: boolean;
   bulkPlaylistOpen: boolean;
   
   // Data
@@ -61,6 +66,7 @@ export interface SongsListProps {
   setInstrumentFilter: (f: string) => void;
   setMyInstrumentFilter: (f: string) => void;
   setInstrumentDifficultyFilter: (f: number | '') => void;
+  setCapoFilter: (f: number | '') => void;
   setTuningFilter: (f: string) => void;
   toggleTechniqueFilter: (t: string) => void;
   setTechniqueMatchMode: (m: 'all' | 'any') => void;
@@ -74,6 +80,9 @@ export interface SongsListProps {
   setPlaylistFilter: (f: string) => void;
   setTimeSignatureFilter: (f: string) => void;
   setModeFilter: (f: string) => void;
+  toggleLanguageFilter: (l: string) => void;
+  setLanguageMatchMode: (m: 'all' | 'any') => void;
+  setLanguageAccordionOpen: (o: boolean) => void;
   setSidebarExpanded: (e: boolean) => void;
   setFiltersAccordionOpen: (o: boolean) => void;
   setPlaylistAccordionOpen: (o: boolean) => void;
@@ -134,6 +143,7 @@ export default function SongsList(props: SongsListProps) {
           instrumentFilter={props.instrumentFilter}
           myInstrumentFilter={props.myInstrumentFilter}
           instrumentDifficultyFilter={props.instrumentDifficultyFilter}
+          capoFilter={props.capoFilter}
           tuningFilter={props.tuningFilter}
           technicianFilters={props.technicianFilters}
           techniqueMatchMode={props.techniqueMatchMode}
@@ -147,9 +157,14 @@ export default function SongsList(props: SongsListProps) {
           playlistFilter={props.playlistFilter}
           timeSignatureFilter={props.timeSignatureFilter}
           modeFilter={props.modeFilter}
+          languageFilters={props.languageFilters}
+          languageMatchMode={props.languageMatchMode}
+          languageAccordionOpen={props.languageAccordionOpen}
+          languageFilterOptions={props.languageFilterOptions}
           setInstrumentFilter={props.setInstrumentFilter}
           setMyInstrumentFilter={props.setMyInstrumentFilter}
           setInstrumentDifficultyFilter={props.setInstrumentDifficultyFilter}
+          setCapoFilter={props.setCapoFilter}
           setTuningFilter={props.setTuningFilter}
           toggleTechniqueFilter={props.toggleTechniqueFilter}
           setTechniqueMatchMode={props.setTechniqueMatchMode}
@@ -163,6 +178,9 @@ export default function SongsList(props: SongsListProps) {
           setPlaylistFilter={props.setPlaylistFilter}
           setTimeSignatureFilter={props.setTimeSignatureFilter}
           setModeFilter={props.setModeFilter}
+          toggleLanguageFilter={props.toggleLanguageFilter}
+          setLanguageMatchMode={props.setLanguageMatchMode}
+          setLanguageAccordionOpen={props.setLanguageAccordionOpen}
           playlists={props.playlists}
           myInstruments={props.myInstruments}
           instrumentTypeOptions={props.instrumentTypeOptions}

@@ -26,6 +26,7 @@ const makeOpts = (overrides: Partial<Parameters<typeof applySongFilters>[1]> = {
   myInstrumentFilter: '',
   tuningFilter: '',
   instrumentDifficultyFilter: '' as const,
+  capoFilter: '' as const,
   techniqueFilters: new Set<string>(),
   techniqueMatchMode: 'any' as const,
   genreFilters: new Set<string>(),
@@ -37,6 +38,8 @@ const makeOpts = (overrides: Partial<Parameters<typeof applySongFilters>[1]> = {
   pitchStandardMaxFilter: '',
   timeSignatureFilter: '',
   modeFilter: '',
+  languageFilters: new Set<string>(),
+  languageMatchMode: 'any' as const,
   playlistFilter: '',
   playlists: [],
   ...overrides,
@@ -92,4 +95,45 @@ test('does not treat empty-string difficulty as 0', () => {
 
   const result = applySongFilters(songs, makeOpts({ instrumentFilter: 'Guitar', instrumentDifficultyFilter: 2 }));
   expect(result.map(s => s.uid)).toEqual(['2']);
+});
+
+test('filters by exact capo position', () => {
+  const songs: Song[] = [
+    { ...baseSong, uid: '1', capo: 1 },
+    { ...baseSong, uid: '2', capo: 2 },
+    { ...baseSong, uid: '3', capo: 4 },
+  ];
+
+  const result = applySongFilters(songs, makeOpts({ capoFilter: 2 }));
+  expect(result.map(s => s.uid)).toEqual(['2']);
+});
+
+test('excludes songs without capo when capo filter is active', () => {
+  const songs: Song[] = [
+    { ...baseSong, uid: '1', capo: null },
+    { ...baseSong, uid: '2', capo: 1 },
+  ];
+
+  const result = applySongFilters(songs, makeOpts({ capoFilter: 1 }));
+  expect(result.map(s => s.uid)).toEqual(['2']);
+});
+
+test('excludes capo 0 as invalid when capo filter is active', () => {
+  const songs: Song[] = [
+    { ...baseSong, uid: '1', capo: 0 },
+    { ...baseSong, uid: '2', capo: 3 },
+  ];
+
+  const result = applySongFilters(songs, makeOpts({ capoFilter: 3 }));
+  expect(result.map(s => s.uid)).toEqual(['2']);
+});
+
+test('filters by language', () => {
+  const songs: Song[] = [
+    { ...baseSong, uid: '1', language: 'French' },
+    { ...baseSong, uid: '2', language: 'English' },
+  ];
+
+  const result = applySongFilters(songs, makeOpts({ languageFilters: new Set(['French']) }));
+  expect(result.map(s => s.uid)).toEqual(['1']);
 });

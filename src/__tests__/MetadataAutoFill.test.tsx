@@ -6,6 +6,7 @@ describe('Metadata Auto-fill Feature', () => {
     const defaultProps = {
       onChange: jest.fn(),
       onToggleGenre: jest.fn(),
+      onToggleLanguage: jest.fn(),
       onChangeInstruments: jest.fn(),
       onSetTechniques: jest.fn(),
       onSubmit: jest.fn(),
