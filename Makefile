@@ -1,4 +1,4 @@
-.PHONY: setup start stop up down restart rebuild-backend migrate seed logs logs-db dev preview install-backend install-frontend install reset-db ps db-psql db-backup db-restore api-test help
+.PHONY: setup start stop up down restart rebuild-backend migrate migrate-prod seed logs logs-db dev preview install-backend install-frontend install reset-db ps db-psql db-backup db-backup-prod db-restore api-test help
 
 # Default help
 help:
@@ -19,10 +19,12 @@ help:
 	@echo ""
 	@echo "🗄️  Database:"
 	@echo "  migrate           - Run Sequelize migrations in backend"
+	@echo "  migrate-prod      - Run Sequelize migrations against PROD DB URL"
 	@echo "  seed              - Run all Sequelize seeders"
 	@echo "  reset-db          - Drop volumes, recreate stack, rerun migrations"
 	@echo "  db-psql           - Open psql shell in db container"
 	@echo "  db-backup         - Create timestamped DB backup into backups/"
+	@echo "  db-backup-prod    - Create timestamped PROD DB backup into backups/"
 	@echo "  db-restore        - Restore DB from backup (make db-restore FILE=backups/<file>.dump)"
 	@echo ""
 	@echo "🔧 Development:"
@@ -141,6 +143,15 @@ logs-db:
 migrate:
 	docker compose exec backend npx sequelize-cli db:migrate
 
+migrate-prod:
+	@if [ -z "$(PROD_DB_URL)" ]; then echo "Missing PROD DB URL. Set PROD_DB_URL=... or define DATABASE_URL_PROD in backend/.env"; exit 2; fi
+	@if ! echo "$(PROD_DB_URL)" | grep -Eq '^postgres(ql)?://[^:]+:[^@]+@[^:/]+(:[0-9]+)?/.+'; then \
+		echo "Invalid PROD_DB_URL format. Expected: postgresql://user:password@host:5432/dbname"; \
+		echo "Tip: make migrate-prod PROD_DB_URL='postgresql://user:pass@host:5432/dbname?sslmode=require'"; \
+		exit 2; \
+	fi
+	@cd backend && DATABASE_URL_PROD="$(PROD_DB_URL)" NODE_ENV=production npx sequelize-cli db:migrate --env production
+
 seed:
 	docker compose exec backend npx sequelize-cli db:seed:all
 
@@ -182,12 +193,25 @@ preview:
 # Backup/Restore
 BACKUP_DIR := backups
 TIMESTAMP := $(shell date +%Y%m%d_%H%M%S)
+PROD_DB_URL ?= $(shell grep '^DATABASE_URL_PROD=' backend/.env 2>/dev/null | cut -d= -f2-)
 
 db-backup:
 	@mkdir -p $(BACKUP_DIR)
 	@echo "Creating backup to $(BACKUP_DIR)/musician_tools_$(TIMESTAMP).dump"
 	@docker compose exec -T db env PGPASSWORD=musician_pass pg_dump -U musician_user -d musician_tools -F c > $(BACKUP_DIR)/musician_tools_$(TIMESTAMP).dump
 	@echo "Backup complete."
+
+db-backup-prod:
+	@if [ -z "$(PROD_DB_URL)" ]; then echo "Missing PROD DB URL. Set PROD_DB_URL=... or define DATABASE_URL_PROD in backend/.env"; exit 2; fi
+	@if ! echo "$(PROD_DB_URL)" | grep -Eq '^postgres(ql)?://[^:]+:[^@]+@[^:/]+(:[0-9]+)?/.+'; then \
+		echo "Invalid PROD_DB_URL format. Expected: postgresql://user:password@host:5432/dbname"; \
+		echo "Tip: run with explicit URL -> make db-backup-prod PROD_DB_URL='postgresql://user:pass@host:5432/dbname?sslmode=require'"; \
+		exit 2; \
+	fi
+	@mkdir -p $(BACKUP_DIR)
+	@echo "Creating PROD backup to $(BACKUP_DIR)/musician_tools_prod_$(TIMESTAMP).dump"
+	@docker run --rm -e PROD_DB_URL="$(PROD_DB_URL)" -v "$(PWD)/$(BACKUP_DIR):/backups" postgres:15 sh -c 'pg_dump "$$PROD_DB_URL" -F c -f "/backups/musician_tools_prod_$(TIMESTAMP).dump"'
+	@echo "PROD backup complete."
 
 db-restore:
 	@if [ -z "$(FILE)" ]; then echo "Usage: make db-restore FILE=backups/<file>.dump"; exit 2; fi

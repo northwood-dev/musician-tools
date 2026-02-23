@@ -9,6 +9,7 @@ module.exports = {
   development: {
     // Configuration for development environment
     url: process.env.DATABASE_URL_DEV,
+    dialect: 'postgres',
     jwtsecret: 'musician-secret-key',
     connectionoptions: {
       dialect: 'postgres',
@@ -33,6 +34,7 @@ module.exports = {
   test: {
     // Configuration for local unit tests
     url: process.env.DATABASE_URL_DEV,
+    dialect: 'postgres',
     jwtsecret: 'musician-secret-key',
     connectionoptions: {
       dialect: 'postgres',
@@ -57,6 +59,7 @@ module.exports = {
   staging: {
     // Configuration for remote staging environment
     url: process.env.DATABASE_URL_REMOTE,
+    dialect: 'postgres',
     jwtsecret: process.env.JWT_SECRET || 'musician-secret-key',
     connectionoptions: {
       dialect: 'postgres',
@@ -81,6 +84,7 @@ module.exports = {
   production: {
     // Configuration for production environment
     url: process.env.DATABASE_URL_PROD,
+    dialect: 'postgres',
     jwtsecret: process.env.JWT_SECRET,
     connectionoptions: {
       dialect: 'postgres',
