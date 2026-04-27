@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:15
-    restart: always
+    restart: no
     user: postgres
     environment:
       POSTGRES_PASSWORD: musician_pass
@@ -20,7 +20,7 @@ services:
 
   adminer:
     image: adminer
-    restart: always
+    restart: no
     ports:
       - 8080:8080
     depends_on:
