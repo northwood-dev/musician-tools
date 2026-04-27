@@ -108,13 +108,13 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                 aria-expanded={isExpanded}
               >
                 <span className="font-medium">{instrumentType}</span>
+              </button>
+              <div className="flex items-center gap-2">
                 {formatLastPlayed && (
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                     Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
                   </span>
                 )}
-              </button>
-              <div className="flex items-center gap-2">
                 {onMarkAsPlayedNow && mode === 'edit' && (
                   <button
                     type="button"
