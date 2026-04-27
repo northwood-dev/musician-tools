@@ -5,6 +5,22 @@
  */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
+    const tableDescription = await queryInterface.describeTable('Songs');
+
+    // If technique_tmp exists, the migration was interrupted — finish it
+    if (tableDescription.technique_tmp) {
+      if (tableDescription.technique) {
+        await queryInterface.removeColumn("Songs", "technique");
+      }
+      await queryInterface.renameColumn("Songs", "technique_tmp", "technique");
+      return;
+    }
+
+    // If technique is already JSON/JSONB, migration is already done
+    if (!tableDescription.technique || tableDescription.technique.type === 'JSON' || tableDescription.technique.type === 'JSONB') {
+      return;
+    }
+
     // Add a temporary JSON column
     await queryInterface.addColumn("Songs", "technique_tmp", {
       type: Sequelize.JSON,
@@ -13,7 +29,6 @@ module.exports = {
     });
 
     // Copy data: wrap non-null string values into an array
-    // Using raw SQL for Postgres
     await queryInterface.sequelize.query(`
       UPDATE "Songs"
       SET "technique_tmp" = CASE

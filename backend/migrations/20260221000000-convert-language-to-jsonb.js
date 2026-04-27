@@ -2,6 +2,15 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Check if language column is already JSONB
+    const [rows] = await queryInterface.sequelize.query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'Songs' AND column_name = 'language';
+    `);
+    if (!rows.length || rows[0].data_type === 'jsonb') {
+      return; // already done
+    }
+
     // Convert the column type from VARCHAR to JSONB
     // Wrap existing string values in arrays, handle NULLs and empty strings
     await queryInterface.sequelize.query(`

@@ -2,11 +2,14 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Songs', 'pitch_standard', {
-      type: Sequelize.INTEGER,
-      allowNull: true,
-      defaultValue: 440,
-    });
+    const tableDescription = await queryInterface.describeTable('Songs');
+    if (!tableDescription.pitch_standard) {
+      await queryInterface.addColumn('Songs', 'pitch_standard', {
+        type: Sequelize.INTEGER,
+        allowNull: true,
+        defaultValue: 440,
+      });
+    }
   },
 
   down: async (queryInterface) => {

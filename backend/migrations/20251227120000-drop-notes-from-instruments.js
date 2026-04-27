@@ -2,7 +2,10 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('Instruments', 'notes');
+    const tableDescription = await queryInterface.describeTable('Instruments');
+    if (tableDescription.notes) {
+      await queryInterface.removeColumn('Instruments', 'notes');
+    }
   },
 
   down: async (queryInterface, Sequelize) => {

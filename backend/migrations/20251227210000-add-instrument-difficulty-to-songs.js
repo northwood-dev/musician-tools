@@ -2,11 +2,14 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.addColumn('Songs', 'instrumentDifficulty', {
-      type: Sequelize.JSONB,
-      allowNull: true,
-      defaultValue: null,
-    });
+    const tableDescription = await queryInterface.describeTable('Songs');
+    if (!tableDescription.instrumentDifficulty) {
+      await queryInterface.addColumn('Songs', 'instrumentDifficulty', {
+        type: Sequelize.JSONB,
+        allowNull: true,
+        defaultValue: null,
+      });
+    }
   },
 
   async down(queryInterface) {

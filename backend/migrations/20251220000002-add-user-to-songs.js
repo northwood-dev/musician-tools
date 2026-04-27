@@ -2,17 +2,19 @@
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('Songs', 'user_uid', {
-      type: Sequelize.UUID,
-      allowNull: true,
-      references: {
-        model: 'Users',
-        key: 'uid'
-      },
-      onDelete: 'CASCADE'
-    });
-
-    await queryInterface.addIndex('Songs', ['user_uid']);
+    const tableDescription = await queryInterface.describeTable('Songs');
+    if (!tableDescription.user_uid) {
+      await queryInterface.addColumn('Songs', 'user_uid', {
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: 'Users',
+          key: 'uid'
+        },
+        onDelete: 'CASCADE'
+      });
+      await queryInterface.addIndex('Songs', ['user_uid']);
+    }
   },
 
   down: async (queryInterface, Sequelize) => {
