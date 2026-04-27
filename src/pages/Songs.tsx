@@ -204,6 +204,8 @@ function Songs() {
   // States for editing song plays and playlists
   const [editingSongPlays, setEditingSongPlays] = useState<SongPlay[]>([]);
   const [selectedPlaylistUids, setSelectedPlaylistUids] = useState<Set<string>>(new Set());
+  const [playlistSearchOpen, setPlaylistSearchOpen] = useState(false);
+  const [playlistSearchQuery, setPlaylistSearchQuery] = useState('');
   const [suggestedAlbums, setSuggestedAlbums] = useState<string[]>([]);
   const [suggestedArtists, setSuggestedArtists] = useState<string[]>([]);
   const [languageFilterOptions, setLanguageFilterOptions] = useState<string[]>([]);
@@ -1557,29 +1559,66 @@ function Songs() {
                     </Link>
                   </p>
                 ) : (
-                  <div className="space-y-1">
-                    {playlists.map(playlist => (
-                      <label
-                        key={playlist.uid}
-                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedPlaylistUids.has(playlist.uid)}
-                          onChange={() => handleTogglePlaylist(playlist.uid)}
-                          className="rounded border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{playlist.name}</p>
-                          {playlist.description && (
-                            <p className="text-sm text-gray-600 dark:text-gray-400">{playlist.description}</p>
-                          )}
-                        </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          {(playlist.songUids || []).length} songs
-                        </span>
-                      </label>
-                    ))}
+                  <div>
+                    <div className="relative z-30">
+                      <input
+                        type="text"
+                        placeholder="Search or select a playlist"
+                        value={playlistSearchQuery}
+                        onChange={(e) => setPlaylistSearchQuery(e.target.value)}
+                        onFocus={() => setPlaylistSearchOpen(true)}
+                        className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      />
+                      {playlistSearchOpen && (
+                        <>
+                          <button
+                            type="button"
+                            className="fixed inset-0 z-10"
+                            onClick={() => setPlaylistSearchOpen(false)}
+                            onKeyDown={(e) => { if (e.key === 'Escape' || e.key === 'Enter') setPlaylistSearchOpen(false); }}
+                            aria-label="Close playlist dropdown"
+                            tabIndex={-1}
+                          />
+                          <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
+                            {playlists
+                              .filter(p => !selectedPlaylistUids.has(p.uid) && p.name.toLowerCase().includes(playlistSearchQuery.toLowerCase()))
+                              .map(playlist => (
+                                <button
+                                  key={playlist.uid}
+                                  type="button"
+                                  onClick={() => {
+                                    handleTogglePlaylist(playlist.uid);
+                                    setPlaylistSearchQuery('');
+                                    setPlaylistSearchOpen(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-100"
+                                >
+                                  {playlist.name}
+                                </button>
+                              ))}
+                            {playlists.filter(p => !selectedPlaylistUids.has(p.uid) && p.name.toLowerCase().includes(playlistSearchQuery.toLowerCase())).length === 0 && (
+                              <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No playlists found</div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {selectedPlaylistUids.size > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {playlists.filter(p => selectedPlaylistUids.has(p.uid)).map(playlist => (
+                          <button
+                            key={playlist.uid}
+                            type="button"
+                            className="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600"
+                            onClick={() => handleTogglePlaylist(playlist.uid)}
+                            title={playlist.name}
+                          >
+                            <span className="truncate">{playlist.name}</span>
+                            <span>✕</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
