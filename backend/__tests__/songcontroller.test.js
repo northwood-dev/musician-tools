@@ -26,7 +26,8 @@ jest.mock('../models', () => {
       sum: jest.fn(async () => 0)
     },
     sequelize: {
-      transaction: jest.fn(async (callback) => callback({ id: 'tx' }))
+      // (options?, callback): a nested call (savepoint) reuses the same mock tx
+    transaction: jest.fn(async (...args) => args[args.length - 1]({ id: 'tx' }))
     }
   };
 });

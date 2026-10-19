@@ -12,6 +12,7 @@ const MAX_ITEM_NOTE_LENGTH = 1000;
 // Reject malformed uids before they reach Postgres (invalid uuid input throws a DB error)
 const { UUID_PATTERN } = require('../utils/uuid');
 const { entryKey, joinNotes, mergeEntries, mergeSessions } = require('../utils/sessionMerge');
+const { findOrCreateDaySession } = require('../services/daySession');
 
 // The calendar day of a historical play (FR22 retro-import). playedAt was
 // stamped with the SERVER clock, so the UTC day is the best available truth —
@@ -440,18 +441,13 @@ const createPracticeSession = async (req, res, next) => {
     let merged = false;
     await sequelize.transaction(async (transaction) => {
       // #5: one session per day and instrument. Logging again for a pair that
-      // already has a session adds to it, like Mark as Played does. Most
-      // recent first, the same pick as Mark as Played until #12 makes it unique.
-      const existing = await PracticeSession.findOne({
-        where: { userUid: userId, date, instrumentType: trimmedInstrument },
-        order: [['createdAt', 'DESC']],
-        transaction,
-      });
+      // already has a session adds to it, like Mark as Played does.
+      const [daySession, created] = await findOrCreateDaySession(sessionValues, transaction);
+      practiceSession = daySession;
 
-      if (!existing) {
+      if (created) {
         // A song or topic entered twice in the same form becomes one entry
         const { entries } = mergeEntries(resolvedItems);
-        practiceSession = await PracticeSession.create(sessionValues, { transaction });
         if (entries.length > 0) {
           sessionItems = await SessionItem.bulkCreate(
             entries.map(({ uid: _uid, ...entry }) => ({ ...entry, sessionUid: practiceSession.uid })),
@@ -466,7 +462,7 @@ const createPracticeSession = async (req, res, next) => {
       }
 
       merged = true;
-      practiceSession = existing;
+      const existing = daySession;
       const existingItems = await SessionItem.findAll({
         where: { sessionUid: existing.uid },
         order: [['position', 'ASC'], ['uid', 'ASC']],

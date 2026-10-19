@@ -25,7 +25,8 @@ jest.mock('../models', () => {
       findAll: jest.fn(),
     },
     sequelize: {
-      transaction: jest.fn(async (callback) => callback({ id: 'tx' })),
+      // (options?, callback): a nested call (savepoint) reuses the same mock tx
+      transaction: jest.fn(async (...args) => args[args.length - 1]({ id: 'tx' })),
     },
   };
 });
@@ -695,9 +696,9 @@ describe('practicesessioncontroller', () => {
 
       await controller.createPracticeSession(req, res, mockNext());
 
-      // #5: always one transaction — the existing-session lookup and the create
-      // must see the same state
-      expect(sequelize.transaction).toHaveBeenCalledTimes(1);
+      // #5: the existing-session lookup and the create run in one transaction
+      // (the create itself in a savepoint, see services/daySession)
+      expect(PracticeSession.findOne.mock.calls[0][0]).toMatchObject({ transaction: { id: 'tx' } });
       expect(SessionItem.bulkCreate).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json.mock.calls[0][0].items).toEqual([]);
