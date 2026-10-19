@@ -41,3 +41,23 @@ test('the whole "Artist - Title" is a single link to the song edit form', () => 
   const link = screen.getByRole('link', { name: "Guns N' Roses - Sweet Child" });
   expect(link).toHaveAttribute('href', '/songs/song-1'); // story 18.2: deep-link to the song route
 });
+
+test('#5: an orphan entry keeps its label, greyed, with a "deleted" badge and no link', () => {
+  renderCard(makeSession([
+    { uid: 'i1', sessionUid: 's1', songUid: null, topicUid: null, label: 'Autumn Leaves', minutes: 10 },
+  ]));
+
+  expect(screen.getByText('Autumn Leaves')).toHaveClass('text-gray-400');
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  expect(screen.getByText('deleted')).toHaveAttribute('title', 'This item was deleted');
+});
+
+test('#5: song and topic entries that still exist carry no "deleted" badge', () => {
+  renderCard(makeSession([
+    { uid: 'i1', sessionUid: 's1', songUid: 'song-1', label: 'Sweet Child' },
+    { uid: 'i2', sessionUid: 's1', topicUid: 't1', label: 'Pentatonic scale' },
+  ]));
+
+  expect(screen.queryByText('deleted')).not.toBeInTheDocument();
+  expect(screen.getByText('Pentatonic scale')).not.toHaveClass('text-gray-400');
+});
