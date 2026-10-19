@@ -48,6 +48,10 @@ export type UpdatePracticeSessionDTO = Partial<Omit<CreatePracticeSessionDTO, 'i
   confirmMerge?: boolean;
 };
 
+// #5: a create or update result. `merged` is true when the write joined the
+// existing session of that day and instrument instead of creating or keeping one.
+export type SessionWriteResult = PracticeSession & { merged?: boolean };
+
 // #5: thrown on a 409 from update when the new day and instrument already have
 // a session. Carries the server's wording; the caller confirms, then resends
 // with confirmMerge.
@@ -120,9 +124,7 @@ export const practiceSessionService = {
     if (!res.ok) throw new Error('Failed to fetch sessions');
     return res.json();
   },
-  // #5: `merged` is true when the entries joined the existing session of that
-  // day and instrument instead of creating one.
-  async create(payload: CreatePracticeSessionDTO): Promise<PracticeSession & { merged?: boolean }> {
+  async create(payload: CreatePracticeSessionDTO): Promise<SessionWriteResult> {
     const res = await apiFetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -138,9 +140,9 @@ export const practiceSessionService = {
     if (!res.ok) throw new Error('Failed to create session');
     return res.json();
   },
-  // `merged` is true when the session was folded into another one (#5): the
-  // result is that other session, and the edited one no longer exists.
-  async update(uid: string, payload: UpdatePracticeSessionDTO): Promise<PracticeSession & { merged?: boolean }> {
+  // A merged update (#5) returns the session it was folded into: the edited
+  // one no longer exists.
+  async update(uid: string, payload: UpdatePracticeSessionDTO): Promise<SessionWriteResult> {
     const res = await apiFetch(`${API_BASE}/sessions/${uid}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

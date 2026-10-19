@@ -52,16 +52,16 @@ module.exports = {
         }
 
         const [survivor, ...folded] = sessions;
-        const merge = mergeSessions(sessions);
+        const mergeResult = mergeSessions(sessions);
 
-        for (const removedUid of merge.removedUids) {
+        for (const removedUid of mergeResult.removedUids) {
           await run('UPDATE "SongPlays" SET "sessionItemUid" = :to WHERE "sessionItemUid" = :from',
-            { to: merge.playRemap[removedUid], from: removedUid });
+            { to: mergeResult.playRemap[removedUid], from: removedUid });
         }
-        if (merge.removedUids.length > 0) {
-          await run('DELETE FROM "SessionItems" WHERE uid IN (:uids)', { uids: merge.removedUids });
+        if (mergeResult.removedUids.length > 0) {
+          await run('DELETE FROM "SessionItems" WHERE uid IN (:uids)', { uids: mergeResult.removedUids });
         }
-        for (const entry of merge.entries) {
+        for (const entry of mergeResult.entries) {
           await run(`
             UPDATE "SessionItems"
             SET session_uid = :sessionUid, minutes = :minutes, note = :note, position = :position, "updatedAt" = NOW()
@@ -69,20 +69,27 @@ module.exports = {
           `, { sessionUid: survivor.uid, minutes: entry.minutes, note: entry.note, position: entry.position, uid: entry.uid });
         }
         await run('UPDATE "PracticeSessions" SET note = :note, "updatedAt" = NOW() WHERE uid = :uid',
-          { note: merge.note, uid: survivor.uid });
+          { note: mergeResult.note, uid: survivor.uid });
         // Every entry now belongs to the survivor: the folded sessions are empty
         await run('DELETE FROM "PracticeSessions" WHERE uid IN (:uids)', { uids: folded.map(session => session.uid) });
       }
 
-      await queryInterface.addIndex('PracticeSessions', ['user_uid', 'date', 'instrument_type'], {
-        unique: true,
-        name: INDEX_NAME,
-        transaction,
-      });
+      // Guarded: sequelize.sync() may already have created it from the model's `indexes`
+      const indexes = await queryInterface.showIndex('PracticeSessions', { transaction });
+      if (!indexes.some(index => index.name === INDEX_NAME)) {
+        await queryInterface.addIndex('PracticeSessions', ['user_uid', 'date', 'instrument_type'], {
+          unique: true,
+          name: INDEX_NAME,
+          transaction,
+        });
+      }
     });
   },
 
   async down(queryInterface) {
-    await queryInterface.removeIndex('PracticeSessions', INDEX_NAME);
+    const indexes = await queryInterface.showIndex('PracticeSessions');
+    if (indexes.some(index => index.name === INDEX_NAME)) {
+      await queryInterface.removeIndex('PracticeSessions', INDEX_NAME);
+    }
   },
 };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
-import { practiceSessionService, SessionMergeRequiredError, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
+import { practiceSessionService, SessionMergeRequiredError, type SessionWriteResult, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
 import { SessionDayGroup } from '../components/SessionHistoryCard';
 import { groupSessionsByDay } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
@@ -511,7 +511,7 @@ function MySessionsPage() {
 
   // After a successful edit. A merged edit (#5) returns the session it was
   // folded into: the edited one is gone, the target replaces its old copy.
-  const finishUpdate = (updated: PracticeSession & { merged?: boolean }) => {
+  const finishUpdate = (updated: SessionWriteResult) => {
     setSessions(prev => sortSessions([
       updated,
       ...(prev ?? []).filter(s => s.uid !== editingSessionUid && s.uid !== updated.uid),

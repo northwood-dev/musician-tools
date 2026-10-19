@@ -75,6 +75,9 @@ async function createJournalPlays(items, instrumentType, date, transaction) {
   }
 }
 
+// Entries in display order (position, uid as a stable tie-break)
+const ITEM_ORDER = [['position', 'ASC'], ['uid', 'ASC']];
+
 const toPlain = row => (row && typeof row.toJSON === 'function' ? row.toJSON() : row);
 
 // Persists a mergeEntries() result onto a session's existing rows: plays of
@@ -462,26 +465,26 @@ const createPracticeSession = async (req, res, next) => {
       }
 
       merged = true;
-      const existing = daySession;
       const existingItems = await SessionItem.findAll({
-        where: { sessionUid: existing.uid },
-        order: [['position', 'ASC'], ['uid', 'ASC']],
+        where: { sessionUid: daySession.uid },
+        order: ITEM_ORDER,
         transaction,
       });
       sessionItems = await persistMergedEntries(
-        existing.uid,
+        daySession.uid,
         existingItems,
         mergeEntries([...existingItems.map(toPlain), ...resolvedItems]),
         transaction
       );
-      const mergedNote = joinNotes(existing.note, trimmedNote);
-      if (mergedNote !== existing.note) {
-        await existing.update({ note: mergedNote }, { transaction });
+      const mergedNote = joinNotes(daySession.note, trimmedNote);
+      if (mergedNote !== daySession.note) {
+        await daySession.update({ note: mergedNote }, { transaction });
       }
-      // Each newly logged song is a new play, linked to the entry it landed in
+      // Each newly logged song is a new play, linked to the entry it landed in —
+      // one per song, like a new session (a song entered twice is one entry)
       const entryByKey = new Map(sessionItems.map(item => [entryKey(item), item]));
       await createJournalPlays(
-        resolvedItems.map(item => ({ songUid: item.songUid, uid: entryByKey.get(entryKey(item)).uid })),
+        mergeEntries(resolvedItems).entries.map(item => ({ songUid: item.songUid, uid: entryByKey.get(entryKey(item)).uid })),
         trimmedInstrument,
         date,
         transaction
@@ -722,8 +725,7 @@ const updatePracticeSession = async (req, res, next) => {
     let mergeTarget = null;
     if (dateChanged || instrumentChanged) {
       mergeTarget = await PracticeSession.findOne({
-        where: { userUid: userId, date: nextDate, instrumentType: nextInstrument, uid: { [Op.ne]: practiceSession.uid } },
-        order: [['createdAt', 'DESC']]
+        where: { userUid: userId, date: nextDate, instrumentType: nextInstrument, uid: { [Op.ne]: practiceSession.uid } }
       });
       if (mergeTarget && confirmMerge !== true) {
         return res.status(409).json({
@@ -736,9 +738,12 @@ const updatePracticeSession = async (req, res, next) => {
     }
 
     await sequelize.transaction(async (transaction) => {
+      // When folding into another session, the edited row keeps its day and
+      // instrument: moving it onto the target's pair first would violate the
+      // unique index. It is deleted once its entries have moved.
       await practiceSession.update({
-        date: nextDate,
-        instrumentType: nextInstrument,
+        date: mergeTarget ? oldDate : nextDate,
+        instrumentType: mergeTarget ? oldInstrument : nextInstrument,
         note: nextNote
       }, { transaction });
 
@@ -795,17 +800,16 @@ const updatePracticeSession = async (req, res, next) => {
       // already follow the new day/instrument above). Folding into another
       // session keeps that session's row; otherwise the edit's own duplicate
       // entries (same song or topic twice) collapse into one.
-      const itemOrder = [['position', 'ASC'], ['uid', 'ASC']];
-      const ownItems = await SessionItem.findAll({ where: { sessionUid: practiceSession.uid }, order: itemOrder, transaction });
+      const ownItems = await SessionItem.findAll({ where: { sessionUid: practiceSession.uid }, order: ITEM_ORDER, transaction });
       if (mergeTarget) {
-        const targetItems = await SessionItem.findAll({ where: { sessionUid: mergeTarget.uid }, order: itemOrder, transaction });
-        const merge = mergeSessions([
+        const targetItems = await SessionItem.findAll({ where: { sessionUid: mergeTarget.uid }, order: ITEM_ORDER, transaction });
+        const mergeResult = mergeSessions([
           { ...toPlain(mergeTarget), items: targetItems.map(toPlain) },
           { ...toPlain(practiceSession), items: ownItems.map(toPlain) }
         ]);
-        await persistMergedEntries(mergeTarget.uid, [...targetItems, ...ownItems], merge, transaction);
-        if (merge.note !== mergeTarget.note) {
-          await mergeTarget.update({ note: merge.note }, { transaction });
+        await persistMergedEntries(mergeTarget.uid, [...targetItems, ...ownItems], mergeResult, transaction);
+        if (mergeResult.note !== mergeTarget.note) {
+          await mergeTarget.update({ note: mergeResult.note }, { transaction });
         }
         await practiceSession.destroy({ transaction });
       } else {
@@ -816,7 +820,7 @@ const updatePracticeSession = async (req, res, next) => {
     const resultSession = mergeTarget || practiceSession;
     const itemsAfter = await SessionItem.findAll({
       where: { sessionUid: resultSession.uid },
-      order: [['position', 'ASC'], ['uid', 'ASC']]
+      order: ITEM_ORDER
     });
     res.json({ ...toPlain(resultSession), items: itemsAfter.map(toPlain), merged: Boolean(mergeTarget) });
   } catch (error) {

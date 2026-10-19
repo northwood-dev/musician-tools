@@ -600,7 +600,11 @@ describe('practicesessioncontroller', () => {
 
       const req = {
         session: { user: 'user-1' },
-        body: { ...baseBody([{ songUid: SONG_UID, minutes: 15 }, { topicUid: TOPIC_UID, minutes: 25 }]), note: 'evening' },
+        body: {
+          // The song twice in the form: still one new play, like for a new session
+          ...baseBody([{ songUid: SONG_UID, minutes: 5 }, { topicUid: TOPIC_UID, minutes: 25 }, { songUid: SONG_UID, minutes: 10 }]),
+          note: 'evening',
+        },
       };
       const res = mockRes();
       const next = mockNext();
@@ -908,6 +912,9 @@ describe('practicesessioncontroller', () => {
         }, res, next);
 
         const tx = { transaction: { id: 'tx' } };
+        // The edited row keeps its day and instrument: moving it onto the
+        // target's pair first would violate the unique index
+        expect(session.update).toHaveBeenCalledWith({ date: '2026-06-01', instrumentType: 'Bass', note: 'evening' }, tx);
         // The edited session's plays first follow the new instrument...
         expect(SongPlay.update).toHaveBeenCalledWith(
           expect.objectContaining({ instrumentType: 'Guitar' }), { where: { sessionItemUid: [ITEM_UID] }, ...tx }
