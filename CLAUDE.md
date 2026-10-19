@@ -17,3 +17,21 @@ Rules:
 - Use **Catalog** for the shared pool; it intrinsically reads as "a source you pull from".
 - The copy action from Catalog → Songlist is phrased **"Add to my songlist"**.
 - Keep these exact words in user-facing strings, comments, and identifiers.
+
+## Agent skills
+
+### Workflow
+
+Scoping, branching, review, PRs, releases and WhatsApp announcements: read `docs/agents/workflow.md` before starting any of them. Every push to `main` deploys to production.
+
+### Issue tracker
+
+Issues live in GitHub Issues (northwood-dev/musician-tools), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

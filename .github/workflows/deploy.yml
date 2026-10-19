@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Dispatched by release.yml after a version bump (a GITHUB_TOKEN push does not
+  # trigger the push event above).
+  workflow_dispatch:
 
 jobs:
   deploy:

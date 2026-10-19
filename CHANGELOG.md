@@ -1,5 +1,9 @@
 # Changelog
 
+> **Frozen at 2.1.1.** Later versions are documented in the
+> [GitHub Releases](https://github.com/northwood-dev/musician-tools/releases), generated
+> from merged PRs by `.github/workflows/release.yml`.
+
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/); this
 project adheres to [Semantic Versioning](https://semver.org/).
