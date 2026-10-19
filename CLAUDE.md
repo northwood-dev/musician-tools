@@ -20,6 +20,10 @@ Rules:
 
 ## Agent skills
 
+### Workflow
+
+Scoping, branching, review, PRs, releases and WhatsApp announcements: read `docs/agents/workflow.md` before starting any of them. Every push to `main` deploys to production.
+
 ### Issue tracker
 
 Issues live in GitHub Issues (northwood-dev/musician-tools), via the `gh` CLI. See `docs/agents/issue-tracker.md`.
