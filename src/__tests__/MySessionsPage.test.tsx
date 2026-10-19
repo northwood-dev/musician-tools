@@ -635,6 +635,52 @@ test('a newly logged session appears in the history', async () => {
   expect(screen.queryByText('No sessions logged yet.')).not.toBeInTheDocument();
 });
 
+test('#5: the form announces that entries will join the existing session of that day and instrument', async () => {
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-bass', date: todayLocalDate(), instrumentType: 'Bass', items: [] },
+  ]);
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  await screen.findByRole('list', { name: 'Session history' });
+
+  const notice = 'You already have a Bass session that day — these entries will be added to it.';
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  expect(screen.getByRole('note')).toHaveTextContent(notice);
+
+  // Another instrument, or another day: no session yet, no notice
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Guitar' } });
+  expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-01-02' } });
+  expect(screen.queryByRole('note')).not.toBeInTheDocument();
+});
+
+test('#5: entries merged into an existing session replace its card, with a dedicated toast', async () => {
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-bass', date: todayLocalDate(), instrumentType: 'Bass', note: 'morning', items: [
+      { uid: 'i1', sessionUid: 's-bass', label: 'Sweet Child', minutes: 10 },
+    ] },
+  ]);
+  mockedService.create.mockResolvedValue({
+    uid: 's-bass', date: todayLocalDate(), instrumentType: 'Bass', note: 'morning', merged: true, items: [
+      { uid: 'i1', sessionUid: 's-bass', label: 'Sweet Child', minutes: 10 },
+      { uid: 'i2', sessionUid: 's-bass', label: 'Pentatonic scale', minutes: 5 },
+    ],
+  });
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('morning');
+
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
+
+  expect(await screen.findByText('Added to your Bass session')).toBeInTheDocument();
+  await screen.findByText(/Pentatonic scale/);
+  // Still one Bass card for the day, not a second one
+  const day = screen.getByRole('list', { name: `Sessions of ${todayLocalDate()}` });
+  expect(within(day).getAllByText('Bass')).toHaveLength(1);
+});
+
 test('a retroactive session is inserted at its chronological place, not on top', async () => {
   const yesterday = (() => {
     const d = new Date();

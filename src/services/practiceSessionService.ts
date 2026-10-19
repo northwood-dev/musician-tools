@@ -107,7 +107,9 @@ export const practiceSessionService = {
     if (!res.ok) throw new Error('Failed to fetch sessions');
     return res.json();
   },
-  async create(payload: CreatePracticeSessionDTO): Promise<PracticeSession> {
+  // #5: `merged` is true when the entries joined the existing session of that
+  // day and instrument instead of creating one.
+  async create(payload: CreatePracticeSessionDTO): Promise<PracticeSession & { merged?: boolean }> {
     const res = await apiFetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

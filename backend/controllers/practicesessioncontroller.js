@@ -11,6 +11,7 @@ const MAX_ITEMS = 50;
 const MAX_ITEM_NOTE_LENGTH = 1000;
 // Reject malformed uids before they reach Postgres (invalid uuid input throws a DB error)
 const { UUID_PATTERN } = require('../utils/uuid');
+const { entryKey, joinNotes, mergeEntries } = require('../utils/sessionMerge');
 
 // The calendar day of a historical play (FR22 retro-import). playedAt was
 // stamped with the SERVER clock, so the UTC day is the best available truth —
@@ -71,6 +72,41 @@ async function createJournalPlays(items, instrumentType, date, transaction) {
   if (rows.length > 0) {
     await SongPlay.bulkCreate(rows, { transaction });
   }
+}
+
+const toPlain = row => (row && typeof row.toJSON === 'function' ? row.toJSON() : row);
+
+// Persists a mergeEntries() result onto a session's existing rows: plays of
+// the folded entries are re-attached to their survivor BEFORE those entries
+// are deleted (SongPlays cascade on SessionItem deletion), survivors get their
+// new minutes/note/position, and the entries without a row are created.
+// Returns the session's entries in their merged order.
+async function persistMergedEntries(sessionUid, existingItems, { entries, removedUids, playRemap }, transaction) {
+  for (const removedUid of removedUids) {
+    await SongPlay.update(
+      { sessionItemUid: playRemap[removedUid] },
+      { where: { sessionItemUid: removedUid }, transaction }
+    );
+  }
+  if (removedUids.length > 0) {
+    await SessionItem.destroy({ where: { uid: removedUids }, transaction });
+  }
+
+  const rowByUid = new Map(existingItems.map(row => [row.uid, row]));
+  const result = [];
+  for (const entry of entries) {
+    if (entry.uid) {
+      const row = rowByUid.get(entry.uid);
+      if (row.minutes !== entry.minutes || row.note !== entry.note || row.position !== entry.position) {
+        await row.update({ minutes: entry.minutes, note: entry.note, position: entry.position }, { transaction });
+      }
+      result.push(row);
+    } else {
+      const { uid: _uid, ...values } = entry;
+      result.push(await SessionItem.create({ ...values, sessionUid }, { transaction }));
+    }
+  }
+  return result;
 }
 
 // GET all practice sessions for logged-in user, anti-chronological.
@@ -393,26 +429,66 @@ const createPracticeSession = async (req, res, next) => {
     };
 
     let practiceSession;
-    let createdItems = [];
-    if (resolvedItems.length > 0) {
-      await sequelize.transaction(async (transaction) => {
-        practiceSession = await PracticeSession.create(sessionValues, { transaction });
-        createdItems = await SessionItem.bulkCreate(
-          resolvedItems.map((item, index) => ({ ...item, sessionUid: practiceSession.uid, position: index })),
-          { transaction }
-        );
-        // 4.2: each song entry is also a play event for the session's instrument,
-        // linked to its entry (cascade target) and dated on the session day, so
-        // the per-instrument "last played" derived from SongPlays reflects it.
-        await createJournalPlays(createdItems, trimmedInstrument, date, transaction);
+    let sessionItems = [];
+    let merged = false;
+    await sequelize.transaction(async (transaction) => {
+      // #5: one session per day and instrument. Logging again for a pair that
+      // already has a session adds to it, like Mark as Played does. Most
+      // recent first, the same pick as Mark as Played until #12 makes it unique.
+      const existing = await PracticeSession.findOne({
+        where: { userUid: userId, date, instrumentType: trimmedInstrument },
+        order: [['createdAt', 'DESC']],
+        transaction,
       });
-    } else {
-      practiceSession = await PracticeSession.create(sessionValues);
-    }
 
-    const sessionJson = typeof practiceSession.toJSON === 'function' ? practiceSession.toJSON() : practiceSession;
-    const itemsJson = createdItems.map(item => (typeof item.toJSON === 'function' ? item.toJSON() : item));
-    res.status(201).json({ ...sessionJson, items: itemsJson });
+      if (!existing) {
+        // A song or topic entered twice in the same form becomes one entry
+        const { entries } = mergeEntries(resolvedItems);
+        practiceSession = await PracticeSession.create(sessionValues, { transaction });
+        if (entries.length > 0) {
+          sessionItems = await SessionItem.bulkCreate(
+            entries.map(({ uid: _uid, ...entry }) => ({ ...entry, sessionUid: practiceSession.uid })),
+            { transaction }
+          );
+          // 4.2: each song entry is also a play event for the session's instrument,
+          // linked to its entry (cascade target) and dated on the session day, so
+          // the per-instrument "last played" derived from SongPlays reflects it.
+          await createJournalPlays(sessionItems, trimmedInstrument, date, transaction);
+        }
+        return;
+      }
+
+      merged = true;
+      practiceSession = existing;
+      const existingItems = await SessionItem.findAll({
+        where: { sessionUid: existing.uid },
+        order: [['position', 'ASC'], ['uid', 'ASC']],
+        transaction,
+      });
+      sessionItems = await persistMergedEntries(
+        existing.uid,
+        existingItems,
+        mergeEntries([...existingItems.map(toPlain), ...resolvedItems]),
+        transaction
+      );
+      const mergedNote = joinNotes(existing.note, trimmedNote);
+      if (mergedNote !== existing.note) {
+        await existing.update({ note: mergedNote }, { transaction });
+      }
+      // Each newly logged song is a new play, linked to the entry it landed in
+      const entryByKey = new Map(sessionItems.map(item => [entryKey(item), item]));
+      await createJournalPlays(
+        resolvedItems.map(item => ({ songUid: item.songUid, uid: entryByKey.get(entryKey(item)).uid })),
+        trimmedInstrument,
+        date,
+        transaction
+      );
+    });
+
+    const sessionJson = toPlain(practiceSession);
+    const itemsJson = sessionItems.map(toPlain);
+    // 201 for a new session; 200 + merged when the entries joined an existing one
+    res.status(merged ? 200 : 201).json({ ...sessionJson, items: itemsJson, merged });
   } catch (error) {
     // TOCTOU: a referenced song/topic deleted between resolution and insert
     // violates the FK inside the transaction — same answer as a bad reference

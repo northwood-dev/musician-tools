@@ -563,6 +563,75 @@ describe('practicesessioncontroller', () => {
       Topic.findAll.mockResolvedValue([{ uid: TOPIC_UID, userUid: 'user-1', name: 'Pentatonic scale' }]);
     });
 
+    test('#5: the same song twice in one form becomes a single entry with summed minutes', async () => {
+      const req = {
+        session: { user: 'user-1' },
+        body: baseBody([
+          { songUid: SONG_UID, minutes: 10, note: 'slow' },
+          { topicUid: TOPIC_UID, minutes: 5 },
+          { songUid: SONG_UID, minutes: 15, note: 'up to tempo' },
+        ]),
+      };
+      const res = mockRes();
+
+      await controller.createPracticeSession(req, res, mockNext());
+
+      const rows = SessionItem.bulkCreate.mock.calls[0][0];
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({ songUid: SONG_UID, minutes: 25, note: 'slow\nup to tempo', position: 0 });
+      expect(rows[1]).toMatchObject({ topicUid: TOPIC_UID, minutes: 5, position: 1 });
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json.mock.calls[0][0].merged).toBe(false);
+    });
+
+    test('#5: logging for a day and instrument that already have a session adds to it', async () => {
+      const existing = {
+        uid: 'existing-session', date: utcDateString(0), instrumentType: 'Bass', note: 'morning',
+        update: jest.fn(async function (values) { Object.assign(this, values); }),
+      };
+      const songRow = {
+        uid: 'e1', sessionUid: 'existing-session', songUid: SONG_UID, topicUid: null,
+        label: 'Sweet Child', minutes: 10, note: null, position: 0,
+        update: jest.fn(async function (values) { Object.assign(this, values); }),
+      };
+      PracticeSession.findOne.mockResolvedValueOnce(existing);
+      SessionItem.findAll.mockResolvedValueOnce([songRow]);
+
+      const req = {
+        session: { user: 'user-1' },
+        body: { ...baseBody([{ songUid: SONG_UID, minutes: 15 }, { topicUid: TOPIC_UID, minutes: 25 }]), note: 'evening' },
+      };
+      const res = mockRes();
+      const next = mockNext();
+
+      await controller.createPracticeSession(req, res, next);
+
+      // Looked up by user, day and instrument — inside the transaction
+      expect(PracticeSession.findOne.mock.calls[0][0]).toMatchObject({
+        where: { userUid: 'user-1', date: utcDateString(0), instrumentType: 'Bass' },
+        transaction: { id: 'tx' },
+      });
+      expect(PracticeSession.create).not.toHaveBeenCalled();
+      // The song accrues onto its existing entry; the topic is appended after it
+      expect(songRow.update).toHaveBeenCalledWith({ minutes: 25, note: null, position: 0 }, { transaction: { id: 'tx' } });
+      expect(SessionItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionUid: 'existing-session', topicUid: TOPIC_UID, minutes: 25, position: 1 }),
+        { transaction: { id: 'tx' } }
+      );
+      // Session notes joined, oldest first
+      expect(existing.update).toHaveBeenCalledWith({ note: 'morning\nevening' }, { transaction: { id: 'tx' } });
+      // The newly logged song is a new play, linked to the entry it landed in
+      const plays = SongPlay.bulkCreate.mock.calls[0][0];
+      expect(plays).toHaveLength(1);
+      expect(plays[0]).toMatchObject({ songUid: SONG_UID, sessionItemUid: 'e1', instrumentType: 'Bass' });
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload).toMatchObject({ uid: 'existing-session', note: 'morning\nevening', merged: true });
+      expect(payload.items.map(item => item.uid)).toEqual(['e1', 'new-item-uid']);
+      expect(next).not.toHaveBeenCalled();
+    });
+
     test('creates a session with song and topic items, labels snapshotted server-side', async () => {
       const req = {
         session: { user: 'user-1' },
@@ -620,13 +689,15 @@ describe('practicesessioncontroller', () => {
       expect(SongPlay.bulkCreate).toHaveBeenCalledWith(expect.any(Array), { transaction: { id: 'tx' } });
     });
 
-    test('a session with zero items stays valid and skips the transaction', async () => {
+    test('a session with zero items stays valid and creates no entry', async () => {
       const req = { session: { user: 'user-1' }, body: baseBody(undefined) };
       const res = mockRes();
 
       await controller.createPracticeSession(req, res, mockNext());
 
-      expect(sequelize.transaction).not.toHaveBeenCalled();
+      // #5: always one transaction — the existing-session lookup and the create
+      // must see the same state
+      expect(sequelize.transaction).toHaveBeenCalledTimes(1);
       expect(SessionItem.bulkCreate).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json.mock.calls[0][0].items).toEqual([]);

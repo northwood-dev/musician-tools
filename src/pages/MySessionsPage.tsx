@@ -340,6 +340,12 @@ function MySessionsPage() {
   // the entries and recomputed live as they change. An entry without minutes
   // counts as 0.
   const enteredMinutesSum = entries.reduce<number>((sum, e) => sum + (e.minutes === '' ? 0 : Number(e.minutes)), 0);
+  // #5: logging for a day and instrument that already have a session adds to
+  // it (server-side merge); the form announces it. The history holds every
+  // session (no pagination), so the local list is enough to know.
+  const existingSessionForPick = !editingSessionUid && instrumentType
+    ? (sessions ?? []).find(s => s.date === date && s.instrumentType === instrumentType)
+    : undefined;
 
   // Story 8.2: pin the system "Free practice" topic to the top of the picker's
   // Topics group, keeping the user's own topics in their existing order. Sorted
@@ -589,14 +595,19 @@ function MySessionsPage() {
         const created = await practiceSessionService.create(payload);
         // Local insert + re-sort: a retroactive session must land at its real
         // chronological place, not on top of the list. A previously failed
-        // history load must not keep hiding sessions logged since.
-        setSessions(prev => sortSessions([created, ...(prev ?? [])]));
+        // history load must not keep hiding sessions logged since. When the
+        // entries joined an existing session (#5), it replaces its old copy.
+        setSessions(prev => sortSessions([created, ...(prev ?? []).filter(s => s.uid !== created.uid)]));
         setSessionsFailed(false);
         setNote('');
         setEntries([]);
         // Tell the user we logged unstructured time, not silently — the entry
         // they didn't add is now visible as a Free practice entry.
-        showToast(loggedAsFreePractice ? 'Logged as Free practice' : 'Session logged');
+        showToast(loggedAsFreePractice
+          ? 'Logged as Free practice'
+          : created.merged
+            ? `Added to your ${created.instrumentType} session`
+            : 'Session logged');
       }
     } catch (err) {
       const generic = editingSessionUid ? 'Failed to update session' : 'Failed to log session';
@@ -731,6 +742,13 @@ function MySessionsPage() {
                 {enteredMinutesSum > 0 ? `${enteredMinutesSum} min` : '—'}
               </output>
             </div>
+            {existingSessionForPick && (
+              // #5: one session per day and instrument — say so before the submit
+              // rather than surprise the user with a merged session afterwards
+              <p role="note" className="md:col-span-3 text-sm text-brand-700 dark:text-brand-300">
+                You already have a {existingSessionForPick.instrumentType} session that day — these entries will be added to it.
+              </p>
+            )}
             <div className="flex flex-col gap-1 md:col-span-3">
               <label htmlFor="session-note" className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">
                 Note
