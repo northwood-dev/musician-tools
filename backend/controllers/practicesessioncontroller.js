@@ -11,7 +11,7 @@ const MAX_ITEMS = 50;
 const MAX_ITEM_NOTE_LENGTH = 1000;
 // Reject malformed uids before they reach Postgres (invalid uuid input throws a DB error)
 const { UUID_PATTERN } = require('../utils/uuid');
-const { entryKey, joinNotes, mergeEntries } = require('../utils/sessionMerge');
+const { entryKey, joinNotes, mergeEntries, mergeSessions } = require('../utils/sessionMerge');
 
 // The calendar day of a historical play (FR22 retro-import). playedAt was
 // stamped with the SERVER clock, so the UTC day is the best available truth —
@@ -97,8 +97,15 @@ async function persistMergedEntries(sessionUid, existingItems, { entries, remove
   for (const entry of entries) {
     if (entry.uid) {
       const row = rowByUid.get(entry.uid);
-      if (row.minutes !== entry.minutes || row.note !== entry.note || row.position !== entry.position) {
-        await row.update({ minutes: entry.minutes, note: entry.note, position: entry.position }, { transaction });
+      // A survivor coming from another session (edit-merge) moves with it
+      const moved = row.sessionUid !== undefined && row.sessionUid !== sessionUid;
+      if (moved || row.minutes !== entry.minutes || row.note !== entry.note || row.position !== entry.position) {
+        await row.update({
+          minutes: entry.minutes,
+          note: entry.note,
+          position: entry.position,
+          ...(moved ? { sessionUid } : {})
+        }, { transaction });
       }
       result.push(row);
     } else {
@@ -526,7 +533,7 @@ const updatePracticeSession = async (req, res, next) => {
 
     // durationMinutes is no longer accepted (Epic 8): the total derives from the
     // entries' minutes. A legacy body still sending it is tolerated and ignored.
-    const { date, instrumentType, note, items } = req.body || {};
+    const { date, instrumentType, note, items, confirmMerge } = req.body || {};
 
     let nextDate = practiceSession.date;
     if (date !== undefined) {
@@ -713,6 +720,25 @@ const updatePracticeSession = async (req, res, next) => {
     const dateChanged = nextDate !== oldDate;
     const instrumentChanged = nextInstrument !== oldInstrument;
 
+    // #5: one session per day and instrument. Moving a session onto a pair
+    // that already has one merges them — irreversible, so the client must
+    // confirm explicitly; without it, answer with what the dialog needs.
+    let mergeTarget = null;
+    if (dateChanged || instrumentChanged) {
+      mergeTarget = await PracticeSession.findOne({
+        where: { userUid: userId, date: nextDate, instrumentType: nextInstrument, uid: { [Op.ne]: practiceSession.uid } },
+        order: [['createdAt', 'DESC']]
+      });
+      if (mergeTarget && confirmMerge !== true) {
+        return res.status(409).json({
+          error: 'merge_required',
+          message: `This will merge into your existing ${nextInstrument} session of ${nextDate}`,
+          date: nextDate,
+          instrumentType: nextInstrument
+        });
+      }
+    }
+
     await sequelize.transaction(async (transaction) => {
       await practiceSession.update({
         date: nextDate,
@@ -768,14 +794,35 @@ const updatePracticeSession = async (req, res, next) => {
           await SongPlay.update(patch, { where: { sessionItemUid: itemUids }, transaction });
         }
       }
+
+      // #5 merge rules, applied last so they see the edited state (its plays
+      // already follow the new day/instrument above). Folding into another
+      // session keeps that session's row; otherwise the edit's own duplicate
+      // entries (same song or topic twice) collapse into one.
+      const itemOrder = [['position', 'ASC'], ['uid', 'ASC']];
+      const ownItems = await SessionItem.findAll({ where: { sessionUid: practiceSession.uid }, order: itemOrder, transaction });
+      if (mergeTarget) {
+        const targetItems = await SessionItem.findAll({ where: { sessionUid: mergeTarget.uid }, order: itemOrder, transaction });
+        const merge = mergeSessions([
+          { ...toPlain(mergeTarget), items: targetItems.map(toPlain) },
+          { ...toPlain(practiceSession), items: ownItems.map(toPlain) }
+        ]);
+        await persistMergedEntries(mergeTarget.uid, [...targetItems, ...ownItems], merge, transaction);
+        if (merge.note !== mergeTarget.note) {
+          await mergeTarget.update({ note: merge.note }, { transaction });
+        }
+        await practiceSession.destroy({ transaction });
+      } else {
+        await persistMergedEntries(practiceSession.uid, ownItems, mergeEntries(ownItems.map(toPlain)), transaction);
+      }
     });
 
+    const resultSession = mergeTarget || practiceSession;
     const itemsAfter = await SessionItem.findAll({
-      where: { sessionUid: practiceSession.uid },
+      where: { sessionUid: resultSession.uid },
       order: [['position', 'ASC'], ['uid', 'ASC']]
     });
-    const sessionJson = typeof practiceSession.toJSON === 'function' ? practiceSession.toJSON() : practiceSession;
-    res.json({ ...sessionJson, items: itemsAfter.map(item => (typeof item.toJSON === 'function' ? item.toJSON() : item)) });
+    res.json({ ...toPlain(resultSession), items: itemsAfter.map(toPlain), merged: Boolean(mergeTarget) });
   } catch (error) {
     if (error.name === 'SequelizeForeignKeyConstraintError') {
       return next(createError(400, 'Invalid entry reference'));

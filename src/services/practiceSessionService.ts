@@ -43,7 +43,20 @@ export type UpdateSessionItemDTO = CreateSessionItemDTO & { uid?: string };
 export type UpdatePracticeSessionDTO = Partial<Omit<CreatePracticeSessionDTO, 'items'>> & {
   note?: string | null;
   items?: UpdateSessionItemDTO[];
+  // #5: required to move a session onto a day and instrument that already
+  // have one (the two are merged, irreversibly)
+  confirmMerge?: boolean;
 };
+
+// #5: thrown on a 409 from update when the new day and instrument already have
+// a session. Carries the server's wording; the caller confirms, then resends
+// with confirmMerge.
+export class SessionMergeRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SessionMergeRequiredError';
+  }
+}
 
 export type HeatmapDay = {
   // YYYY-MM-DD. Session days carry the client-local day (FR19); play-only
@@ -125,7 +138,9 @@ export const practiceSessionService = {
     if (!res.ok) throw new Error('Failed to create session');
     return res.json();
   },
-  async update(uid: string, payload: UpdatePracticeSessionDTO): Promise<PracticeSession> {
+  // `merged` is true when the session was folded into another one (#5): the
+  // result is that other session, and the edited one no longer exists.
+  async update(uid: string, payload: UpdatePracticeSessionDTO): Promise<PracticeSession & { merged?: boolean }> {
     const res = await apiFetch(`${API_BASE}/sessions/${uid}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -135,6 +150,10 @@ export const practiceSessionService = {
     if (res.status === 400) {
       const body = await res.json().catch(() => null);
       throw new Error(body?.message || 'Failed to update session');
+    }
+    if (res.status === 409) {
+      const body = await res.json().catch(() => null);
+      if (body?.error === 'merge_required') throw new SessionMergeRequiredError(body.message);
     }
     if (!res.ok) throw new Error('Failed to update session');
     return res.json();

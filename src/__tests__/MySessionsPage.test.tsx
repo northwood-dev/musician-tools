@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import MySessionsPage from '../pages/MySessionsPage';
 import { digitsOnly } from '../utils/digitsOnly';
-import { practiceSessionService, type PracticeSession } from '../services/practiceSessionService';
+import { practiceSessionService, SessionMergeRequiredError, type PracticeSession } from '../services/practiceSessionService';
 
 jest.mock('../services/practiceSessionService', () => ({
   // Keep the real pure helpers (e.g. sumSessionMinutes); only the API object is mocked
@@ -859,6 +859,63 @@ test('Edit populates the form, shows the banner, and Save sends a diff-by-uid pa
   });
   expect(await screen.findByText('Session updated')).toBeInTheDocument();
   expect(screen.queryByText('Editing session of 2026-06-05')).not.toBeInTheDocument();
+});
+
+test('#5: moving a session onto an existing day and instrument asks to merge, then merges', async () => {
+  const guitar = {
+    uid: 's-guitar', date: '2026-06-05', instrumentType: 'Guitar', note: 'guitar note',
+    items: [{ uid: 'g1', sessionUid: 's-guitar', label: 'Money', minutes: 20 }],
+  };
+  mockedService.getAll.mockResolvedValue([editableSession(), guitar]);
+  mockedService.update
+    .mockRejectedValueOnce(new SessionMergeRequiredError('This will merge into your existing Guitar session of 2026-06-05'))
+    .mockResolvedValueOnce({
+      ...guitar, merged: true, note: 'guitar note\nold note',
+      items: [...guitar.items, { uid: ITEM_UID, sessionUid: 's-guitar', label: 'Sweet Child', minutes: 15 }],
+    });
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  // Bass comes first in the day (alphabetical)
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Edit session of 2026-06-05' }))[0]);
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Guitar' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save session' }));
+
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText('This will merge into your existing Guitar session of 2026-06-05.')).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' }));
+
+  await waitFor(() => {
+    expect(mockedService.update).toHaveBeenLastCalledWith('s-edit', expect.objectContaining({
+      instrumentType: 'Guitar', confirmMerge: true,
+    }));
+  });
+  expect(await screen.findByText('Merged into your Guitar session')).toBeInTheDocument();
+  // One Guitar block left for the day, carrying both entries; the Bass session is gone
+  const day = screen.getByRole('list', { name: 'Sessions of 2026-06-05' });
+  expect(within(day).queryByText('Bass')).not.toBeInTheDocument();
+  expect(within(day).getAllByText('Guitar')).toHaveLength(1);
+  expect(within(day).getByText(/Sweet Child/)).toBeInTheDocument();
+});
+
+test('#5: cancelling the merge keeps the edit open and changes nothing', async () => {
+  mockedService.getAll.mockResolvedValue([
+    editableSession(),
+    { uid: 's-guitar', date: '2026-06-05', instrumentType: 'Guitar', items: [] },
+  ]);
+  mockedService.update.mockRejectedValueOnce(
+    new SessionMergeRequiredError('This will merge into your existing Guitar session of 2026-06-05')
+  );
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Edit session of 2026-06-05' }))[0]);
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Guitar' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save session' }));
+
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+
+  expect(mockedService.update).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('Editing session of 2026-06-05')).toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 test('Cancel edit restores a blank form without calling the API', async () => {

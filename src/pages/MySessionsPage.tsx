@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
-import { practiceSessionService, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
+import { practiceSessionService, SessionMergeRequiredError, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
 import { SessionDayGroup } from '../components/SessionHistoryCard';
 import { groupSessionsByDay } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
@@ -227,6 +227,9 @@ function MySessionsPage() {
   const [sessions, setSessions] = useState<PracticeSession[] | null>(null);
   const [sessionsFailed, setSessionsFailed] = useState(false);
   const [editingSessionUid, setEditingSessionUid] = useState<string | null>(null);
+  // #5: an edit moving the session onto an existing day/instrument, held until
+  // the user confirms the merge
+  const [pendingMerge, setPendingMerge] = useState<{ payload: UpdatePracticeSessionDTO; message: string } | null>(null);
   const [editingSessionLabel, setEditingSessionLabel] = useState('');
   const [deleteSessionUid, setDeleteSessionUid] = useState<string | null>(null);
   // True as soon as the user interacts with the instrument field (or enters
@@ -506,6 +509,33 @@ function MySessionsPage() {
     }
   };
 
+  // After a successful edit. A merged edit (#5) returns the session it was
+  // folded into: the edited one is gone, the target replaces its old copy.
+  const finishUpdate = (updated: PracticeSession & { merged?: boolean }) => {
+    setSessions(prev => sortSessions([
+      updated,
+      ...(prev ?? []).filter(s => s.uid !== editingSessionUid && s.uid !== updated.uid),
+    ]));
+    setSessionsFailed(false);
+    resetForm();
+    showToast(updated.merged ? `Merged into your ${updated.instrumentType} session` : 'Session updated');
+  };
+
+  const handleConfirmMerge = async () => {
+    if (!pendingMerge || !editingSessionUid) return;
+    const { payload } = pendingMerge;
+    setPendingMerge(null);
+    try {
+      setLoading(true);
+      setError(null);
+      finishUpdate(await practiceSessionService.update(editingSessionUid, { ...payload, confirmMerge: true }));
+    } catch {
+      setError('Failed to update session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !instrumentType) return;
@@ -564,11 +594,18 @@ function MySessionsPage() {
           note: note.trim() || null,
           items,
         };
-        const updated = await practiceSessionService.update(editingSessionUid, payload);
-        setSessions(prev => sortSessions((prev ?? []).map(s => (s.uid === editingSessionUid ? updated : s))));
-        setSessionsFailed(false);
-        resetForm();
-        showToast('Session updated');
+        let updated;
+        try {
+          updated = await practiceSessionService.update(editingSessionUid, payload);
+        } catch (err) {
+          // #5: the new day and instrument already have a session — ask first
+          if (err instanceof SessionMergeRequiredError) {
+            setPendingMerge({ payload, message: err.message });
+            return;
+          }
+          throw err;
+        }
+        finishUpdate(updated);
       } else {
         const items: CreateSessionItemDTO[] = entries
           .filter(e => e.ref !== '')
@@ -638,6 +675,15 @@ function MySessionsPage() {
         isDangerous
         onConfirm={handleDeleteSession}
         onCancel={() => setDeleteSessionUid(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!pendingMerge}
+        title="Merge sessions"
+        message={pendingMerge ? `${pendingMerge.message}.` : ''}
+        confirmText="Merge"
+        cancelText="Cancel"
+        onConfirm={handleConfirmMerge}
+        onCancel={() => setPendingMerge(null)}
       />
       {/* Always mounted: a live region must exist in the DOM before its content
           changes, or screen readers may never announce the toast */}
