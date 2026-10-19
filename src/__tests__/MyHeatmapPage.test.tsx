@@ -187,6 +187,23 @@ test('clicking an active day opens its detail with sessions, entries and an Edit
   expect(editLink).toHaveAttribute('href', '/my-sessions?edit=s1');
 });
 
+test('#5: the day-detail lists one block per instrument, alphabetical', async () => {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-03-10`, totalMinutes: 30, sessionCount: 2 },
+  ]);
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-guitar', date: `${YEAR}-03-10`, instrumentType: 'Guitar', items: [] },
+    { uid: 's-bass', date: `${YEAR}-03-10`, instrumentType: 'Bass', items: [] },
+  ]);
+
+  renderPage();
+  fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 30 minutes, 2 sessions`));
+
+  const panel = await screen.findByRole('list', { name: 'Day sessions' });
+  const text = panel.textContent || '';
+  expect(text.indexOf('Bass')).toBeLessThan(text.indexOf('Guitar'));
+});
+
 test('Story 5.5: the day-detail shows "Artist - Title" for a song entry', async () => {
   const SONG_UID = 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   mockedSongService.getAllSongs.mockResolvedValue([

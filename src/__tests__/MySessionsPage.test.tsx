@@ -532,8 +532,9 @@ test('the history lists sessions with date, instrument, the entries-sum minutes,
   const history = await screen.findByRole('list', { name: 'Session history' });
   expect(within(history).getByText('2026-06-05')).toBeInTheDocument();
   expect(within(history).getByText('Bass')).toBeInTheDocument();
-  // 15 + 25 = 40, summed from the entries (no stored durationMinutes)
-  expect(within(history).getByText('· 40 min')).toBeInTheDocument();
+  // 15 + 25 = 40, summed from the entries (no stored durationMinutes): once as
+  // the day total, once as the instrument block total
+  expect(within(history).getAllByText('· 40 min')).toHaveLength(2);
   expect(within(history).getByText('great session')).toBeInTheDocument();
   expect(within(history).getByText(/Sweet Child/)).toBeInTheDocument();
   expect(within(history).getByText(/played during 15 minutes/)).toBeInTheDocument();
@@ -710,7 +711,43 @@ test('the initial history is sorted locally even if the server order regresses',
   expect(text.indexOf('2026-06-05')).toBeLessThan(text.indexOf('2026-06-01'));
 });
 
-test('a same-day session created without createdAt sorts as the newest of its day', async () => {
+test('#5: the history shows each day once, with its total, then one block per instrument (alphabetical)', async () => {
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-guitar', date: '2026-10-13', instrumentType: 'Guitar', items: [
+      { uid: 'g1', sessionUid: 's-guitar', label: 'Money', minutes: 20 },
+    ] },
+    { uid: 's-bass', date: '2026-10-13', instrumentType: 'Bass', items: [
+      { uid: 'b1', sessionUid: 's-bass', label: 'Autumn Leaves', minutes: 10 },
+      { uid: 'b2', sessionUid: 's-bass', label: 'Learn the fretboard', minutes: 24 },
+    ] },
+    { uid: 's-older', date: '2026-10-12', instrumentType: 'Bass', items: [
+      { uid: 'o1', sessionUid: 's-older', label: 'Hysteria', minutes: 5 },
+    ] },
+  ]);
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+
+  const history = await screen.findByRole('list', { name: 'Session history' });
+  // One header per day, most recent first
+  expect(within(history).getAllByText('2026-10-13')).toHaveLength(1);
+  const text = history.textContent || '';
+  expect(text.indexOf('2026-10-13')).toBeLessThan(text.indexOf('2026-10-12'));
+
+  const day = within(history).getByRole('list', { name: 'Sessions of 2026-10-13' });
+  // Day total = 20 + 10 + 24 across instruments
+  expect(within(history).getByText('· 54 min')).toBeInTheDocument();
+  // Instrument blocks: alphabetical, each with its own total and its own Edit/Delete
+  const blocks = within(day).getAllByRole('listitem').filter(li => li.parentElement === day);
+  expect(blocks.map(li => within(li).getByText(/^(Bass|Guitar)$/).textContent)).toEqual(['Bass', 'Guitar']);
+  expect(within(blocks[0]).getByText('· 34 min')).toBeInTheDocument();
+  expect(within(blocks[1]).getByText('· 20 min')).toBeInTheDocument();
+  expect(within(blocks[0]).getByRole('button', { name: 'Delete session of 2026-10-13' })).toBeInTheDocument();
+  expect(within(blocks[1]).getByRole('button', { name: 'Edit session of 2026-10-13' })).toBeInTheDocument();
+});
+
+// #5: within a day the order is alphabetical by instrument, whenever the
+// session was logged — a fresh Bass session goes before an earlier Guitar one.
+test('a session logged today joins today\'s group at its alphabetical place', async () => {
   mockedService.getAll.mockResolvedValue([
     { uid: 's-morning', date: todayLocalDate(), instrumentType: 'Guitar', note: 'morning run', createdAt: '2026-06-07T08:00:00Z', items: [] },
   ]);

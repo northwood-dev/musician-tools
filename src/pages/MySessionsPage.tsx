@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { practiceSessionService, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
-import { SessionHistoryCard } from '../components/SessionHistoryCard';
+import { SessionDayGroup } from '../components/SessionHistoryCard';
+import { groupSessionsByDay } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { topicService, TopicConflictError, type Topic } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -858,13 +859,13 @@ function MySessionsPage() {
                   : null}
           </div>
           {!editingSessionUid && !sessionsFailed && sessions !== null && sessions.length > 0 && (
-            <ul aria-label="Session history" className="space-y-3">
-              {sessions.map(session => (
-                <SessionHistoryCard
-                  key={session.uid}
-                  session={session}
+            <ul aria-label="Session history" className="space-y-5">
+              {groupSessionsByDay(sessions).map(day => (
+                <SessionDayGroup
+                  key={day.date}
+                  day={day}
                   artistBySongUid={artistBySongUid}
-                  actions={
+                  renderActions={session => (
                     <>
                       <button
                         type="button"
@@ -885,7 +886,7 @@ function MySessionsPage() {
                         Delete
                       </button>
                     </>
-                  }
+                  )}
                 />
               ))}
             </ul>

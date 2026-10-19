@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { sumSessionMinutes, type PracticeSession, type SessionItem } from '../services/practiceSessionService';
+import type { SessionDay } from '../utils/sessionDays';
 
 // One entry line of a session ("Artist - Title · played during N minutes · note").
 // Shared so the Sessions page and the Heatmap day-detail render entries identically.
@@ -42,6 +43,37 @@ export interface SessionHistoryCardProps {
   showDate?: boolean;
   // Edit/Delete controls differ per page (inline button vs navigation Link), so the parent supplies them.
   actions?: ReactNode;
+}
+
+export interface SessionDayGroupProps {
+  day: SessionDay;
+  artistBySongUid: ReadonlyMap<string, string>;
+  renderActions?: (session: PracticeSession) => ReactNode;
+}
+
+// A day of the history: header (date · day total) + one block per instrument.
+export function SessionDayGroup({ day, artistBySongUid, renderActions }: SessionDayGroupProps) {
+  return (
+    <li className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <span className="font-semibold">{day.date}</span>
+        {day.totalMinutes > 0 ? (
+          <span className="text-sm text-gray-600 dark:text-gray-400">· {day.totalMinutes} min</span>
+        ) : null}
+      </div>
+      <ul aria-label={`Sessions of ${day.date}`} className="space-y-2">
+        {day.sessions.map(session => (
+          <SessionHistoryCard
+            key={session.uid}
+            session={session}
+            artistBySongUid={artistBySongUid}
+            showDate={false}
+            actions={renderActions?.(session)}
+          />
+        ))}
+      </ul>
+    </li>
+  );
 }
 
 // A single session card: header (date · instrument · total) + optional note + entries.

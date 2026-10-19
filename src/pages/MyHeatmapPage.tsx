@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { practiceSessionService, type DayPlay, type HeatmapDay, type PracticeSession } from '../services/practiceSessionService';
 import { SessionHistoryCard } from '../components/SessionHistoryCard';
+import { sortByInstrument } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { buildYearGrid, computeLevels, formatLocalDate } from '../utils/heatmap';
@@ -436,7 +437,7 @@ function MyHeatmapPage() {
             )}
             {!dayFailed && daySessions !== null && daySessions.length > 0 && (
               <ul aria-label="Day sessions" className="space-y-3">
-                {daySessions.map(session => (
+                {sortByInstrument(daySessions).map(session => (
                   <SessionHistoryCard
                     key={session.uid}
                     session={session}
