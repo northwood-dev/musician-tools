@@ -640,10 +640,10 @@ function MySessionsPage() {
         setEntries([]);
         // Tell the user we logged unstructured time, not silently — the entry
         // they didn't add is now visible as a Free practice entry.
-        showToast(loggedAsFreePractice
-          ? 'Logged as Free practice'
-          : created.merged
-            ? `Added to your ${created.instrumentType} session`
+        showToast(created.merged
+          ? `Added ${loggedAsFreePractice ? 'Free practice ' : ''}to your ${created.instrumentType} session`
+          : loggedAsFreePractice
+            ? 'Logged as Free practice'
             : 'Session logged');
       }
     } catch (err) {

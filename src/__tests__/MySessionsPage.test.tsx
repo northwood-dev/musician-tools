@@ -1357,6 +1357,21 @@ test('Epic 8 (option B): logging with no entry falls back to a Free practice ent
   expect(await screen.findByText('Logged as Free practice')).toBeInTheDocument();
 });
 
+test('#5: Free practice added to the existing session says both in one toast', async () => {
+  mockedTopicService.getAll.mockResolvedValue([
+    { uid: FREE_UID, name: 'Free practice', isSystem: true },
+  ]);
+  mockedService.create.mockResolvedValue({ uid: 's1', date: todayLocalDate(), instrumentType: 'Bass', merged: true, items: [] });
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('No sessions logged yet.');
+
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
+
+  expect(await screen.findByText('Added Free practice to your Bass session')).toBeInTheDocument();
+});
+
 test('Epic 8: a session whose entries have no minutes is floored to 1 minute on the first entry', async () => {
   mockedService.create.mockResolvedValue({ uid: 's1', date: todayLocalDate(), instrumentType: 'Bass' });
 
