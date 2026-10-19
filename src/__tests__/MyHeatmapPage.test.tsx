@@ -187,6 +187,19 @@ test('clicking an active day opens its detail with sessions, entries and an Edit
   expect(editLink).toHaveAttribute('href', '/my-sessions?edit=s1');
 });
 
+test('#5: a day cell names its instruments instead of counting sessions', async () => {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-03-10`, totalMinutes: 54, sessionCount: 2, instruments: ['Bass', 'Guitar'] },
+    { date: `${YEAR}-03-11`, totalMinutes: 20, sessionCount: 1, instruments: ['Bass'], playCount: 2 },
+  ]);
+
+  renderPage();
+
+  const cell = await screen.findByLabelText(`${YEAR}-03-10 — 54 minutes · Bass, Guitar`);
+  expect(cell).toHaveAttribute('title', `${YEAR}-03-10 — 54 minutes · Bass, Guitar`);
+  expect(screen.getByLabelText(`${YEAR}-03-11 — 20 minutes · Bass · 2 plays`)).toBeInTheDocument();
+});
+
 test('#5: the day-detail lists one block per instrument, alphabetical', async () => {
   mockedService.getHeatmap.mockResolvedValue([
     { date: `${YEAR}-03-10`, totalMinutes: 30, sessionCount: 2 },

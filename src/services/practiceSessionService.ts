@@ -52,6 +52,9 @@ export type HeatmapDay = {
   date: string;
   totalMinutes: number;
   sessionCount: number;
+  // #5: the day's instruments, alphabetical — optional so older payloads and
+  // existing test fixtures stay valid (the label then falls back to the count)
+  instruments?: string[];
   // Projected play history (FR22 retro-import) — optional so pre-3.3 payloads
   // and existing test fixtures stay valid
   playCount?: number;

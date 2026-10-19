@@ -148,7 +148,9 @@ const getHeatmap = async (req, res, next) => {
         attributes: [
           'date',
           [fn('SUM', col('items.minutes')), 'totalMinutes'],
-          [fn('COUNT', literal('DISTINCT "PracticeSession"."uid"')), 'sessionCount']
+          [fn('COUNT', literal('DISTINCT "PracticeSession"."uid"')), 'sessionCount'],
+          // #5: the heatmap tooltip names the instruments of the day
+          [fn('ARRAY_AGG', literal('DISTINCT "PracticeSession"."instrument_type"')), 'instruments']
         ],
         include: [{ model: SessionItem, as: 'items', attributes: [], required: false }],
         where: { userUid: userId, date: { [Op.between]: [`${year}-01-01`, `${year}-12-31`] } },
@@ -174,6 +176,8 @@ const getHeatmap = async (req, res, next) => {
       date: row.date,
       totalMinutes: Number(row.totalMinutes ?? 0),
       sessionCount: Number(row.sessionCount),
+      // Alphabetical, like the history's instrument blocks
+      instruments: [...(row.instruments ?? [])].sort((a, b) => a.localeCompare(b)),
       playCount: 0
     }]));
 
@@ -187,7 +191,7 @@ const getHeatmap = async (req, res, next) => {
       if (existing) {
         existing.playCount = playCount;
       } else {
-        byDate.set(date, { date, totalMinutes: 0, sessionCount: 0, playCount });
+        byDate.set(date, { date, totalMinutes: 0, sessionCount: 0, instruments: [], playCount });
       }
     }
 

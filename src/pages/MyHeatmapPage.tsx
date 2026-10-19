@@ -228,6 +228,12 @@ function MyHeatmapPage() {
       return (playCount > 0 ? `${date} — played (${playsPart})` : `${date} — no practice`) + todaySuffix;
     }
     const minutesPart = `${day.totalMinutes} minute${day.totalMinutes === 1 ? '' : 's'}`;
+    // #5: one session per day and instrument, so naming the instruments says
+    // more than a session count ("54 minutes · Bass, Guitar")
+    if (day.instruments && day.instruments.length > 0) {
+      const base = `${date} — ${minutesPart} · ${day.instruments.join(', ')}`;
+      return (playCount > 0 ? `${base} · ${playsPart}` : base) + todaySuffix;
+    }
     const sessionsPart = `${day.sessionCount} session${day.sessionCount === 1 ? '' : 's'}`;
     const base = `${date} — ${minutesPart}, ${sessionsPart}`;
     return (playCount > 0 ? `${base}, ${playsPart}` : base) + todaySuffix;

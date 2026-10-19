@@ -362,6 +362,7 @@ describe('practicesessioncontroller', () => {
           'date',
           [fn('SUM', col('items.minutes')), 'totalMinutes'],
           [fn('COUNT', literal('DISTINCT "PracticeSession"."uid"')), 'sessionCount'],
+          [fn('ARRAY_AGG', literal('DISTINCT "PracticeSession"."instrument_type"')), 'instruments'],
         ],
         include: [{ model: SessionItem, as: 'items', attributes: [], required: false }],
         where: { userUid: 'user-1', date: { [Op.between]: ['2026-01-01', '2026-12-31'] } },
@@ -375,16 +376,17 @@ describe('practicesessioncontroller', () => {
 
     test('casts pg string aggregates to numbers and nulls SUM to 0', async () => {
       PracticeSession.findAll.mockResolvedValueOnce([
-        { date: '2026-03-10', totalMinutes: '120', sessionCount: '3' },
-        { date: '2026-03-11', totalMinutes: null, sessionCount: '1' },
+        { date: '2026-03-10', totalMinutes: '120', sessionCount: '3', instruments: ['Guitar', 'Bass'] },
+        { date: '2026-03-11', totalMinutes: null, sessionCount: '1', instruments: ['Bass'] },
       ]);
 
       const res = mockRes();
       await controller.getHeatmap({ session: { user: 'user-1' }, query: { year: 2026 } }, res, mockNext());
 
       expect(res.json).toHaveBeenCalledWith([
-        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, playCount: 0 },
-        { date: '2026-03-11', totalMinutes: 0, sessionCount: 1, playCount: 0 },
+        // #5: the day's instruments come back alphabetical
+        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, instruments: ['Bass', 'Guitar'], playCount: 0 },
+        { date: '2026-03-11', totalMinutes: 0, sessionCount: 1, instruments: ['Bass'], playCount: 0 },
       ]);
     });
 
@@ -399,7 +401,7 @@ describe('practicesessioncontroller', () => {
 
       // Presence only: zero minutes, zero sessions — the client lights level 1
       expect(res.json).toHaveBeenCalledWith([
-        { date: '2026-02-01', totalMinutes: 0, sessionCount: 0, playCount: 2 },
+        { date: '2026-02-01', totalMinutes: 0, sessionCount: 0, instruments: [], playCount: 2 },
       ]);
     });
 
@@ -417,8 +419,8 @@ describe('practicesessioncontroller', () => {
 
       // Sorted by date; minutes come from sessions only, plays add presence
       expect(res.json).toHaveBeenCalledWith([
-        { date: '2026-03-09', totalMinutes: 0, sessionCount: 0, playCount: 2 },
-        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, playCount: 5 },
+        { date: '2026-03-09', totalMinutes: 0, sessionCount: 0, instruments: [], playCount: 2 },
+        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, instruments: [], playCount: 5 },
       ]);
     });
 
