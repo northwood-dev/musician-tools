@@ -6,6 +6,8 @@ const { fetchSongMetadata } = require('../services/songMetadataService');
 // Shared FR19 day-validation helpers (same definition as the session controller)
 const { DATE_PATTERN, MIN_DATE, isValidCalendarDate, maxAllowedDate } = require('../utils/sessionDates');
 const { isUuid } = require('../utils/uuid');
+const { sumMinutes } = require('../utils/sessionMerge');
+const { findOrCreateDaySession } = require('../services/daySession');
 // Story 19.8 — shared normalizers (reject-to-null; INTEGER columns can't 500 on a
 // decimal / non-numeric / out-of-INT4 input). normalizeLanguage moved here too.
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
@@ -434,21 +436,11 @@ const markSongPlayed = async (req, res, next) => {
       // standalone (sessionItemUid null).
       let sessionItemUid = null;
       if (trimmedInstrument) {
-        // Deterministic pick when several sessions share the day/instrument
-        // (legitimate via manual entry): append to the most recently created.
-        let session = await PracticeSession.findOne({
-          where: { userUid: userId, date: playedOn, instrumentType: trimmedInstrument },
-          order: [['createdAt', 'DESC']],
-          transaction,
-        });
-        if (!session) {
-          session = await PracticeSession.create({
-            userUid: userId,
-            date: playedOn,
-            instrumentType: trimmedInstrument,
-            note: null,
-          }, { transaction });
-        }
+        // #5: the unique session of that day and instrument, created if needed
+        const [session] = await findOrCreateDaySession(
+          { userUid: userId, date: playedOn, instrumentType: trimmedInstrument },
+          transaction
+        );
 
         // No duplicate entry (AC4): reuse the entry if the song is already there
         let item = await SessionItem.findOne({
@@ -468,9 +460,8 @@ const markSongPlayed = async (req, res, next) => {
           }, { transaction });
         } else if (playedDuration !== null) {
           // AC4: same song re-marked — no duplicate entry, but accrue the song's
-          // duration onto the existing entry (treat a missing value as 0).
-          const current = Number.isInteger(item.minutes) ? item.minutes : 0;
-          await item.update({ minutes: current + playedDuration }, { transaction });
+          // duration onto the existing entry (session merge rules, issue #5).
+          await item.update({ minutes: sumMinutes(item.minutes, playedDuration) }, { transaction });
         }
         sessionItemUid = item.uid;
         // Epic 8: the session total is no longer a stored field — it derives

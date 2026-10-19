@@ -237,7 +237,9 @@ db-backup-prod:
 	fi
 	@mkdir -p $(BACKUP_DIR)
 	@echo "Creating PROD backup to $(BACKUP_DIR)/musician_tools_prod_$(TIMESTAMP).dump"
-	@docker run --rm -e PROD_DB_URL="$(PROD_DB_URL)" -v "$(CURDIR)/$(BACKUP_DIR):/backups" $(PG_CLIENT_IMAGE) sh -c 'pg_dump "$$PROD_DB_URL" -F c -f "/backups/musician_tools_prod_$(TIMESTAMP).dump"'
+	@# sslmode=no-verify (backend/.env since story 24.1) is a node-postgres value that libpq's
+	@# pg_dump rejects; its libpq equivalent is sslmode=require (encrypted, cert not verified).
+	@docker run --rm -e PROD_DB_URL="$(subst sslmode=no-verify,sslmode=require,$(PROD_DB_URL))" -v "$(CURDIR)/$(BACKUP_DIR):/backups" $(PG_CLIENT_IMAGE) sh -c 'pg_dump "$$PROD_DB_URL" -F c -f "/backups/musician_tools_prod_$(TIMESTAMP).dump"'
 	@echo "PROD backup complete."
 
 db-restore:

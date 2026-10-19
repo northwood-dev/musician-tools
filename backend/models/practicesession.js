@@ -37,7 +37,9 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'PracticeSessions',
     timestamps: true,
     indexes: [
-      { fields: ['user_uid', 'date'], name: 'practice_sessions_user_uid_date' }
+      { fields: ['user_uid', 'date'], name: 'practice_sessions_user_uid_date' },
+      // #5: one session per day and instrument (migration 20261020000000)
+      { fields: ['user_uid', 'date', 'instrument_type'], unique: true, name: 'practice_sessions_user_date_instrument_unique' }
     ]
   });
 

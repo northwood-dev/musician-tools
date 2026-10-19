@@ -165,10 +165,7 @@ _Les 4 stories UI/confort (filtres Songlist, refacto SessionHistoryCard, chanson
 > **Décision 2026-06-21** : reports assumés en bloc tant que l'app reste mono-user beta (3-4 users). À remonter en « story planifiée » si l'app devient multi-user/collaborative ou si l'un mord en réel.
 
 **Concurrence / lost-update** (couvrables par advisory lock si l'échelle le justifie) :
-- Course `markSongPlayed` sur marquages concurrents même jour/instrument (`priorTotal` lu avant écriture).
-- Course find-or-create de session (double-clic multi-appareils).
 - Course add/remove playlist : `syncPlaylistSongs` fait `destroy`+`bulkCreate` sans `SELECT … FOR UPDATE` (`playlistcontroller`).
-- Anti-doublon d'entrée (AC4) et calcul de `position` via count non atomiques.
 - Pas de verrouillage optimiste : PUT sur entité modifiée concurremment → 200 sans persister (UPDATE 0 rows silencieux).
 
 **Performance scale-gated** :
@@ -179,18 +176,19 @@ _Les 4 stories UI/confort (filtres Songlist, refacto SessionHistoryCard, chanson
 - API `getAllPlaylists`/`getPlaylist` émettent les `songUids` bruts (`playlistcontroller.js:13-42`) ; seul l'UI filtre. Tout futur consommateur API devra refiltrer.
 
 **Modèle / affichage** :
-- Libellé « Frankenstein » d'une chanson renommée (`MySessionsPage.tsx:822-827`) : titre = snapshot FR4 figé, artiste = catalogue live. Fix = snapshotter aussi l'artiste (gros changement modèle/FR4).
-- Ordre de saisie des entrées non restitué : `bulkCreate` horodate tout le batch pareil ; restituer l'ordre nécessite une colonne `position` sur `SessionItems`.
-- `lastPlayed` global non mis à jour par les plays de journal : le « dernier joué par instrument » dérivé fait foi ; le global n'est qu'un départage de secours.
-- Éditer la DATE d'une session aplatit les plays mark-as-played à midi UTC (perte du départage intra-jour). Rare ; justesse au jour préservée.
-- Un mark-as-played qui réutilise une entrée existante crée un 2ᵉ SongPlay lié au même `sessionItemUid`. Défendable (deux lectures réelles).
-- Suppression d'une chanson → CASCADE SongPlays → la heatmap déjà chargée garde une case allumée « No practice » jusqu'au refetch. Rare, auto-guéri.
 
 **Migrations / patterns** :
 - `down: dropTable` peut détruire une table créée par `sequelize.sync` — perte de données si un `db:migrate:undo` tournait en prod. Rollback non utilisé (release = migrate up only).
 - Édition inline (Songs/Instruments) : cliquer Edit sur une autre ligne jette les modifs non sauvées sans confirmation.
 
 ---
+
+## ✅ Tranche « sessions de pratique » soldée le 2026-10-20 (avant l'issue #5)
+
+- Course find-or-create de session → **intégrée à #12** (la contrainte d'unicité transforme le doublon silencieux en erreur : #12 rattrape le conflit et fusionne).
+- Libellé « Frankenstein » (titre figé, artiste live) → **issue #13** (`needs-triage`).
+- `position` non restituée → **périmé** : la colonne `position` existe sur `SessionItems`.
+- **Tués avec raison :** course `markSongPlayed` (deux clics à la milliseconde, au pire quelques minutes non cumulées, aucune écoute perdue) ; anti-doublon / `position` non atomiques (même famille, un doublon est résorbé par la règle de fusion de #5) ; date éditée → plays à midi UTC (le jour reste juste, l'heure n'est affichée nulle part) ; 2ᵉ SongPlay sur la même entrée (voulu : deux écoutes réelles, la fusion de #5 s'appuie dessus) ; case heatmap allumée jusqu'au refetch (auto-guéri) ; `lastPlayed` global (le dernier joué par instrument fait foi).
 
 ## ✅ Soldé / retiré le 2026-06-21 (journal — pas de suppression silencieuse)
 

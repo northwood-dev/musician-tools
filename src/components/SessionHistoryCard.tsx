@@ -1,17 +1,22 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { sumSessionMinutes, type PracticeSession, type SessionItem } from '../services/practiceSessionService';
+import type { SessionDay } from '../utils/sessionDays';
 
 // One entry line of a session ("Artist - Title · played during N minutes · note").
 // Shared so the Sessions page and the Heatmap day-detail render entries identically.
 // For a song entry the whole "Artist - Title" links to its edit form (navigation is by
 // songUid, so two songs sharing a title still resolve to the right one); topic entries
-// (no songUid) stay plain text.
+// (no songUid) stay plain text. An orphan entry (its song or topic was deleted, both
+// refs nulled) keeps its snapshot label, greyed, with a "deleted" badge. Deletion
+// nulls both refs, so the entry can no longer tell a song from a topic: the
+// tooltip stays neutral on purpose.
 export function SessionEntryLine({ item, artist }: { item: SessionItem; artist?: string }) {
+  const isOrphan = !item.songUid && !item.topicUid;
   const label = (
     <>
       {artist ? <span>{artist} - </span> : null}
-      <span className="font-medium">{item.label}</span>
+      <span className={isOrphan ? 'font-medium text-gray-400 dark:text-gray-500' : 'font-medium'}>{item.label}</span>
     </>
   );
   return (
@@ -26,6 +31,14 @@ export function SessionEntryLine({ item, artist }: { item: SessionItem; artist?:
       ) : (
         label
       )}
+      {isOrphan ? (
+        <span
+          title="This item was deleted"
+          className="ml-1.5 rounded px-1.5 py-0.5 text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800"
+        >
+          deleted
+        </span>
+      ) : null}
       {item.minutes ? (
         <span className="text-gray-500 dark:text-gray-400"> · played during {item.minutes} {item.minutes > 1 ? 'minutes' : 'minute'}</span>
       ) : null}
@@ -42,6 +55,37 @@ export interface SessionHistoryCardProps {
   showDate?: boolean;
   // Edit/Delete controls differ per page (inline button vs navigation Link), so the parent supplies them.
   actions?: ReactNode;
+}
+
+export interface SessionDayGroupProps {
+  day: SessionDay;
+  artistBySongUid: ReadonlyMap<string, string>;
+  renderActions?: (session: PracticeSession) => ReactNode;
+}
+
+// A day of the history: header (date · day total) + one block per instrument.
+export function SessionDayGroup({ day, artistBySongUid, renderActions }: SessionDayGroupProps) {
+  return (
+    <li className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3">
+        <span className="font-semibold">{day.date}</span>
+        {day.totalMinutes > 0 ? (
+          <span className="text-sm text-gray-600 dark:text-gray-400">· {day.totalMinutes} min</span>
+        ) : null}
+      </div>
+      <ul aria-label={`Sessions of ${day.date}`} className="space-y-2">
+        {day.sessions.map(session => (
+          <SessionHistoryCard
+            key={session.uid}
+            session={session}
+            artistBySongUid={artistBySongUid}
+            showDate={false}
+            actions={renderActions?.(session)}
+          />
+        ))}
+      </ul>
+    </li>
+  );
 }
 
 // A single session card: header (date · instrument · total) + optional note + entries.

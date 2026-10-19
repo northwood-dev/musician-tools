@@ -11,6 +11,8 @@ const MAX_ITEMS = 50;
 const MAX_ITEM_NOTE_LENGTH = 1000;
 // Reject malformed uids before they reach Postgres (invalid uuid input throws a DB error)
 const { UUID_PATTERN } = require('../utils/uuid');
+const { entryKey, joinNotes, mergeEntries, mergeSessions } = require('../utils/sessionMerge');
+const { findOrCreateDaySession } = require('../services/daySession');
 
 // The calendar day of a historical play (FR22 retro-import). playedAt was
 // stamped with the SERVER clock, so the UTC day is the best available truth —
@@ -71,6 +73,51 @@ async function createJournalPlays(items, instrumentType, date, transaction) {
   if (rows.length > 0) {
     await SongPlay.bulkCreate(rows, { transaction });
   }
+}
+
+// Entries in display order (position, uid as a stable tie-break)
+const ITEM_ORDER = [['position', 'ASC'], ['uid', 'ASC']];
+
+const toPlain = row => (row && typeof row.toJSON === 'function' ? row.toJSON() : row);
+
+// Persists a mergeEntries() result onto a session's existing rows: plays of
+// the folded entries are re-attached to their survivor BEFORE those entries
+// are deleted (SongPlays cascade on SessionItem deletion), survivors get their
+// new minutes/note/position, and the entries without a row are created.
+// Returns the session's entries in their merged order.
+async function persistMergedEntries(sessionUid, existingItems, { entries, removedUids, playRemap }, transaction) {
+  for (const removedUid of removedUids) {
+    await SongPlay.update(
+      { sessionItemUid: playRemap[removedUid] },
+      { where: { sessionItemUid: removedUid }, transaction }
+    );
+  }
+  if (removedUids.length > 0) {
+    await SessionItem.destroy({ where: { uid: removedUids }, transaction });
+  }
+
+  const rowByUid = new Map(existingItems.map(row => [row.uid, row]));
+  const result = [];
+  for (const entry of entries) {
+    if (entry.uid) {
+      const row = rowByUid.get(entry.uid);
+      // A survivor coming from another session (edit-merge) moves with it
+      const moved = row.sessionUid !== undefined && row.sessionUid !== sessionUid;
+      if (moved || row.minutes !== entry.minutes || row.note !== entry.note || row.position !== entry.position) {
+        await row.update({
+          minutes: entry.minutes,
+          note: entry.note,
+          position: entry.position,
+          ...(moved ? { sessionUid } : {})
+        }, { transaction });
+      }
+      result.push(row);
+    } else {
+      const { uid: _uid, ...values } = entry;
+      result.push(await SessionItem.create({ ...values, sessionUid }, { transaction }));
+    }
+  }
+  return result;
 }
 
 // GET all practice sessions for logged-in user, anti-chronological.
@@ -148,7 +195,9 @@ const getHeatmap = async (req, res, next) => {
         attributes: [
           'date',
           [fn('SUM', col('items.minutes')), 'totalMinutes'],
-          [fn('COUNT', literal('DISTINCT "PracticeSession"."uid"')), 'sessionCount']
+          [fn('COUNT', literal('DISTINCT "PracticeSession"."uid"')), 'sessionCount'],
+          // #5: the heatmap tooltip names the instruments of the day
+          [fn('ARRAY_AGG', literal('DISTINCT "PracticeSession"."instrument_type"')), 'instruments']
         ],
         include: [{ model: SessionItem, as: 'items', attributes: [], required: false }],
         where: { userUid: userId, date: { [Op.between]: [`${year}-01-01`, `${year}-12-31`] } },
@@ -174,6 +223,8 @@ const getHeatmap = async (req, res, next) => {
       date: row.date,
       totalMinutes: Number(row.totalMinutes ?? 0),
       sessionCount: Number(row.sessionCount),
+      // Alphabetical, like the history's instrument blocks
+      instruments: [...(row.instruments ?? [])].sort((a, b) => a.localeCompare(b)),
       playCount: 0
     }]));
 
@@ -187,7 +238,7 @@ const getHeatmap = async (req, res, next) => {
       if (existing) {
         existing.playCount = playCount;
       } else {
-        byDate.set(date, { date, totalMinutes: 0, sessionCount: 0, playCount });
+        byDate.set(date, { date, totalMinutes: 0, sessionCount: 0, instruments: [], playCount });
       }
     }
 
@@ -389,26 +440,61 @@ const createPracticeSession = async (req, res, next) => {
     };
 
     let practiceSession;
-    let createdItems = [];
-    if (resolvedItems.length > 0) {
-      await sequelize.transaction(async (transaction) => {
-        practiceSession = await PracticeSession.create(sessionValues, { transaction });
-        createdItems = await SessionItem.bulkCreate(
-          resolvedItems.map((item, index) => ({ ...item, sessionUid: practiceSession.uid, position: index })),
-          { transaction }
-        );
-        // 4.2: each song entry is also a play event for the session's instrument,
-        // linked to its entry (cascade target) and dated on the session day, so
-        // the per-instrument "last played" derived from SongPlays reflects it.
-        await createJournalPlays(createdItems, trimmedInstrument, date, transaction);
-      });
-    } else {
-      practiceSession = await PracticeSession.create(sessionValues);
-    }
+    let sessionItems = [];
+    let merged = false;
+    await sequelize.transaction(async (transaction) => {
+      // #5: one session per day and instrument. Logging again for a pair that
+      // already has a session adds to it, like Mark as Played does.
+      const [daySession, created] = await findOrCreateDaySession(sessionValues, transaction);
+      practiceSession = daySession;
 
-    const sessionJson = typeof practiceSession.toJSON === 'function' ? practiceSession.toJSON() : practiceSession;
-    const itemsJson = createdItems.map(item => (typeof item.toJSON === 'function' ? item.toJSON() : item));
-    res.status(201).json({ ...sessionJson, items: itemsJson });
+      if (created) {
+        // A song or topic entered twice in the same form becomes one entry
+        const { entries } = mergeEntries(resolvedItems);
+        if (entries.length > 0) {
+          sessionItems = await SessionItem.bulkCreate(
+            entries.map(({ uid: _uid, ...entry }) => ({ ...entry, sessionUid: practiceSession.uid })),
+            { transaction }
+          );
+          // 4.2: each song entry is also a play event for the session's instrument,
+          // linked to its entry (cascade target) and dated on the session day, so
+          // the per-instrument "last played" derived from SongPlays reflects it.
+          await createJournalPlays(sessionItems, trimmedInstrument, date, transaction);
+        }
+        return;
+      }
+
+      merged = true;
+      const existingItems = await SessionItem.findAll({
+        where: { sessionUid: daySession.uid },
+        order: ITEM_ORDER,
+        transaction,
+      });
+      sessionItems = await persistMergedEntries(
+        daySession.uid,
+        existingItems,
+        mergeEntries([...existingItems.map(toPlain), ...resolvedItems]),
+        transaction
+      );
+      const mergedNote = joinNotes(daySession.note, trimmedNote);
+      if (mergedNote !== daySession.note) {
+        await daySession.update({ note: mergedNote }, { transaction });
+      }
+      // Each newly logged song is a new play, linked to the entry it landed in —
+      // one per song, like a new session (a song entered twice is one entry)
+      const entryByKey = new Map(sessionItems.map(item => [entryKey(item), item]));
+      await createJournalPlays(
+        mergeEntries(resolvedItems).entries.map(item => ({ songUid: item.songUid, uid: entryByKey.get(entryKey(item)).uid })),
+        trimmedInstrument,
+        date,
+        transaction
+      );
+    });
+
+    const sessionJson = toPlain(practiceSession);
+    const itemsJson = sessionItems.map(toPlain);
+    // 201 for a new session; 200 + merged when the entries joined an existing one
+    res.status(merged ? 200 : 201).json({ ...sessionJson, items: itemsJson, merged });
   } catch (error) {
     // TOCTOU: a referenced song/topic deleted between resolution and insert
     // violates the FK inside the transaction — same answer as a bad reference
@@ -446,7 +532,7 @@ const updatePracticeSession = async (req, res, next) => {
 
     // durationMinutes is no longer accepted (Epic 8): the total derives from the
     // entries' minutes. A legacy body still sending it is tolerated and ignored.
-    const { date, instrumentType, note, items } = req.body || {};
+    const { date, instrumentType, note, items, confirmMerge } = req.body || {};
 
     let nextDate = practiceSession.date;
     if (date !== undefined) {
@@ -633,10 +719,31 @@ const updatePracticeSession = async (req, res, next) => {
     const dateChanged = nextDate !== oldDate;
     const instrumentChanged = nextInstrument !== oldInstrument;
 
+    // #5: one session per day and instrument. Moving a session onto a pair
+    // that already has one merges them — irreversible, so the client must
+    // confirm explicitly; without it, answer with what the dialog needs.
+    let mergeTarget = null;
+    if (dateChanged || instrumentChanged) {
+      mergeTarget = await PracticeSession.findOne({
+        where: { userUid: userId, date: nextDate, instrumentType: nextInstrument, uid: { [Op.ne]: practiceSession.uid } }
+      });
+      if (mergeTarget && confirmMerge !== true) {
+        return res.status(409).json({
+          error: 'merge_required',
+          message: `This will merge into your existing ${nextInstrument} session of ${nextDate}`,
+          date: nextDate,
+          instrumentType: nextInstrument
+        });
+      }
+    }
+
     await sequelize.transaction(async (transaction) => {
+      // When folding into another session, the edited row keeps its day and
+      // instrument: moving it onto the target's pair first would violate the
+      // unique index. It is deleted once its entries have moved.
       await practiceSession.update({
-        date: nextDate,
-        instrumentType: nextInstrument,
+        date: mergeTarget ? oldDate : nextDate,
+        instrumentType: mergeTarget ? oldInstrument : nextInstrument,
         note: nextNote
       }, { transaction });
 
@@ -688,14 +795,34 @@ const updatePracticeSession = async (req, res, next) => {
           await SongPlay.update(patch, { where: { sessionItemUid: itemUids }, transaction });
         }
       }
+
+      // #5 merge rules, applied last so they see the edited state (its plays
+      // already follow the new day/instrument above). Folding into another
+      // session keeps that session's row; otherwise the edit's own duplicate
+      // entries (same song or topic twice) collapse into one.
+      const ownItems = await SessionItem.findAll({ where: { sessionUid: practiceSession.uid }, order: ITEM_ORDER, transaction });
+      if (mergeTarget) {
+        const targetItems = await SessionItem.findAll({ where: { sessionUid: mergeTarget.uid }, order: ITEM_ORDER, transaction });
+        const mergeResult = mergeSessions([
+          { ...toPlain(mergeTarget), items: targetItems.map(toPlain) },
+          { ...toPlain(practiceSession), items: ownItems.map(toPlain) }
+        ]);
+        await persistMergedEntries(mergeTarget.uid, [...targetItems, ...ownItems], mergeResult, transaction);
+        if (mergeResult.note !== mergeTarget.note) {
+          await mergeTarget.update({ note: mergeResult.note }, { transaction });
+        }
+        await practiceSession.destroy({ transaction });
+      } else {
+        await persistMergedEntries(practiceSession.uid, ownItems, mergeEntries(ownItems.map(toPlain)), transaction);
+      }
     });
 
+    const resultSession = mergeTarget || practiceSession;
     const itemsAfter = await SessionItem.findAll({
-      where: { sessionUid: practiceSession.uid },
-      order: [['position', 'ASC'], ['uid', 'ASC']]
+      where: { sessionUid: resultSession.uid },
+      order: ITEM_ORDER
     });
-    const sessionJson = typeof practiceSession.toJSON === 'function' ? practiceSession.toJSON() : practiceSession;
-    res.json({ ...sessionJson, items: itemsAfter.map(item => (typeof item.toJSON === 'function' ? item.toJSON() : item)) });
+    res.json({ ...toPlain(resultSession), items: itemsAfter.map(toPlain), merged: Boolean(mergeTarget) });
   } catch (error) {
     if (error.name === 'SequelizeForeignKeyConstraintError') {
       return next(createError(400, 'Invalid entry reference'));

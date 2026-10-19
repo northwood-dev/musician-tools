@@ -43,7 +43,24 @@ export type UpdateSessionItemDTO = CreateSessionItemDTO & { uid?: string };
 export type UpdatePracticeSessionDTO = Partial<Omit<CreatePracticeSessionDTO, 'items'>> & {
   note?: string | null;
   items?: UpdateSessionItemDTO[];
+  // #5: required to move a session onto a day and instrument that already
+  // have one (the two are merged, irreversibly)
+  confirmMerge?: boolean;
 };
+
+// #5: a create or update result. `merged` is true when the write joined the
+// existing session of that day and instrument instead of creating or keeping one.
+export type SessionWriteResult = PracticeSession & { merged?: boolean };
+
+// #5: thrown on a 409 from update when the new day and instrument already have
+// a session. Carries the server's wording; the caller confirms, then resends
+// with confirmMerge.
+export class SessionMergeRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SessionMergeRequiredError';
+  }
+}
 
 export type HeatmapDay = {
   // YYYY-MM-DD. Session days carry the client-local day (FR19); play-only
@@ -52,6 +69,9 @@ export type HeatmapDay = {
   date: string;
   totalMinutes: number;
   sessionCount: number;
+  // #5: the day's instruments, alphabetical — optional so older payloads and
+  // existing test fixtures stay valid (the label then falls back to the count)
+  instruments?: string[];
   // Projected play history (FR22 retro-import) — optional so pre-3.3 payloads
   // and existing test fixtures stay valid
   playCount?: number;
@@ -104,7 +124,7 @@ export const practiceSessionService = {
     if (!res.ok) throw new Error('Failed to fetch sessions');
     return res.json();
   },
-  async create(payload: CreatePracticeSessionDTO): Promise<PracticeSession> {
+  async create(payload: CreatePracticeSessionDTO): Promise<SessionWriteResult> {
     const res = await apiFetch(`${API_BASE}/sessions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -120,7 +140,9 @@ export const practiceSessionService = {
     if (!res.ok) throw new Error('Failed to create session');
     return res.json();
   },
-  async update(uid: string, payload: UpdatePracticeSessionDTO): Promise<PracticeSession> {
+  // A merged update (#5) returns the session it was folded into: the edited
+  // one no longer exists.
+  async update(uid: string, payload: UpdatePracticeSessionDTO): Promise<SessionWriteResult> {
     const res = await apiFetch(`${API_BASE}/sessions/${uid}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -130,6 +152,10 @@ export const practiceSessionService = {
     if (res.status === 400) {
       const body = await res.json().catch(() => null);
       throw new Error(body?.message || 'Failed to update session');
+    }
+    if (res.status === 409) {
+      const body = await res.json().catch(() => null);
+      if (body?.error === 'merge_required') throw new SessionMergeRequiredError(body.message);
     }
     if (!res.ok) throw new Error('Failed to update session');
     return res.json();

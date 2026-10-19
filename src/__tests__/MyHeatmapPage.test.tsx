@@ -187,6 +187,52 @@ test('clicking an active day opens its detail with sessions, entries and an Edit
   expect(editLink).toHaveAttribute('href', '/my-sessions?edit=s1');
 });
 
+test('#5: a day cell names its instruments instead of counting sessions', async () => {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-03-10`, totalMinutes: 54, sessionCount: 2, instruments: ['Bass', 'Guitar'] },
+    { date: `${YEAR}-03-11`, totalMinutes: 20, sessionCount: 1, instruments: ['Bass'], playCount: 2 },
+  ]);
+
+  renderPage();
+
+  const cell = await screen.findByLabelText(`${YEAR}-03-10 — 54 minutes · Bass, Guitar`);
+  expect(cell).toHaveAttribute('title', `${YEAR}-03-10 — 54 minutes · Bass, Guitar`);
+  expect(screen.getByLabelText(`${YEAR}-03-11 — 20 minutes · Bass · 2 plays`)).toBeInTheDocument();
+});
+
+test('#5: the day-detail header shows the day total across instruments', async () => {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-03-10`, totalMinutes: 54, sessionCount: 2, instruments: ['Bass', 'Guitar'] },
+  ]);
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-bass', date: `${YEAR}-03-10`, instrumentType: 'Bass', items: [{ uid: 'b1', sessionUid: 's-bass', label: 'Autumn Leaves', minutes: 34 }] },
+    { uid: 's-guitar', date: `${YEAR}-03-10`, instrumentType: 'Guitar', items: [{ uid: 'g1', sessionUid: 's-guitar', label: 'Money', minutes: 20 }] },
+  ]);
+
+  renderPage();
+  fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 54 minutes · Bass, Guitar`));
+
+  const heading = await screen.findByRole('heading', { name: new RegExp(`^${YEAR}-03-10`) });
+  await waitFor(() => expect(heading).toHaveTextContent('· 54 min'));
+});
+
+test('#5: the day-detail lists one block per instrument, alphabetical', async () => {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-03-10`, totalMinutes: 30, sessionCount: 2 },
+  ]);
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-guitar', date: `${YEAR}-03-10`, instrumentType: 'Guitar', items: [] },
+    { uid: 's-bass', date: `${YEAR}-03-10`, instrumentType: 'Bass', items: [] },
+  ]);
+
+  renderPage();
+  fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 30 minutes, 2 sessions`));
+
+  const panel = await screen.findByRole('list', { name: 'Day sessions' });
+  const text = panel.textContent || '';
+  expect(text.indexOf('Bass')).toBeLessThan(text.indexOf('Guitar'));
+});
+
 test('Story 5.5: the day-detail shows "Artist - Title" for a song entry', async () => {
   const SONG_UID = 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   mockedSongService.getAllSongs.mockResolvedValue([

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { practiceSessionService, type DayPlay, type HeatmapDay, type PracticeSession } from '../services/practiceSessionService';
+import { practiceSessionService, sumSessionMinutes, type DayPlay, type HeatmapDay, type PracticeSession } from '../services/practiceSessionService';
 import { SessionHistoryCard } from '../components/SessionHistoryCard';
+import { sortByInstrument } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { buildYearGrid, computeLevels, formatLocalDate } from '../utils/heatmap';
@@ -34,6 +35,7 @@ function MyHeatmapPage() {
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [daySessions, setDaySessions] = useState<PracticeSession[] | null>(null);
+  const dayTotalMinutes = (daySessions ?? []).reduce((sum, session) => sum + sumSessionMinutes(session), 0);
   const [dayPlays, setDayPlays] = useState<DayPlay[] | null>(null);
   const [dayFailed, setDayFailed] = useState(false);
   const [playsFailed, setPlaysFailed] = useState(false);
@@ -227,9 +229,16 @@ function MyHeatmapPage() {
       return (playCount > 0 ? `${date} — played (${playsPart})` : `${date} — no practice`) + todaySuffix;
     }
     const minutesPart = `${day.totalMinutes} minute${day.totalMinutes === 1 ? '' : 's'}`;
-    const sessionsPart = `${day.sessionCount} session${day.sessionCount === 1 ? '' : 's'}`;
-    const base = `${date} — ${minutesPart}, ${sessionsPart}`;
-    return (playCount > 0 ? `${base}, ${playsPart}` : base) + todaySuffix;
+    // #5: one session per day and instrument, so naming the instruments says
+    // more than a session count ("54 minutes · Bass, Guitar"). Older payloads
+    // without instruments keep the count.
+    const hasInstruments = !!day.instruments && day.instruments.length > 0;
+    const separator = hasInstruments ? ' · ' : ', ';
+    const whatPart = hasInstruments
+      ? (day.instruments ?? []).join(', ')
+      : `${day.sessionCount} session${day.sessionCount === 1 ? '' : 's'}`;
+    const base = `${date} — ${minutesPart}${separator}${whatPart}`;
+    return (playCount > 0 ? `${base}${separator}${playsPart}` : base) + todaySuffix;
   };
 
   // Roving tabindex (NFR6), APG grid pattern: the DOM rows are weekdays, so
@@ -405,7 +414,13 @@ function MyHeatmapPage() {
         {selectedDate && (
           <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
             {/* The DATEONLY string is displayed verbatim (FR19 read-side trap) */}
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{selectedDate}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              {selectedDate}
+              {/* #5: the day total, as in the history's day header */}
+              {dayTotalMinutes > 0 ? (
+                <span className="ml-2 text-sm font-normal text-gray-600 dark:text-gray-400">· {dayTotalMinutes} min</span>
+              ) : null}
+            </h3>
             <div role="status" aria-label="Day detail status" className="text-sm text-gray-600 dark:text-gray-400">
               {dayFailed
                 // Loaded plays still render below — only claim a total loss
@@ -436,7 +451,7 @@ function MyHeatmapPage() {
             )}
             {!dayFailed && daySessions !== null && daySessions.length > 0 && (
               <ul aria-label="Day sessions" className="space-y-3">
-                {daySessions.map(session => (
+                {sortByInstrument(daySessions).map(session => (
                   <SessionHistoryCard
                     key={session.uid}
                     session={session}

@@ -25,7 +25,8 @@ jest.mock('../models', () => {
       findAll: jest.fn(),
     },
     sequelize: {
-      transaction: jest.fn(async (callback) => callback({ id: 'tx' })),
+      // (options?, callback): a nested call (savepoint) reuses the same mock tx
+      transaction: jest.fn(async (...args) => args[args.length - 1]({ id: 'tx' })),
     },
   };
 });
@@ -362,6 +363,7 @@ describe('practicesessioncontroller', () => {
           'date',
           [fn('SUM', col('items.minutes')), 'totalMinutes'],
           [fn('COUNT', literal('DISTINCT "PracticeSession"."uid"')), 'sessionCount'],
+          [fn('ARRAY_AGG', literal('DISTINCT "PracticeSession"."instrument_type"')), 'instruments'],
         ],
         include: [{ model: SessionItem, as: 'items', attributes: [], required: false }],
         where: { userUid: 'user-1', date: { [Op.between]: ['2026-01-01', '2026-12-31'] } },
@@ -375,16 +377,17 @@ describe('practicesessioncontroller', () => {
 
     test('casts pg string aggregates to numbers and nulls SUM to 0', async () => {
       PracticeSession.findAll.mockResolvedValueOnce([
-        { date: '2026-03-10', totalMinutes: '120', sessionCount: '3' },
-        { date: '2026-03-11', totalMinutes: null, sessionCount: '1' },
+        { date: '2026-03-10', totalMinutes: '120', sessionCount: '3', instruments: ['Guitar', 'Bass'] },
+        { date: '2026-03-11', totalMinutes: null, sessionCount: '1', instruments: ['Bass'] },
       ]);
 
       const res = mockRes();
       await controller.getHeatmap({ session: { user: 'user-1' }, query: { year: 2026 } }, res, mockNext());
 
       expect(res.json).toHaveBeenCalledWith([
-        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, playCount: 0 },
-        { date: '2026-03-11', totalMinutes: 0, sessionCount: 1, playCount: 0 },
+        // #5: the day's instruments come back alphabetical
+        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, instruments: ['Bass', 'Guitar'], playCount: 0 },
+        { date: '2026-03-11', totalMinutes: 0, sessionCount: 1, instruments: ['Bass'], playCount: 0 },
       ]);
     });
 
@@ -399,7 +402,7 @@ describe('practicesessioncontroller', () => {
 
       // Presence only: zero minutes, zero sessions — the client lights level 1
       expect(res.json).toHaveBeenCalledWith([
-        { date: '2026-02-01', totalMinutes: 0, sessionCount: 0, playCount: 2 },
+        { date: '2026-02-01', totalMinutes: 0, sessionCount: 0, instruments: [], playCount: 2 },
       ]);
     });
 
@@ -417,8 +420,8 @@ describe('practicesessioncontroller', () => {
 
       // Sorted by date; minutes come from sessions only, plays add presence
       expect(res.json).toHaveBeenCalledWith([
-        { date: '2026-03-09', totalMinutes: 0, sessionCount: 0, playCount: 2 },
-        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, playCount: 5 },
+        { date: '2026-03-09', totalMinutes: 0, sessionCount: 0, instruments: [], playCount: 2 },
+        { date: '2026-03-10', totalMinutes: 120, sessionCount: 3, instruments: [], playCount: 5 },
       ]);
     });
 
@@ -561,6 +564,79 @@ describe('practicesessioncontroller', () => {
       Topic.findAll.mockResolvedValue([{ uid: TOPIC_UID, userUid: 'user-1', name: 'Pentatonic scale' }]);
     });
 
+    test('#5: the same song twice in one form becomes a single entry with summed minutes', async () => {
+      const req = {
+        session: { user: 'user-1' },
+        body: baseBody([
+          { songUid: SONG_UID, minutes: 10, note: 'slow' },
+          { topicUid: TOPIC_UID, minutes: 5 },
+          { songUid: SONG_UID, minutes: 15, note: 'up to tempo' },
+        ]),
+      };
+      const res = mockRes();
+
+      await controller.createPracticeSession(req, res, mockNext());
+
+      const rows = SessionItem.bulkCreate.mock.calls[0][0];
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({ songUid: SONG_UID, minutes: 25, note: 'slow\nup to tempo', position: 0 });
+      expect(rows[1]).toMatchObject({ topicUid: TOPIC_UID, minutes: 5, position: 1 });
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json.mock.calls[0][0].merged).toBe(false);
+    });
+
+    test('#5: logging for a day and instrument that already have a session adds to it', async () => {
+      const existing = {
+        uid: 'existing-session', date: utcDateString(0), instrumentType: 'Bass', note: 'morning',
+        update: jest.fn(async function (values) { Object.assign(this, values); }),
+      };
+      const songRow = {
+        uid: 'e1', sessionUid: 'existing-session', songUid: SONG_UID, topicUid: null,
+        label: 'Sweet Child', minutes: 10, note: null, position: 0,
+        update: jest.fn(async function (values) { Object.assign(this, values); }),
+      };
+      PracticeSession.findOne.mockResolvedValueOnce(existing);
+      SessionItem.findAll.mockResolvedValueOnce([songRow]);
+
+      const req = {
+        session: { user: 'user-1' },
+        body: {
+          // The song twice in the form: still one new play, like for a new session
+          ...baseBody([{ songUid: SONG_UID, minutes: 5 }, { topicUid: TOPIC_UID, minutes: 25 }, { songUid: SONG_UID, minutes: 10 }]),
+          note: 'evening',
+        },
+      };
+      const res = mockRes();
+      const next = mockNext();
+
+      await controller.createPracticeSession(req, res, next);
+
+      // Looked up by user, day and instrument — inside the transaction
+      expect(PracticeSession.findOne.mock.calls[0][0]).toMatchObject({
+        where: { userUid: 'user-1', date: utcDateString(0), instrumentType: 'Bass' },
+        transaction: { id: 'tx' },
+      });
+      expect(PracticeSession.create).not.toHaveBeenCalled();
+      // The song accrues onto its existing entry; the topic is appended after it
+      expect(songRow.update).toHaveBeenCalledWith({ minutes: 25, note: null, position: 0 }, { transaction: { id: 'tx' } });
+      expect(SessionItem.create).toHaveBeenCalledWith(
+        expect.objectContaining({ sessionUid: 'existing-session', topicUid: TOPIC_UID, minutes: 25, position: 1 }),
+        { transaction: { id: 'tx' } }
+      );
+      // Session notes joined, oldest first
+      expect(existing.update).toHaveBeenCalledWith({ note: 'morning\nevening' }, { transaction: { id: 'tx' } });
+      // The newly logged song is a new play, linked to the entry it landed in
+      const plays = SongPlay.bulkCreate.mock.calls[0][0];
+      expect(plays).toHaveLength(1);
+      expect(plays[0]).toMatchObject({ songUid: SONG_UID, sessionItemUid: 'e1', instrumentType: 'Bass' });
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      const payload = res.json.mock.calls[0][0];
+      expect(payload).toMatchObject({ uid: 'existing-session', note: 'morning\nevening', merged: true });
+      expect(payload.items.map(item => item.uid)).toEqual(['e1', 'new-item-uid']);
+      expect(next).not.toHaveBeenCalled();
+    });
+
     test('creates a session with song and topic items, labels snapshotted server-side', async () => {
       const req = {
         session: { user: 'user-1' },
@@ -618,13 +694,15 @@ describe('practicesessioncontroller', () => {
       expect(SongPlay.bulkCreate).toHaveBeenCalledWith(expect.any(Array), { transaction: { id: 'tx' } });
     });
 
-    test('a session with zero items stays valid and skips the transaction', async () => {
+    test('a session with zero items stays valid and creates no entry', async () => {
       const req = { session: { user: 'user-1' }, body: baseBody(undefined) };
       const res = mockRes();
 
       await controller.createPracticeSession(req, res, mockNext());
 
-      expect(sequelize.transaction).not.toHaveBeenCalled();
+      // #5: the existing-session lookup and the create run in one transaction
+      // (the create itself in a savepoint, see services/daySession)
+      expect(PracticeSession.findOne.mock.calls[0][0]).toMatchObject({ transaction: { id: 'tx' } });
       expect(SessionItem.bulkCreate).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(201);
       expect(res.json.mock.calls[0][0].items).toEqual([]);
@@ -719,6 +797,12 @@ describe('practicesessioncontroller', () => {
   });
 
   describe('updatePracticeSession', () => {
+    // Only the first lookup (the edited session) is mocked per test; the #5
+    // merge-target lookup then finds nothing unless a test says otherwise.
+    beforeEach(() => {
+      PracticeSession.findOne.mockReset();
+    });
+
     const SESSION_UID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     const ITEM_UID = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
     const ITEM_UID_2 = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
@@ -760,9 +844,116 @@ describe('practicesessioncontroller', () => {
       Topic.findAll.mockResolvedValue([{ uid: TOPIC_UID, userUid: 'user-1', name: 'Pentatonic scale' }]);
     });
 
+    describe('#5: moving a session onto a day and instrument that already have one', () => {
+      const TARGET_UID = 'ffffffff-ffff-4fff-8fff-ffffffffffff';
+
+      function editedSession() {
+        const session = mockExistingSession({
+          date: '2026-06-01',
+          instrumentType: 'Bass',
+          note: 'evening',
+          destroy: jest.fn(),
+        });
+        session.toJSON = function () {
+          return { uid: this.uid, date: this.date, instrumentType: this.instrumentType, note: this.note, createdAt: '2026-06-01T20:00:00Z' };
+        };
+        return session;
+      }
+
+      function targetSession() {
+        return {
+          uid: TARGET_UID, date: '2026-06-01', instrumentType: 'Guitar', note: 'morning',
+          update: jest.fn(async function (values) { Object.assign(this, values); }),
+          toJSON() {
+            return { uid: this.uid, date: this.date, instrumentType: this.instrumentType, note: this.note, createdAt: '2026-06-01T08:00:00Z' };
+          },
+        };
+      }
+
+      test('without confirmation: 409 with what the dialog needs, nothing written', async () => {
+        PracticeSession.findOne.mockResolvedValueOnce(editedSession()).mockResolvedValueOnce(targetSession());
+        const res = mockRes();
+        const next = mockNext();
+
+        await controller.updatePracticeSession(
+          { session: { user: 'user-1' }, params: { uid: SESSION_UID }, body: { instrumentType: 'Guitar' } }, res, next
+        );
+
+        // The target lookup excludes the edited session itself
+        expect(PracticeSession.findOne.mock.calls[1][0].where).toMatchObject({
+          userUid: 'user-1', date: '2026-06-01', instrumentType: 'Guitar', uid: { [Op.ne]: SESSION_UID },
+        });
+        expect(res.status).toHaveBeenCalledWith(409);
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+          error: 'merge_required', date: '2026-06-01', instrumentType: 'Guitar',
+        }));
+        expect(sequelize.transaction).not.toHaveBeenCalled();
+        expect(next).not.toHaveBeenCalled();
+      });
+
+      test('with confirmation: folds into the existing session, plays re-attached, edited session removed', async () => {
+        const session = editedSession();
+        const target = targetSession();
+        const ownRow = mockItem({ sessionUid: SESSION_UID, minutes: 15, position: 0 });
+        const targetRow = mockItem({ uid: 'target-item', sessionUid: TARGET_UID, minutes: 10, position: 0 });
+        PracticeSession.findOne.mockResolvedValueOnce(session).mockResolvedValueOnce(target);
+        SessionItem.findAll
+          .mockResolvedValueOnce([{ uid: ITEM_UID }]) // plays realign to the new instrument
+          .mockResolvedValueOnce([ownRow]) // the edited session's entries
+          .mockResolvedValueOnce([targetRow]) // the target's entries
+          .mockResolvedValueOnce([targetRow]); // response
+        const res = mockRes();
+        const next = mockNext();
+
+        await controller.updatePracticeSession({
+          session: { user: 'user-1' },
+          params: { uid: SESSION_UID },
+          body: { instrumentType: 'Guitar', confirmMerge: true },
+        }, res, next);
+
+        const tx = { transaction: { id: 'tx' } };
+        // The edited row keeps its day and instrument: moving it onto the
+        // target's pair first would violate the unique index
+        expect(session.update).toHaveBeenCalledWith({ date: '2026-06-01', instrumentType: 'Bass', note: 'evening' }, tx);
+        // The edited session's plays first follow the new instrument...
+        expect(SongPlay.update).toHaveBeenCalledWith(
+          expect.objectContaining({ instrumentType: 'Guitar' }), { where: { sessionItemUid: [ITEM_UID] }, ...tx }
+        );
+        // ...then its entry folds into the target's (older) one: plays re-attached BEFORE the delete
+        expect(SongPlay.update).toHaveBeenCalledWith({ sessionItemUid: 'target-item' }, { where: { sessionItemUid: ITEM_UID }, ...tx });
+        expect(SessionItem.destroy).toHaveBeenCalledWith({ where: { uid: [ITEM_UID] }, ...tx });
+        expect(SongPlay.update.mock.invocationCallOrder[1]).toBeLessThan(SessionItem.destroy.mock.invocationCallOrder[0]);
+        expect(targetRow.update).toHaveBeenCalledWith({ minutes: 25, note: null, position: 0 }, tx);
+        expect(target.update).toHaveBeenCalledWith({ note: 'morning\nevening' }, tx);
+        expect(session.destroy).toHaveBeenCalledWith(tx);
+
+        expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ uid: TARGET_UID, merged: true }));
+        expect(next).not.toHaveBeenCalled();
+      });
+    });
+
+    test('#5: the same song twice in an edit collapses into one entry', async () => {
+      const session = mockExistingSession();
+      const first = mockItem({ uid: ITEM_UID, sessionUid: SESSION_UID, minutes: 10, position: 0 });
+      const second = mockItem({ uid: ITEM_UID_2, sessionUid: SESSION_UID, minutes: 5, position: 1 });
+      PracticeSession.findOne.mockResolvedValueOnce(session);
+      SessionItem.findAll.mockResolvedValueOnce([first, second]).mockResolvedValueOnce([first]);
+      const res = mockRes();
+
+      await controller.updatePracticeSession(
+        { session: { user: 'user-1' }, params: { uid: SESSION_UID }, body: { note: 'x' } }, res, mockNext()
+      );
+
+      const tx = { transaction: { id: 'tx' } };
+      expect(SongPlay.update).toHaveBeenCalledWith({ sessionItemUid: ITEM_UID }, { where: { sessionItemUid: ITEM_UID_2 }, ...tx });
+      expect(SessionItem.destroy).toHaveBeenCalledWith({ where: { uid: [ITEM_UID_2] }, ...tx });
+      expect(first.update).toHaveBeenCalledWith({ minutes: 15, note: null, position: 0 }, tx);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ merged: false }));
+    });
+
     test('partial update keeps absent fields and passes the transaction option', async () => {
       const session = mockExistingSession();
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       const req = { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { date: '2026-05-01' } };
       const res = mockRes();
@@ -782,7 +973,7 @@ describe('practicesessioncontroller', () => {
 
     test('explicit null clears the note (and a legacy durationMinutes is ignored)', async () => {
       const session = mockExistingSession();
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       const req = { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { durationMinutes: null, note: null } };
 
@@ -796,7 +987,7 @@ describe('practicesessioncontroller', () => {
     test('rejects invalid or future dates with 400', async () => {
       for (const date of ['07/06/2026', utcDateString(2), '1899-12-31']) {
         const session = mockExistingSession();
-        PracticeSession.findOne.mockResolvedValue(session);
+        PracticeSession.findOne.mockResolvedValueOnce(session);
         const next = mockNext();
 
         await controller.updatePracticeSession(
@@ -835,7 +1026,7 @@ describe('practicesessioncontroller', () => {
     test('items diff: updates an existing row in place, label preserved without a new ref', async () => {
       const item = mockItem();
       const session = mockExistingSession({ items: [item] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       const req = {
         params: { uid: SESSION_UID },
@@ -856,7 +1047,7 @@ describe('practicesessioncontroller', () => {
     test('items diff: reclassifying re-resolves the label (FR4)', async () => {
       const orphan = mockItem({ songUid: null, topicUid: null, label: 'Ghost topic' });
       const session = mockExistingSession({ items: [orphan] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       const req = {
         params: { uid: SESSION_UID },
@@ -875,7 +1066,7 @@ describe('practicesessioncontroller', () => {
     test('items diff: an orphan sent back without a ref keeps its snapshot label (FR4)', async () => {
       const orphan = mockItem({ songUid: null, topicUid: null, label: 'Ghost topic', minutes: 10 });
       const session = mockExistingSession({ items: [orphan] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       const req = {
         params: { uid: SESSION_UID },
@@ -895,7 +1086,7 @@ describe('practicesessioncontroller', () => {
       const kept = mockItem();
       const removed = mockItem({ uid: ITEM_UID_2, label: 'To remove' });
       const session = mockExistingSession({ items: [kept, removed] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       const req = {
         params: { uid: SESSION_UID },
@@ -915,7 +1106,7 @@ describe('practicesessioncontroller', () => {
 
     test("items diff: a uid that is not one of this session's items is rejected with 400", async () => {
       const session = mockExistingSession({ items: [mockItem()] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
       const next = mockNext();
 
       await controller.updatePracticeSession(
@@ -938,7 +1129,7 @@ describe('practicesessioncontroller', () => {
       ];
       for (const body of bodies) {
         const session = mockExistingSession({ items: [mockItem()] });
-        PracticeSession.findOne.mockResolvedValue(session);
+        PracticeSession.findOne.mockResolvedValueOnce(session);
         const next = mockNext();
 
         await controller.updatePracticeSession({ params: { uid: SESSION_UID }, session: { user: 'user-1' }, body }, mockRes(), next);
@@ -950,7 +1141,7 @@ describe('practicesessioncontroller', () => {
 
     test('rejects a duplicate item uid in the payload with 400', async () => {
       const session = mockExistingSession({ items: [mockItem()] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
       const next = mockNext();
 
       await controller.updatePracticeSession(
@@ -966,7 +1157,7 @@ describe('practicesessioncontroller', () => {
 
     test('response re-reads items ordered by position', async () => {
       const session = mockExistingSession();
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       await controller.updatePracticeSession(
         { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { note: 'updated' } },
@@ -982,7 +1173,7 @@ describe('practicesessioncontroller', () => {
 
     test('4.2: changing the date moves the linked plays to the new day (AC3)', async () => {
       const session = mockExistingSession({ date: '2026-06-01', items: [mockItem()] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
       SessionItem.findAll.mockResolvedValue([{ uid: ITEM_UID }]);
 
       await controller.updatePracticeSession(
@@ -999,7 +1190,7 @@ describe('practicesessioncontroller', () => {
 
     test('4.2: changing the instrument re-labels the linked plays (FR7)', async () => {
       const session = mockExistingSession({ instrumentType: 'Bass', items: [mockItem()] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
       SessionItem.findAll.mockResolvedValue([{ uid: ITEM_UID }]);
 
       await controller.updatePracticeSession(
@@ -1017,7 +1208,7 @@ describe('practicesessioncontroller', () => {
 
     test('4.2: a note/duration-only edit does NOT touch the linked plays', async () => {
       const session = mockExistingSession({ items: [mockItem()] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       await controller.updatePracticeSession(
         { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { note: 'just a note', durationMinutes: 45 } },
@@ -1034,7 +1225,7 @@ describe('practicesessioncontroller', () => {
     test('4.2: the realign covers EVERY linked play of a multi-entry session', async () => {
       const item2 = mockItem({ uid: ITEM_UID_2, songUid: TOPIC_UID });
       const session = mockExistingSession({ date: '2026-06-01', items: [mockItem(), item2] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
       SessionItem.findAll.mockResolvedValue([{ uid: ITEM_UID }, { uid: ITEM_UID_2 }]);
 
       await controller.updatePracticeSession(
@@ -1050,7 +1241,7 @@ describe('practicesessioncontroller', () => {
 
     test('4.2: adding a song entry creates a linked play (AC1)', async () => {
       const session = mockExistingSession({ items: [] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       await controller.updatePracticeSession(
         { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { items: [{ songUid: SONG_UID }] } },
@@ -1063,7 +1254,7 @@ describe('practicesessioncontroller', () => {
 
     test('4.2: removing an entry deletes the entry (its plays cascade)', async () => {
       const session = mockExistingSession({ items: [mockItem()] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       await controller.updatePracticeSession(
         { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { items: [] } },
@@ -1078,7 +1269,7 @@ describe('practicesessioncontroller', () => {
     test('4.2: re-pointing an entry from a song to a topic drops its play', async () => {
       const item = mockItem({ update: jest.fn(function (vals) { Object.assign(this, vals); }) });
       const session = mockExistingSession({ items: [item] });
-      PracticeSession.findOne.mockResolvedValue(session);
+      PracticeSession.findOne.mockResolvedValueOnce(session);
 
       await controller.updatePracticeSession(
         { params: { uid: SESSION_UID }, session: { user: 'user-1' }, body: { items: [{ uid: ITEM_UID, topicUid: TOPIC_UID }] } },

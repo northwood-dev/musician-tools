@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
-import { practiceSessionService, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
-import { SessionHistoryCard } from '../components/SessionHistoryCard';
+import { practiceSessionService, SessionMergeRequiredError, type SessionWriteResult, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
+import { SessionDayGroup } from '../components/SessionHistoryCard';
+import { groupSessionsByDay } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { topicService, TopicConflictError, type Topic } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -226,6 +227,9 @@ function MySessionsPage() {
   const [sessions, setSessions] = useState<PracticeSession[] | null>(null);
   const [sessionsFailed, setSessionsFailed] = useState(false);
   const [editingSessionUid, setEditingSessionUid] = useState<string | null>(null);
+  // #5: an edit moving the session onto an existing day/instrument, held until
+  // the user confirms the merge
+  const [pendingMerge, setPendingMerge] = useState<{ payload: UpdatePracticeSessionDTO; message: string } | null>(null);
   const [editingSessionLabel, setEditingSessionLabel] = useState('');
   const [deleteSessionUid, setDeleteSessionUid] = useState<string | null>(null);
   // True as soon as the user interacts with the instrument field (or enters
@@ -339,6 +343,12 @@ function MySessionsPage() {
   // the entries and recomputed live as they change. An entry without minutes
   // counts as 0.
   const enteredMinutesSum = entries.reduce<number>((sum, e) => sum + (e.minutes === '' ? 0 : Number(e.minutes)), 0);
+  // #5: logging for a day and instrument that already have a session adds to
+  // it (server-side merge); the form announces it. The history holds every
+  // session (no pagination), so the local list is enough to know.
+  const existingSessionForPick = !editingSessionUid && instrumentType
+    ? (sessions ?? []).find(s => s.date === date && s.instrumentType === instrumentType)
+    : undefined;
 
   // Story 8.2: pin the system "Free practice" topic to the top of the picker's
   // Topics group, keeping the user's own topics in their existing order. Sorted
@@ -499,6 +509,33 @@ function MySessionsPage() {
     }
   };
 
+  // After a successful edit. A merged edit (#5) returns the session it was
+  // folded into: the edited one is gone, the target replaces its old copy.
+  const finishUpdate = (updated: SessionWriteResult) => {
+    setSessions(prev => sortSessions([
+      updated,
+      ...(prev ?? []).filter(s => s.uid !== editingSessionUid && s.uid !== updated.uid),
+    ]));
+    setSessionsFailed(false);
+    resetForm();
+    showToast(updated.merged ? `Merged into your ${updated.instrumentType} session` : 'Session updated');
+  };
+
+  const handleConfirmMerge = async () => {
+    if (!pendingMerge || !editingSessionUid) return;
+    const { payload } = pendingMerge;
+    setPendingMerge(null);
+    try {
+      setLoading(true);
+      setError(null);
+      finishUpdate(await practiceSessionService.update(editingSessionUid, { ...payload, confirmMerge: true }));
+    } catch {
+      setError('Failed to update session');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!date || !instrumentType) return;
@@ -557,11 +594,18 @@ function MySessionsPage() {
           note: note.trim() || null,
           items,
         };
-        const updated = await practiceSessionService.update(editingSessionUid, payload);
-        setSessions(prev => sortSessions((prev ?? []).map(s => (s.uid === editingSessionUid ? updated : s))));
-        setSessionsFailed(false);
-        resetForm();
-        showToast('Session updated');
+        let updated;
+        try {
+          updated = await practiceSessionService.update(editingSessionUid, payload);
+        } catch (err) {
+          // #5: the new day and instrument already have a session — ask first
+          if (err instanceof SessionMergeRequiredError) {
+            setPendingMerge({ payload, message: err.message });
+            return;
+          }
+          throw err;
+        }
+        finishUpdate(updated);
       } else {
         const items: CreateSessionItemDTO[] = entries
           .filter(e => e.ref !== '')
@@ -588,14 +632,19 @@ function MySessionsPage() {
         const created = await practiceSessionService.create(payload);
         // Local insert + re-sort: a retroactive session must land at its real
         // chronological place, not on top of the list. A previously failed
-        // history load must not keep hiding sessions logged since.
-        setSessions(prev => sortSessions([created, ...(prev ?? [])]));
+        // history load must not keep hiding sessions logged since. When the
+        // entries joined an existing session (#5), it replaces its old copy.
+        setSessions(prev => sortSessions([created, ...(prev ?? []).filter(s => s.uid !== created.uid)]));
         setSessionsFailed(false);
         setNote('');
         setEntries([]);
         // Tell the user we logged unstructured time, not silently — the entry
         // they didn't add is now visible as a Free practice entry.
-        showToast(loggedAsFreePractice ? 'Logged as Free practice' : 'Session logged');
+        showToast(created.merged
+          ? `Added ${loggedAsFreePractice ? 'Free practice ' : ''}to your ${created.instrumentType} session`
+          : loggedAsFreePractice
+            ? 'Logged as Free practice'
+            : 'Session logged');
       }
     } catch (err) {
       const generic = editingSessionUid ? 'Failed to update session' : 'Failed to log session';
@@ -626,6 +675,15 @@ function MySessionsPage() {
         isDangerous
         onConfirm={handleDeleteSession}
         onCancel={() => setDeleteSessionUid(null)}
+      />
+      <ConfirmDialog
+        isOpen={!!pendingMerge}
+        title="Merge sessions"
+        message={pendingMerge ? `${pendingMerge.message}.` : ''}
+        confirmText="Merge"
+        cancelText="Cancel"
+        onConfirm={handleConfirmMerge}
+        onCancel={() => setPendingMerge(null)}
       />
       {/* Always mounted: a live region must exist in the DOM before its content
           changes, or screen readers may never announce the toast */}
@@ -730,6 +788,13 @@ function MySessionsPage() {
                 {enteredMinutesSum > 0 ? `${enteredMinutesSum} min` : '—'}
               </output>
             </div>
+            {existingSessionForPick && (
+              // #5: one session per day and instrument — say so before the submit
+              // rather than surprise the user with a merged session afterwards
+              <p role="note" className="md:col-span-3 text-sm text-brand-700 dark:text-brand-300">
+                You already have a {existingSessionForPick.instrumentType} session that day — these entries will be added to it.
+              </p>
+            )}
             <div className="flex flex-col gap-1 md:col-span-3">
               <label htmlFor="session-note" className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">
                 Note
@@ -858,13 +923,13 @@ function MySessionsPage() {
                   : null}
           </div>
           {!editingSessionUid && !sessionsFailed && sessions !== null && sessions.length > 0 && (
-            <ul aria-label="Session history" className="space-y-3">
-              {sessions.map(session => (
-                <SessionHistoryCard
-                  key={session.uid}
-                  session={session}
+            <ul aria-label="Session history" className="space-y-5">
+              {groupSessionsByDay(sessions).map(day => (
+                <SessionDayGroup
+                  key={day.date}
+                  day={day}
                   artistBySongUid={artistBySongUid}
-                  actions={
+                  renderActions={session => (
                     <>
                       <button
                         type="button"
@@ -885,7 +950,7 @@ function MySessionsPage() {
                         Delete
                       </button>
                     </>
-                  }
+                  )}
                 />
               ))}
             </ul>

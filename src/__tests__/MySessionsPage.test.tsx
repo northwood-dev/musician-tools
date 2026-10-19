@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom';
 import MySessionsPage from '../pages/MySessionsPage';
 import { digitsOnly } from '../utils/digitsOnly';
-import { practiceSessionService, type PracticeSession } from '../services/practiceSessionService';
+import { practiceSessionService, SessionMergeRequiredError, type PracticeSession } from '../services/practiceSessionService';
 
 jest.mock('../services/practiceSessionService', () => ({
   // Keep the real pure helpers (e.g. sumSessionMinutes); only the API object is mocked
@@ -532,8 +532,9 @@ test('the history lists sessions with date, instrument, the entries-sum minutes,
   const history = await screen.findByRole('list', { name: 'Session history' });
   expect(within(history).getByText('2026-06-05')).toBeInTheDocument();
   expect(within(history).getByText('Bass')).toBeInTheDocument();
-  // 15 + 25 = 40, summed from the entries (no stored durationMinutes)
-  expect(within(history).getByText('· 40 min')).toBeInTheDocument();
+  // 15 + 25 = 40, summed from the entries (no stored durationMinutes): once as
+  // the day total, once as the instrument block total
+  expect(within(history).getAllByText('· 40 min')).toHaveLength(2);
   expect(within(history).getByText('great session')).toBeInTheDocument();
   expect(within(history).getByText(/Sweet Child/)).toBeInTheDocument();
   expect(within(history).getByText(/played during 15 minutes/)).toBeInTheDocument();
@@ -634,6 +635,52 @@ test('a newly logged session appears in the history', async () => {
   expect(screen.queryByText('No sessions logged yet.')).not.toBeInTheDocument();
 });
 
+test('#5: the form announces that entries will join the existing session of that day and instrument', async () => {
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-bass', date: todayLocalDate(), instrumentType: 'Bass', items: [] },
+  ]);
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  await screen.findByRole('list', { name: 'Session history' });
+
+  const notice = 'You already have a Bass session that day — these entries will be added to it.';
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  expect(screen.getByRole('note')).toHaveTextContent(notice);
+
+  // Another instrument, or another day: no session yet, no notice
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Guitar' } });
+  expect(screen.queryByRole('note')).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-01-02' } });
+  expect(screen.queryByRole('note')).not.toBeInTheDocument();
+});
+
+test('#5: entries merged into an existing session replace its card, with a dedicated toast', async () => {
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-bass', date: todayLocalDate(), instrumentType: 'Bass', note: 'morning', items: [
+      { uid: 'i1', sessionUid: 's-bass', label: 'Sweet Child', minutes: 10 },
+    ] },
+  ]);
+  mockedService.create.mockResolvedValue({
+    uid: 's-bass', date: todayLocalDate(), instrumentType: 'Bass', note: 'morning', merged: true, items: [
+      { uid: 'i1', sessionUid: 's-bass', label: 'Sweet Child', minutes: 10 },
+      { uid: 'i2', sessionUid: 's-bass', label: 'Pentatonic scale', minutes: 5 },
+    ],
+  });
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('morning');
+
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
+
+  expect(await screen.findByText('Added to your Bass session')).toBeInTheDocument();
+  await screen.findByText(/Pentatonic scale/);
+  // Still one Bass card for the day, not a second one
+  const day = screen.getByRole('list', { name: `Sessions of ${todayLocalDate()}` });
+  expect(within(day).getAllByText('Bass')).toHaveLength(1);
+});
+
 test('a retroactive session is inserted at its chronological place, not on top', async () => {
   const yesterday = (() => {
     const d = new Date();
@@ -710,7 +757,43 @@ test('the initial history is sorted locally even if the server order regresses',
   expect(text.indexOf('2026-06-05')).toBeLessThan(text.indexOf('2026-06-01'));
 });
 
-test('a same-day session created without createdAt sorts as the newest of its day', async () => {
+test('#5: the history shows each day once, with its total, then one block per instrument (alphabetical)', async () => {
+  mockedService.getAll.mockResolvedValue([
+    { uid: 's-guitar', date: '2026-10-13', instrumentType: 'Guitar', items: [
+      { uid: 'g1', sessionUid: 's-guitar', label: 'Money', minutes: 20 },
+    ] },
+    { uid: 's-bass', date: '2026-10-13', instrumentType: 'Bass', items: [
+      { uid: 'b1', sessionUid: 's-bass', label: 'Autumn Leaves', minutes: 10 },
+      { uid: 'b2', sessionUid: 's-bass', label: 'Learn the fretboard', minutes: 24 },
+    ] },
+    { uid: 's-older', date: '2026-10-12', instrumentType: 'Bass', items: [
+      { uid: 'o1', sessionUid: 's-older', label: 'Hysteria', minutes: 5 },
+    ] },
+  ]);
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+
+  const history = await screen.findByRole('list', { name: 'Session history' });
+  // One header per day, most recent first
+  expect(within(history).getAllByText('2026-10-13')).toHaveLength(1);
+  const text = history.textContent || '';
+  expect(text.indexOf('2026-10-13')).toBeLessThan(text.indexOf('2026-10-12'));
+
+  const day = within(history).getByRole('list', { name: 'Sessions of 2026-10-13' });
+  // Day total = 20 + 10 + 24 across instruments
+  expect(within(history).getByText('· 54 min')).toBeInTheDocument();
+  // Instrument blocks: alphabetical, each with its own total and its own Edit/Delete
+  const blocks = within(day).getAllByRole('listitem').filter(li => li.parentElement === day);
+  expect(blocks.map(li => within(li).getByText(/^(Bass|Guitar)$/).textContent)).toEqual(['Bass', 'Guitar']);
+  expect(within(blocks[0]).getByText('· 34 min')).toBeInTheDocument();
+  expect(within(blocks[1]).getByText('· 20 min')).toBeInTheDocument();
+  expect(within(blocks[0]).getByRole('button', { name: 'Delete session of 2026-10-13' })).toBeInTheDocument();
+  expect(within(blocks[1]).getByRole('button', { name: 'Edit session of 2026-10-13' })).toBeInTheDocument();
+});
+
+// #5: within a day the order is alphabetical by instrument, whenever the
+// session was logged — a fresh Bass session goes before an earlier Guitar one.
+test('a session logged today joins today\'s group at its alphabetical place', async () => {
   mockedService.getAll.mockResolvedValue([
     { uid: 's-morning', date: todayLocalDate(), instrumentType: 'Guitar', note: 'morning run', createdAt: '2026-06-07T08:00:00Z', items: [] },
   ]);
@@ -776,6 +859,63 @@ test('Edit populates the form, shows the banner, and Save sends a diff-by-uid pa
   });
   expect(await screen.findByText('Session updated')).toBeInTheDocument();
   expect(screen.queryByText('Editing session of 2026-06-05')).not.toBeInTheDocument();
+});
+
+test('#5: moving a session onto an existing day and instrument asks to merge, then merges', async () => {
+  const guitar = {
+    uid: 's-guitar', date: '2026-06-05', instrumentType: 'Guitar', note: 'guitar note',
+    items: [{ uid: 'g1', sessionUid: 's-guitar', label: 'Money', minutes: 20 }],
+  };
+  mockedService.getAll.mockResolvedValue([editableSession(), guitar]);
+  mockedService.update
+    .mockRejectedValueOnce(new SessionMergeRequiredError('This will merge into your existing Guitar session of 2026-06-05'))
+    .mockResolvedValueOnce({
+      ...guitar, merged: true, note: 'guitar note\nold note',
+      items: [...guitar.items, { uid: ITEM_UID, sessionUid: 's-guitar', label: 'Sweet Child', minutes: 15 }],
+    });
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  // Bass comes first in the day (alphabetical)
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Edit session of 2026-06-05' }))[0]);
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Guitar' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save session' }));
+
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText('This will merge into your existing Guitar session of 2026-06-05.')).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' }));
+
+  await waitFor(() => {
+    expect(mockedService.update).toHaveBeenLastCalledWith('s-edit', expect.objectContaining({
+      instrumentType: 'Guitar', confirmMerge: true,
+    }));
+  });
+  expect(await screen.findByText('Merged into your Guitar session')).toBeInTheDocument();
+  // One Guitar block left for the day, carrying both entries; the Bass session is gone
+  const day = screen.getByRole('list', { name: 'Sessions of 2026-06-05' });
+  expect(within(day).queryByText('Bass')).not.toBeInTheDocument();
+  expect(within(day).getAllByText('Guitar')).toHaveLength(1);
+  expect(within(day).getByText(/Sweet Child/)).toBeInTheDocument();
+});
+
+test('#5: cancelling the merge keeps the edit open and changes nothing', async () => {
+  mockedService.getAll.mockResolvedValue([
+    editableSession(),
+    { uid: 's-guitar', date: '2026-06-05', instrumentType: 'Guitar', items: [] },
+  ]);
+  mockedService.update.mockRejectedValueOnce(
+    new SessionMergeRequiredError('This will merge into your existing Guitar session of 2026-06-05')
+  );
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  fireEvent.click((await screen.findAllByRole('button', { name: 'Edit session of 2026-06-05' }))[0]);
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Guitar' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save session' }));
+
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }));
+
+  expect(mockedService.update).toHaveBeenCalledTimes(1);
+  expect(screen.getByText('Editing session of 2026-06-05')).toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 
 test('Cancel edit restores a blank form without calling the API', async () => {
@@ -1215,6 +1355,21 @@ test('Epic 8 (option B): logging with no entry falls back to a Free practice ent
     );
   });
   expect(await screen.findByText('Logged as Free practice')).toBeInTheDocument();
+});
+
+test('#5: Free practice added to the existing session says both in one toast', async () => {
+  mockedTopicService.getAll.mockResolvedValue([
+    { uid: FREE_UID, name: 'Free practice', isSystem: true },
+  ]);
+  mockedService.create.mockResolvedValue({ uid: 's1', date: todayLocalDate(), instrumentType: 'Bass', merged: true, items: [] });
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('No sessions logged yet.');
+
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
+
+  expect(await screen.findByText('Added Free practice to your Bass session')).toBeInTheDocument();
 });
 
 test('Epic 8: a session whose entries have no minutes is floored to 1 minute on the first entry', async () => {
