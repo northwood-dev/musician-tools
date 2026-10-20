@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { practiceSessionService, sumSessionMinutes, type DayPlay, type HeatmapDay, type PracticeSession } from '../services/practiceSessionService';
 import { SessionHistoryCard } from '../components/SessionHistoryCard';
+import { toSongNamesByUid } from '../utils/songNames';
 import { sortByInstrument } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -44,9 +45,9 @@ function MyHeatmapPage() {
   const [deleteInFlight, setDeleteInFlight] = useState(false);
   // Bumped after a deletion: the day's aggregate changed, the grid must refetch
   const [heatmapVersion, setHeatmapVersion] = useState(0);
-  // Song catalog, loaded once: a session item only snapshots the title (FR4),
-  // so the artist is resolved from the live catalog for display — same as the
-  // Sessions history. Purely cosmetic: a load failure just omits the artist.
+  // Songlist, loaded once: day-detail entries show the live artist and title
+  // (#13) — same as the Sessions history. Purely cosmetic: a load failure falls
+  // back to the entry's snapshot title, without an artist.
   const [songs, setSongs] = useState<Song[]>([]);
   // Mirrors selectedDate for async completions (a slow DELETE must not touch
   // the panel of a day selected afterwards)
@@ -68,8 +69,8 @@ function MyHeatmapPage() {
     return () => { cancelled = true; };
   }, [year, heatmapVersion]);
 
-  // Song catalog fetched once on mount: artist is a display-only enrichment of
-  // the day-detail entries (Story 5.5 "Artist - Title" consistency). A failure
+  // Songlist fetched once on mount: the live names are a display-only enrichment
+  // of the day-detail entries (Story 5.5 "Artist - Title" consistency). A failure
   // is swallowed — the title snapshot still renders without an artist.
   useEffect(() => {
     let cancelled = false;
@@ -172,14 +173,9 @@ function MyHeatmapPage() {
     }
   };
 
-  // Resolve artists from the live catalog (the session item only snapshots the
-  // title). Only songs with an artist are mapped — orphan/topic entries and
-  // artist-less songs fall back to title-only, like the Sessions history.
-  const artistBySongUid = useMemo(() => {
-    const map = new Map<string, string>();
-    songs.forEach(song => { if (song.artist) map.set(song.uid, song.artist); });
-    return map;
-  }, [songs]);
+  // Entries show the live artist and title from the songlist (#13); the item's
+  // snapshot label only stands for a deleted song (orphan entry) or a topic.
+  const songNamesByUid = useMemo(() => toSongNamesByUid(songs), [songs]);
 
   const grid = useMemo(() => buildYearGrid(year), [year]);
   const levelFor = useMemo(() => computeLevels(days ?? []), [days]);
@@ -455,7 +451,7 @@ function MyHeatmapPage() {
                   <SessionHistoryCard
                     key={session.uid}
                     session={session}
-                    artistBySongUid={artistBySongUid}
+                    songNamesByUid={songNamesByUid}
                     showDate={false}
                     actions={
                       <>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { practiceSessionService, SessionMergeRequiredError, type SessionWriteResult, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
 import { SessionDayGroup } from '../components/SessionHistoryCard';
+import { toSongNamesByUid } from '../utils/songNames';
 import { groupSessionsByDay } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { topicService, TopicConflictError, type Topic } from '../services/topicService';
@@ -19,7 +20,7 @@ type EntryDraft = {
   note: string;
 };
 
-// Accent-insensitive folding for the instant search: a French catalog must
+// Accent-insensitive folding for the instant search: a French songlist must
 // match "etude" against "Étude" (NFD strips combining diacritics)
 function foldForSearch(value: string): string {
   return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -284,8 +285,8 @@ function MySessionsPage() {
 
   useEffect(() => {
     (async () => {
-      // allSettled: one failing catalog must not discard the other — the form
-      // stays usable (possibly with a partial picker)
+      // allSettled: a failing songlist or topics load must not discard the
+      // other — the form stays usable (possibly with a partial picker)
       const [songsResult, topicsResult, sessionsResult] = await Promise.allSettled([
         songService.getAllSongs(),
         topicService.getAll(),
@@ -360,8 +361,8 @@ function MySessionsPage() {
 
   // FR12: refs recently logged, first occurrence over the anti-chronological
   // session list, deduplicated, capped at 5. Deleted refs (absent from the
-  // loaded catalogs) are excluded — they cannot be referenced again. Labels
-  // come from the CURRENT catalogs (a renamed song shows its new title).
+  // loaded songlist/topics) are excluded — they cannot be referenced again. Labels
+  // come from the CURRENT songlist/topics (a renamed song shows its new title).
   const recentRefs = useMemo(() => {
     if (!sessions) return [];
     const labelByRef = new Map<string, string>();
@@ -390,14 +391,9 @@ function MySessionsPage() {
     return result;
   }, [sessions, songs, topics]);
 
-  // The session item only snapshots the FR4 title label, not the artist —
-  // resolve the artist from the live song catalog for display. A deleted song
-  // (orphan entry) or a topic entry has no artist here; the label stands alone.
-  const artistBySongUid = useMemo(() => {
-    const map = new Map<string, string>();
-    songs.forEach(song => { if (song.artist) map.set(song.uid, song.artist); });
-    return map;
-  }, [songs]);
+  // Entries show the live artist and title from the songlist (#13); the item's
+  // snapshot label only stands for a deleted song (orphan entry) or a topic.
+  const songNamesByUid = useMemo(() => toSongNamesByUid(songs), [songs]);
 
   const addEntry = () => {
     entryKeyRef.current += 1;
@@ -415,7 +411,7 @@ function MySessionsPage() {
   // Story 8.2 (FR26): create a topic from the entry picker and select it for the
   // current entry, without closing or submitting the session form. A 409 (the
   // topic already exists, case/accents aside) is not an error — we select the
-  // existing one instead, reloading the catalog if it isn't in state yet.
+  // existing one instead, reloading the topics if it isn't in state yet.
   const handleCreateTopic = async (key: number, rawText: string) => {
     const name = rawText.trim();
     if (!name) return;
@@ -476,7 +472,7 @@ function MySessionsPage() {
         uid: item.uid,
         // label is only kept for orphan entries: it is the snapshot the combobox
         // shows when the ref was deleted; non-orphan entries resolve their label
-        // from the live catalog instead
+        // from the live songlist/topics instead
         label: isOrphan ? item.label : undefined,
         ref: item.songUid ? `song:${item.songUid}` : item.topicUid ? `topic:${item.topicUid}` : '',
         minutes: item.minutes != null ? String(item.minutes) : '',
@@ -928,7 +924,7 @@ function MySessionsPage() {
                 <SessionDayGroup
                   key={day.date}
                   day={day}
-                  artistBySongUid={artistBySongUid}
+                  songNamesByUid={songNamesByUid}
                   renderActions={session => (
                     <>
                       <button
