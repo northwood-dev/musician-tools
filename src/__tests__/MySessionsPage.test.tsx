@@ -542,7 +542,25 @@ test('the history lists sessions with date, instrument, the entries-sum minutes,
   expect(within(history).getByText(/Pentatonic scale/)).toBeInTheDocument();
 });
 
-test('the history shows "Artist - Title", resolved from the catalog', async () => {
+test('#16: the history shows the live name of a renamed topic, linked to its row', async () => {
+  mockedService.getAll.mockResolvedValue([
+    {
+      uid: 's1',
+      date: '2026-06-05',
+      instrumentType: 'Bass',
+      items: [{ uid: 'i1', sessionUid: 's1', topicUid: TOPIC_UID, label: 'Penta', minutes: 25 }],
+    },
+  ]);
+
+  render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+
+  const history = await screen.findByRole('list', { name: 'Session history' });
+  const link = await within(history).findByRole('link', { name: 'Pentatonic scale' });
+  expect(link).toHaveAttribute('href', `/my-topics?edit=${TOPIC_UID}`);
+  expect(within(history).queryByText('Penta')).not.toBeInTheDocument();
+});
+
+test('the history shows "Artist - Title", resolved from the songlist', async () => {
   mockedSongService.getAllSongs.mockResolvedValue([
     { uid: SONG_UID, title: 'Sweet Child', artist: "Guns N' Roses" } as never,
   ]);

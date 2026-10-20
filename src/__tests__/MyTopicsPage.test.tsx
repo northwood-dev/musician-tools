@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import MyTopicsPage from '../pages/MyTopicsPage';
 import { topicService, type Topic } from '../services/topicService';
 
@@ -15,13 +16,28 @@ const mockedService = topicService as jest.Mocked<typeof topicService>;
 
 const existingTopic: Topic = { uid: 't1', name: 'Pentatonic scale', category: 'Technique' };
 
+function LocationProbe() {
+  const { search } = useLocation();
+  return <output aria-label="search">{search}</output>;
+}
+
+// #16: the page reads ?edit=<uid>, so it renders under a router.
+function renderPage(path = '/my-topics') {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <MyTopicsPage />
+      <LocationProbe />
+    </MemoryRouter>
+  );
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockedService.getAll.mockResolvedValue([existingTopic]);
 });
 
 test('loads and displays existing topics', async () => {
-  render(<MyTopicsPage />);
+  renderPage();
 
   expect(await screen.findByText('Pentatonic scale')).toBeInTheDocument();
   expect(screen.getByText('Technique')).toBeInTheDocument();
@@ -29,7 +45,7 @@ test('loads and displays existing topics', async () => {
 
 test('shows empty state when no topics exist', async () => {
   mockedService.getAll.mockResolvedValue([]);
-  render(<MyTopicsPage />);
+  renderPage();
 
   expect(await screen.findByText('No topics saved yet.')).toBeInTheDocument();
 });
@@ -38,7 +54,7 @@ test('submitting the form creates a topic and shows it immediately', async () =>
   const created: Topic = { uid: 't2', name: 'Walking bass', category: 'Technique' };
   mockedService.create.mockResolvedValue(created);
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Walking bass' } });
@@ -52,7 +68,7 @@ test('submitting the form creates a topic and shows it immediately', async () =>
 });
 
 test('Add button is disabled while the name is empty', async () => {
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   const addButton = screen.getByRole('button', { name: 'Add' });
@@ -68,7 +84,7 @@ test('Add button is disabled while the name is empty', async () => {
 test('shows an error banner when creation fails', async () => {
   mockedService.create.mockRejectedValue(new Error('Failed to create topic'));
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Modes' } });
@@ -82,7 +98,7 @@ test('clears the error banner when a retry succeeds', async () => {
   mockedService.create.mockRejectedValueOnce(new Error('Failed to create topic'));
   mockedService.create.mockResolvedValueOnce({ uid: 't3', name: 'Modes' });
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Modes' } });
@@ -99,7 +115,7 @@ test('clears the error banner when a retry succeeds', async () => {
 test('shows a duplicate-specific message on 409', async () => {
   mockedService.create.mockRejectedValue(new Error('Topic already exists'));
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Pentatonic scale' } });
@@ -111,7 +127,7 @@ test('shows a duplicate-specific message on 409', async () => {
 test('failed load does not pretend the library is empty', async () => {
   mockedService.getAll.mockRejectedValue(new Error('Failed to fetch topics'));
 
-  render(<MyTopicsPage />);
+  renderPage();
 
   expect(await screen.findByText('Failed to load topics')).toBeInTheDocument();
   expect(screen.getByText('Topics could not be loaded.')).toBeInTheDocument();
@@ -119,7 +135,7 @@ test('failed load does not pretend the library is empty', async () => {
 });
 
 test('Edit opens an inline editor pre-filled with the topic values', async () => {
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit Pentatonic scale' }));
@@ -132,7 +148,7 @@ test('Save calls update and refreshes the row', async () => {
   const updated: Topic = { uid: 't1', name: 'Minor pentatonic', category: 'Scales' };
   mockedService.update.mockResolvedValue(updated);
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit Pentatonic scale' }));
@@ -148,7 +164,7 @@ test('Save calls update and refreshes the row', async () => {
 });
 
 test('Cancel closes the editor without calling update', async () => {
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit Pentatonic scale' }));
@@ -163,7 +179,7 @@ test('Cancel closes the editor without calling update', async () => {
 test('shows a duplicate-specific message when a rename hits 409', async () => {
   mockedService.update.mockRejectedValue(new Error('Topic already exists'));
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Edit Pentatonic scale' }));
@@ -176,7 +192,7 @@ test('shows a duplicate-specific message when a rename hits 409', async () => {
 test('Delete asks for confirmation before removing', async () => {
   mockedService.remove.mockResolvedValue(undefined);
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Delete Pentatonic scale' }));
@@ -196,7 +212,7 @@ test('Delete asks for confirmation before removing', async () => {
 });
 
 test('cancelling the confirmation dialog keeps the topic', async () => {
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Delete Pentatonic scale' }));
@@ -212,7 +228,7 @@ test('8.2: the system topic shows no Edit/Delete actions, just a System badge', 
     existingTopic,
   ]);
 
-  render(<MyTopicsPage />);
+  renderPage();
   await screen.findByText('Free practice');
 
   // The system row exposes neither action...
@@ -223,4 +239,48 @@ test('8.2: the system topic shows no Edit/Delete actions, just a System badge', 
   // ...while a normal topic keeps both
   expect(screen.getByRole('button', { name: 'Edit Pentatonic scale' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Delete Pentatonic scale' })).toBeInTheDocument();
+});
+
+describe('#16: ?edit=<uid> deep link from the session history', () => {
+  const scrollSpy = jest.fn();
+  beforeEach(() => {
+    (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = scrollSpy;
+  });
+  afterEach(() => {
+    delete (Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  test('opens that topic in edit mode and scrolls to it', async () => {
+    renderPage('/my-topics?edit=t1');
+
+    expect(await screen.findByLabelText('Edit name')).toHaveValue('Pentatonic scale');
+    expect(scrollSpy).toHaveBeenCalled();
+  });
+
+  test('Save and Cancel drop ?edit= so a reload does not reopen the editor', async () => {
+    mockedService.update.mockResolvedValue({ ...existingTopic, name: 'Minor pentatonic' });
+    renderPage('/my-topics?edit=t1');
+    await screen.findByLabelText('Edit name');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByLabelText('search')).toHaveTextContent(/^$/);
+
+    // Reopened by hand, then saved: the URL stays clean.
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Pentatonic scale' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Minor pentatonic')).toBeInTheDocument();
+    expect(screen.getByLabelText('search')).toHaveTextContent(/^$/);
+  });
+
+  test('an unknown uid or the system topic just shows the page', async () => {
+    mockedService.getAll.mockResolvedValue([existingTopic, { uid: 'sys', name: 'Free practice', isSystem: true }]);
+    const { unmount } = renderPage('/my-topics?edit=gone');
+    expect(await screen.findByText('Pentatonic scale')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Edit name')).not.toBeInTheDocument();
+    unmount();
+
+    renderPage('/my-topics?edit=sys');
+    expect(await screen.findByText('Free practice')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Edit name')).not.toBeInTheDocument();
+  });
 });

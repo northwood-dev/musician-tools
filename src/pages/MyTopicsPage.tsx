@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { topicService, type Topic, type CreateTopicDTO, type UpdateTopicDTO } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
@@ -13,6 +14,10 @@ function MyTopicsPage() {
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  // #16: the session history links a topic entry here as ?edit=<uid>
+  const [searchParams, setSearchParams] = useSearchParams();
+  const editParam = searchParams.get('edit');
+  const deepLinkHandledRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -29,6 +34,28 @@ function MyTopicsPage() {
       }
     })();
   }, []);
+
+  // Open the deep-linked topic in edit mode once it is loaded, and bring its row
+  // into view. An unknown uid or the system topic (not editable) just shows the page.
+  useEffect(() => {
+    if (deepLinkHandledRef.current || !editParam) return;
+    const target = list.find(t => t.uid === editParam && !t.isSystem);
+    if (!target) return;
+    deepLinkHandledRef.current = true;
+    setEditingUid(target.uid);
+    setEditName(target.name);
+    setEditCategory(target.category || '');
+    document.getElementById(`topic-${target.uid}`)?.scrollIntoView?.({ block: 'center' });
+  }, [list, editParam]);
+
+  // Leaving the editor drops ?edit= so a reload does not reopen it.
+  const clearEditParam = () => {
+    if (!searchParams.has('edit')) return;
+    setSearchParams(prev => {
+      prev.delete('edit');
+      return prev;
+    }, { replace: true });
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +103,7 @@ function MyTopicsPage() {
 
   const cancelEdit = () => {
     setEditingUid(null);
+    clearEditParam();
   };
 
   const saveEdit = async () => {
@@ -89,6 +117,7 @@ function MyTopicsPage() {
       const updated = await topicService.update(editingUid, payload);
       setList(prev => prev.map(t => (t.uid === editingUid ? updated : t)));
       setEditingUid(null);
+      clearEditParam();
     } catch (err) {
       setError(err instanceof Error && err.message === 'Topic already exists'
         ? 'Topic already exists'
@@ -185,7 +214,7 @@ function MyTopicsPage() {
                   <tbody>
                     {list.map(item => (
                       editingUid === item.uid ? (
-                        <tr key={item.uid} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
+                        <tr key={item.uid} id={`topic-${item.uid}`} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
                           <td className="p-2 align-top">
                             <input
                               aria-label="Edit name"
@@ -228,7 +257,7 @@ function MyTopicsPage() {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={item.uid} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <tr key={item.uid} id={`topic-${item.uid}`} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="p-2 align-middle">{item.name}</td>
                           <td className="p-2 align-middle">{item.category || '-'}</td>
                           <td className="p-2 align-middle text-right">

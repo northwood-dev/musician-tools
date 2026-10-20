@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { practiceSessionService, sumSessionMinutes, type DayPlay, type HeatmapDay, type PracticeSession } from '../services/practiceSessionService';
 import { SessionHistoryCard } from '../components/SessionHistoryCard';
-import { toSongNamesByUid } from '../utils/songNames';
+import { toLiveNames } from '../utils/liveNames';
 import { sortByInstrument } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
+import { topicService, type Topic } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { buildYearGrid, computeLevels, formatLocalDate } from '../utils/heatmap';
 
@@ -45,10 +46,11 @@ function MyHeatmapPage() {
   const [deleteInFlight, setDeleteInFlight] = useState(false);
   // Bumped after a deletion: the day's aggregate changed, the grid must refetch
   const [heatmapVersion, setHeatmapVersion] = useState(0);
-  // Songlist, loaded once: day-detail entries show the live artist and title
-  // (#13) — same as the Sessions history. Purely cosmetic: a load failure falls
-  // back to the entry's snapshot title, without an artist.
+  // Songlist and topics, loaded once: day-detail entries show their live names
+  // (#13, #16) — same as the Sessions history. Purely cosmetic: a load failure
+  // falls back to the entry's snapshot label.
   const [songs, setSongs] = useState<Song[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   // Mirrors selectedDate for async completions (a slow DELETE must not touch
   // the panel of a day selected afterwards)
   const selectedDateRef = useRef<string | null>(null);
@@ -69,9 +71,10 @@ function MyHeatmapPage() {
     return () => { cancelled = true; };
   }, [year, heatmapVersion]);
 
-  // Songlist fetched once on mount: the live names are a display-only enrichment
-  // of the day-detail entries (Story 5.5 "Artist - Title" consistency). A failure
-  // is swallowed — the title snapshot still renders without an artist.
+  // Songlist and topics fetched once on mount: the live names are a display-only
+  // enrichment of the day-detail entries (Story 5.5 "Artist - Title" consistency,
+  // #16 topic names). Each load fails on its own and is swallowed — the snapshot
+  // label still renders.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -80,6 +83,14 @@ function MyHeatmapPage() {
         if (!cancelled) setSongs(data ?? []);
       } catch {
         // Artist is optional: keep songs empty, entries render title-only
+      }
+    })();
+    (async () => {
+      try {
+        const data = await topicService.getAll();
+        if (!cancelled) setTopics(data ?? []);
+      } catch {
+        // Keep topics empty: topic entries render their snapshot name
       }
     })();
     return () => { cancelled = true; };
@@ -173,9 +184,9 @@ function MyHeatmapPage() {
     }
   };
 
-  // Entries show the live artist and title from the songlist (#13); the item's
-  // snapshot label only stands for a deleted song (orphan entry) or a topic.
-  const songNamesByUid = useMemo(() => toSongNamesByUid(songs), [songs]);
+  // Entries show the live names from the songlist and topics (#13, #16); the
+  // item's snapshot label only stands for a deleted song or topic (orphan entry).
+  const liveNames = useMemo(() => toLiveNames(songs, topics), [songs, topics]);
 
   const grid = useMemo(() => buildYearGrid(year), [year]);
   const levelFor = useMemo(() => computeLevels(days ?? []), [days]);
@@ -451,7 +462,7 @@ function MyHeatmapPage() {
                   <SessionHistoryCard
                     key={session.uid}
                     session={session}
-                    songNamesByUid={songNamesByUid}
+                    liveNames={liveNames}
                     showDate={false}
                     actions={
                       <>
