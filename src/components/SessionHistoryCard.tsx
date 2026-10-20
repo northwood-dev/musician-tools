@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { sumSessionMinutes, type PracticeSession, type SessionItem } from '../services/practiceSessionService';
 import type { SessionDay } from '../utils/sessionDays';
-import type { LiveNames, SongNames } from '../utils/liveNames';
+import { resolveEntry, type LiveNames } from '../utils/liveNames';
 
 // One entry line of a session ("Artist - Title · played during N minutes · note").
 // Shared so the Sessions page and the Heatmap day-detail render entries identically.
@@ -15,13 +15,12 @@ import type { LiveNames, SongNames } from '../utils/liveNames';
 // snapshot label, greyed, with a "deleted" badge, unlinked. Deletion nulls both
 // refs, so the entry can no longer tell a song from a topic: the tooltip stays
 // neutral on purpose.
-export function SessionEntryLine({ item, song, topicName }: { item: SessionItem; song?: SongNames; topicName?: string }) {
-  const isOrphan = !item.songUid && !item.topicUid;
-  const to = item.songUid ? `/songs/${item.songUid}` : item.topicUid ? `/my-topics?edit=${item.topicUid}` : null;
+export function SessionEntryLine({ item, liveNames }: { item: SessionItem; liveNames: LiveNames }) {
+  const { to, artist, name, isOrphan } = resolveEntry(item, liveNames);
   const label = (
     <>
-      {song?.artist ? <span>{song.artist} - </span> : null}
-      <span className={isOrphan ? 'font-medium text-gray-400 dark:text-gray-500' : 'font-medium'}>{song?.title || topicName || item.label}</span>
+      {artist ? <span>{artist} - </span> : null}
+      <span className={isOrphan ? 'font-medium text-gray-400 dark:text-gray-500' : 'font-medium'}>{name}</span>
     </>
   );
   return (
@@ -118,8 +117,7 @@ export function SessionHistoryCard({ session, liveNames, showDate = true, action
             <SessionEntryLine
               key={item.uid}
               item={item}
-              song={item.songUid ? liveNames.songs.get(item.songUid) : undefined}
-              topicName={item.topicUid ? liveNames.topics.get(item.topicUid) : undefined}
+              liveNames={liveNames}
             />
           ))}
         </ul>

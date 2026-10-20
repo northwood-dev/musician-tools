@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import MyTopicsPage from '../pages/MyTopicsPage';
 import { topicService, type Topic } from '../services/topicService';
 
@@ -18,7 +18,13 @@ const existingTopic: Topic = { uid: 't1', name: 'Pentatonic scale', category: 'T
 
 function LocationProbe() {
   const { search } = useLocation();
-  return <output aria-label="search">{search}</output>;
+  const navigate = useNavigate();
+  return (
+    <>
+      <output aria-label="search">{search}</output>
+      <button type="button" onClick={() => navigate('/my-topics?edit=t2')}>Follow another link</button>
+    </>
+  );
 }
 
 // #16: the page reads ?edit=<uid>, so it renders under a router.
@@ -124,7 +130,7 @@ test('shows a duplicate-specific message on 409', async () => {
   expect(await screen.findByText('Topic already exists')).toBeInTheDocument();
 });
 
-test('failed load does not pretend the library is empty', async () => {
+test('failed load does not pretend the topic list is empty', async () => {
   mockedService.getAll.mockRejectedValue(new Error('Failed to fetch topics'));
 
   renderPage();
@@ -250,37 +256,41 @@ describe('#16: ?edit=<uid> deep link from the session history', () => {
     delete (Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView;
   });
 
-  test('opens that topic in edit mode and scrolls to it', async () => {
+  test('opens that topic in edit mode, scrolls to it and consumes ?edit=', async () => {
     renderPage('/my-topics?edit=t1');
 
     expect(await screen.findByLabelText('Edit name')).toHaveValue('Pentatonic scale');
     expect(scrollSpy).toHaveBeenCalled();
+    // Consumed on arrival: a reload never reopens the editor.
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
   });
 
-  test('Save and Cancel drop ?edit= so a reload does not reopen the editor', async () => {
-    mockedService.update.mockResolvedValue({ ...existingTopic, name: 'Minor pentatonic' });
+  test('a second deep link while on the page opens that topic too', async () => {
+    mockedService.getAll.mockResolvedValue([existingTopic, { uid: 't2', name: 'Walking bass' }]);
     renderPage('/my-topics?edit=t1');
     await screen.findByLabelText('Edit name');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.getByLabelText('search')).toHaveTextContent(/^$/);
+    fireEvent.click(screen.getByRole('button', { name: 'Follow another link' }));
 
-    // Reopened by hand, then saved: the URL stays clean.
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Pentatonic scale' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Minor pentatonic')).toBeInTheDocument();
-    expect(screen.getByLabelText('search')).toHaveTextContent(/^$/);
+    await waitFor(() => expect(screen.getByLabelText('Edit name')).toHaveValue('Walking bass'));
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
   });
 
-  test('an unknown uid or the system topic just shows the page', async () => {
-    mockedService.getAll.mockResolvedValue([existingTopic, { uid: 'sys', name: 'Free practice', isSystem: true }]);
-    const { unmount } = renderPage('/my-topics?edit=gone');
+  test('an unknown uid just shows the page and drops ?edit=', async () => {
+    renderPage('/my-topics?edit=gone');
+
     expect(await screen.findByText('Pentatonic scale')).toBeInTheDocument();
     expect(screen.queryByLabelText('Edit name')).not.toBeInTheDocument();
-    unmount();
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
+  });
 
+  test('the system topic is scrolled to but not opened (it is not editable)', async () => {
+    mockedService.getAll.mockResolvedValue([existingTopic, { uid: 'sys', name: 'Free practice', isSystem: true }]);
     renderPage('/my-topics?edit=sys');
+
     expect(await screen.findByText('Free practice')).toBeInTheDocument();
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalled());
     expect(screen.queryByLabelText('Edit name')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
   });
 });

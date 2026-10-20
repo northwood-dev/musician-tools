@@ -78,20 +78,10 @@ function MyHeatmapPage() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const data = await songService.getAllSongs();
-        if (!cancelled) setSongs(data ?? []);
-      } catch {
-        // Artist is optional: keep songs empty, entries render title-only
-      }
-    })();
-    (async () => {
-      try {
-        const data = await topicService.getAll();
-        if (!cancelled) setTopics(data ?? []);
-      } catch {
-        // Keep topics empty: topic entries render their snapshot name
-      }
+      const [songsResult, topicsResult] = await Promise.allSettled([songService.getAllSongs(), topicService.getAll()]);
+      if (cancelled) return;
+      if (songsResult.status === 'fulfilled') setSongs(songsResult.value ?? []);
+      if (topicsResult.status === 'fulfilled') setTopics(topicsResult.value ?? []);
     })();
     return () => { cancelled = true; };
   }, []);

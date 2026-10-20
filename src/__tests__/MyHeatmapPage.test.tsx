@@ -261,7 +261,7 @@ test('Story 5.5: the day-detail shows "Artist - Title" for a song entry', async 
   fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 40 minutes, 1 session`));
 
   const panel = await screen.findByRole('list', { name: 'Day sessions' });
-  // The artist is resolved from the live catalog (loaded on mount), so wait for it
+  // The artist is resolved from the live songlist (loaded on mount), so wait for it
   await waitFor(() => {
     const entry = within(panel).getByText('Sweet Child').closest('li')!;
     expect(entry.textContent).toMatch(/Guns N' Roses - Sweet Child/);

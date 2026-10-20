@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { topicService, type Topic, type CreateTopicDTO, type UpdateTopicDTO } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { TOPIC_EDIT_PARAM } from '../utils/liveNames';
+
+const topicRowId = (uid: string) => `topic-${uid}`;
 
 function MyTopicsPage() {
   const [list, setList] = useState<Topic[]>([]);
@@ -14,10 +17,10 @@ function MyTopicsPage() {
   const [editingUid, setEditingUid] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [listLoaded, setListLoaded] = useState(false);
   // #16: the session history links a topic entry here as ?edit=<uid>
   const [searchParams, setSearchParams] = useSearchParams();
-  const editParam = searchParams.get('edit');
-  const deepLinkHandledRef = useRef(false);
+  const editParam = searchParams.get(TOPIC_EDIT_PARAM);
 
   useEffect(() => {
     (async () => {
@@ -31,31 +34,33 @@ function MyTopicsPage() {
         setLoadFailed(true);
       } finally {
         setLoading(false);
+        setListLoaded(true);
       }
     })();
   }, []);
 
-  // Open the deep-linked topic in edit mode once it is loaded, and bring its row
-  // into view. An unknown uid or the system topic (not editable) just shows the page.
-  useEffect(() => {
-    if (deepLinkHandledRef.current || !editParam) return;
-    const target = list.find(t => t.uid === editParam && !t.isSystem);
-    if (!target) return;
-    deepLinkHandledRef.current = true;
-    setEditingUid(target.uid);
-    setEditName(target.name);
-    setEditCategory(target.category || '');
-    document.getElementById(`topic-${target.uid}`)?.scrollIntoView?.({ block: 'center' });
-  }, [list, editParam]);
+  const startEdit = useCallback((item: Topic) => {
+    setEditingUid(item.uid);
+    setEditName(item.name);
+    setEditCategory(item.category || '');
+  }, []);
 
-  // Leaving the editor drops ?edit= so a reload does not reopen it.
-  const clearEditParam = () => {
-    if (!searchParams.has('edit')) return;
+  // Once the topics are loaded, bring the deep-linked row into view and open it
+  // for editing (the system topic is not editable: shown, not opened), then
+  // consume ?edit= right away: a reload never reopens the editor, an unknown uid
+  // leaves no trace, and the next link (a new value) is handled the same way.
+  useEffect(() => {
+    if (!editParam || !listLoaded) return;
+    const target = list.find(t => t.uid === editParam);
+    if (target) {
+      document.getElementById(topicRowId(target.uid))?.scrollIntoView?.({ block: 'center' });
+      if (!target.isSystem) startEdit(target);
+    }
     setSearchParams(prev => {
-      prev.delete('edit');
+      prev.delete(TOPIC_EDIT_PARAM);
       return prev;
     }, { replace: true });
-  };
+  }, [editParam, listLoaded, list, startEdit, setSearchParams]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,15 +100,8 @@ function MyTopicsPage() {
     }
   };
 
-  const startEdit = (item: Topic) => {
-    setEditingUid(item.uid);
-    setEditName(item.name);
-    setEditCategory(item.category || '');
-  };
-
   const cancelEdit = () => {
     setEditingUid(null);
-    clearEditParam();
   };
 
   const saveEdit = async () => {
@@ -117,7 +115,6 @@ function MyTopicsPage() {
       const updated = await topicService.update(editingUid, payload);
       setList(prev => prev.map(t => (t.uid === editingUid ? updated : t)));
       setEditingUid(null);
-      clearEditParam();
     } catch (err) {
       setError(err instanceof Error && err.message === 'Topic already exists'
         ? 'Topic already exists'
@@ -214,7 +211,7 @@ function MyTopicsPage() {
                   <tbody>
                     {list.map(item => (
                       editingUid === item.uid ? (
-                        <tr key={item.uid} id={`topic-${item.uid}`} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
+                        <tr key={item.uid} id={topicRowId(item.uid)} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
                           <td className="p-2 align-top">
                             <input
                               aria-label="Edit name"
@@ -257,7 +254,7 @@ function MyTopicsPage() {
                           </td>
                         </tr>
                       ) : (
-                        <tr key={item.uid} id={`topic-${item.uid}`} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <tr key={item.uid} id={topicRowId(item.uid)} className="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="p-2 align-middle">{item.name}</td>
                           <td className="p-2 align-middle">{item.category || '-'}</td>
                           <td className="p-2 align-middle text-right">

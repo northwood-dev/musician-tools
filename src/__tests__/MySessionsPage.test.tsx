@@ -423,7 +423,7 @@ test('8.2: no "Create topic" option for a name that already matches a topic exac
 test('8.2: a 409 on create selects the server-resolved existing topic (AC10)', async () => {
   // The client offered Create, but the server already has the topic (its unaccent
   // folding outruns the client) → 409 carrying the canonical topic. We select it
-  // directly — no catalog reload, no error toast.
+  // directly — no topics reload, no error toast.
   mockedTopicService.create.mockRejectedValue(
     new TopicConflictError({ uid: 'server-uid', name: 'Sweep picking', isSystem: false }),
   );
@@ -445,11 +445,11 @@ test('8.2: a 409 on create selects the server-resolved existing topic (AC10)', a
   expect(screen.queryByText('Could not add topic')).not.toBeInTheDocument();
 });
 
-test('8.2: a 409 without a resolved topic falls back to reloading the catalog (AC10)', async () => {
+test('8.2: a 409 without a resolved topic falls back to reloading the topics (AC10)', async () => {
   // Older path: the server could not resolve the row → reload and fold-match.
   mockedTopicService.create.mockRejectedValue(new TopicConflictError());
   mockedTopicService.getAll
-    .mockResolvedValueOnce([]) // initial page load: empty catalog
+    .mockResolvedValueOnce([]) // initial page load: no topics yet
     .mockResolvedValueOnce([{ uid: 'server-uid', name: 'Sweep picking' }]); // reload after 409
 
   render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
@@ -1119,7 +1119,7 @@ test('FR12: recently logged songs and topics appear first, deduplicated, current
       items: [
         { uid: 'i1', sessionUid: 's1', topicUid: TOPIC_UID, label: 'Old snapshot name', minutes: 10 },
         { uid: 'i2', sessionUid: 's1', songUid: SONG_UID, label: 'Sweet Child', minutes: 5 },
-        // Deleted topic: not in the loaded catalog → must be excluded
+        // Deleted topic: not in the loaded topics → must be excluded
         { uid: 'i3', sessionUid: 's1', topicUid: DELETED_TOPIC, label: 'Ghost topic', minutes: 5 },
         // Duplicate of i2 → deduplicated
         { uid: 'i4', sessionUid: 's1', songUid: SONG_UID, label: 'Sweet Child' },
@@ -1136,7 +1136,7 @@ test('FR12: recently logged songs and topics appear first, deduplicated, current
   const recentGroup = within(listbox).getByRole('group', { name: 'Recent' });
   const recentOptions = within(recentGroup).getAllByRole('option');
 
-  // Order of first occurrence, deduplicated, current catalog name (not the stale snapshot)
+  // Order of first occurrence, deduplicated, current name (not the stale snapshot)
   expect(recentOptions.map(o => o.textContent)).toEqual(['Pentatonic scale', 'Sweet Child']);
   expect(within(recentGroup).queryByText('Ghost topic')).not.toBeInTheDocument();
   // Recent group is rendered before Songs/Topics groups
@@ -1203,7 +1203,7 @@ test('FR12: Recent is ordered by creation time, capped at 5', async () => {
   expect(names).toEqual(['Topic 0', 'Topic 1', 'Topic 2', 'Topic 3', 'Topic 4']);
 });
 
-test('FR12: search is accent-insensitive (French catalog)', async () => {
+test('FR12: search is accent-insensitive (French songlist)', async () => {
   mockedSongService.getAllSongs.mockResolvedValue([
     { uid: SONG_UID, title: 'Étude en mi' } as never,
   ]);
