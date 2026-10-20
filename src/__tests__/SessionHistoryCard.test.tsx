@@ -1,17 +1,18 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { SessionHistoryCard, type SongNamesByUid } from '../components/SessionHistoryCard';
+import { SessionHistoryCard } from '../components/SessionHistoryCard';
+import type { SongNamesByUid } from '../utils/songNames';
 import type { PracticeSession } from '../services/practiceSessionService';
 
 function makeSession(items: PracticeSession['items']): PracticeSession {
   return { uid: 's1', date: '2026-06-21', instrumentType: 'Guitar', items };
 }
 
-function renderCard(session: PracticeSession, songByUid: SongNamesByUid = new Map()) {
+function renderCard(session: PracticeSession, songNamesByUid: SongNamesByUid = new Map()) {
   return render(
     <MemoryRouter>
       <ul>
-        <SessionHistoryCard session={session} songByUid={songByUid} />
+        <SessionHistoryCard session={session} songNamesByUid={songNamesByUid} />
       </ul>
     </MemoryRouter>
   );
