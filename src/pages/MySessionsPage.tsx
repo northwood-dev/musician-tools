@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { practiceSessionService, SessionMergeRequiredError, type SessionWriteResult, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
 import { SessionDayGroup } from '../components/SessionHistoryCard';
-import { toSongNamesByUid } from '../utils/songNames';
+import { toLiveNames } from '../utils/liveNames';
 import { groupSessionsByDay } from '../utils/sessionDays';
 import { songService, type Song } from '../services/songService';
 import { topicService, TopicConflictError, type Topic } from '../services/topicService';
@@ -391,9 +391,9 @@ function MySessionsPage() {
     return result;
   }, [sessions, songs, topics]);
 
-  // Entries show the live artist and title from the songlist (#13); the item's
-  // snapshot label only stands for a deleted song (orphan entry) or a topic.
-  const songNamesByUid = useMemo(() => toSongNamesByUid(songs), [songs]);
+  // Entries show the live names from the songlist and topics (#13, #16); the
+  // item's snapshot label only stands for a deleted song or topic (orphan entry).
+  const liveNames = useMemo(() => toLiveNames(songs, topics), [songs, topics]);
 
   const addEntry = () => {
     entryKeyRef.current += 1;
@@ -924,7 +924,7 @@ function MySessionsPage() {
                 <SessionDayGroup
                   key={day.date}
                   day={day}
-                  songNamesByUid={songNamesByUid}
+                  liveNames={liveNames}
                   renderActions={session => (
                     <>
                       <button

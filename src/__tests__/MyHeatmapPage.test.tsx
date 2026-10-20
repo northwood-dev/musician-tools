@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import MyHeatmapPage from '../pages/MyHeatmapPage';
 import { practiceSessionService } from '../services/practiceSessionService';
 import { songService } from '../services/songService';
+import { topicService } from '../services/topicService';
 import { buildYearGrid, formatLocalDate } from '../utils/heatmap';
 
 jest.mock('../services/practiceSessionService', () => ({
@@ -22,8 +23,15 @@ jest.mock('../services/songService', () => ({
   },
 }));
 
+jest.mock('../services/topicService', () => ({
+  topicService: {
+    getAll: jest.fn(),
+  },
+}));
+
 const mockedService = practiceSessionService as jest.Mocked<typeof practiceSessionService>;
 const mockedSongService = songService as jest.Mocked<typeof songService>;
+const mockedTopicService = topicService as jest.Mocked<typeof topicService>;
 
 const YEAR = new Date().getFullYear();
 const isLeap = (YEAR % 4 === 0 && YEAR % 100 !== 0) || YEAR % 400 === 0;
@@ -36,6 +44,7 @@ beforeEach(() => {
   mockedService.getAll.mockResolvedValue([]);
   mockedService.getDayPlays.mockResolvedValue([]);
   mockedSongService.getAllSongs.mockResolvedValue([]);
+  mockedTopicService.getAll.mockResolvedValue([]);
 });
 
 // <Link> requires a Router context since 3.2
@@ -252,13 +261,51 @@ test('Story 5.5: the day-detail shows "Artist - Title" for a song entry', async 
   fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 40 minutes, 1 session`));
 
   const panel = await screen.findByRole('list', { name: 'Day sessions' });
-  // The artist is resolved from the live catalog (loaded on mount), so wait for it
+  // The artist is resolved from the live songlist (loaded on mount), so wait for it
   await waitFor(() => {
     const entry = within(panel).getByText('Sweet Child').closest('li')!;
     expect(entry.textContent).toMatch(/Guns N' Roses - Sweet Child/);
   });
   const entry = within(panel).getByText('Sweet Child').closest('li')!;
   expect(entry.textContent).not.toMatch(/Sweet Child — Guns N' Roses/);
+});
+
+function mockTopicDay() {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-03-10`, totalMinutes: 10, sessionCount: 1 },
+  ]);
+  mockedService.getAll.mockResolvedValue([
+    {
+      uid: 's1', date: `${YEAR}-03-10`, instrumentType: 'Bass',
+      items: [{ uid: 'i1', sessionUid: 's1', topicUid: 't1', label: 'Penta', minutes: 10 }],
+    },
+  ]);
+}
+
+test('#16: the day-detail shows the live name of a renamed topic, linked to its row', async () => {
+  mockTopicDay();
+  mockedTopicService.getAll.mockResolvedValue([{ uid: 't1', name: 'Pentatonic scale' }]);
+
+  renderPage();
+  fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 10 minutes, 1 session`));
+
+  const panel = await screen.findByRole('list', { name: 'Day sessions' });
+  // Topics load on mount, alongside the songlist: wait for the live name.
+  const link = await within(panel).findByRole('link', { name: 'Pentatonic scale' });
+  expect(link).toHaveAttribute('href', '/my-topics?edit=t1');
+  expect(within(panel).queryByText('Penta')).not.toBeInTheDocument();
+});
+
+test('#16: a failed topics load falls back to the snapshot name', async () => {
+  mockTopicDay();
+  mockedTopicService.getAll.mockRejectedValue(new Error('down'));
+
+  renderPage();
+  fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 10 minutes, 1 session`));
+
+  const panel = await screen.findByRole('list', { name: 'Day sessions' });
+  expect(await within(panel).findByRole('link', { name: 'Penta' })).toHaveAttribute('href', '/my-topics?edit=t1');
+  await waitFor(() => expect(mockedTopicService.getAll).toHaveBeenCalled());
 });
 
 test('Enter on the focused cell opens the day detail (FR16, keyboard)', async () => {
