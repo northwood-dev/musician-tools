@@ -390,14 +390,9 @@ function MySessionsPage() {
     return result;
   }, [sessions, songs, topics]);
 
-  // The session item only snapshots the FR4 title label, not the artist —
-  // resolve the artist from the live song catalog for display. A deleted song
-  // (orphan entry) or a topic entry has no artist here; the label stands alone.
-  const artistBySongUid = useMemo(() => {
-    const map = new Map<string, string>();
-    songs.forEach(song => { if (song.artist) map.set(song.uid, song.artist); });
-    return map;
-  }, [songs]);
+  // Entries show the live artist and title from the songlist (#13); the item's
+  // snapshot label only stands for a deleted song (orphan entry) or a topic.
+  const songByUid = useMemo(() => new Map(songs.map(song => [song.uid, song])), [songs]);
 
   const addEntry = () => {
     entryKeyRef.current += 1;
@@ -928,7 +923,7 @@ function MySessionsPage() {
                 <SessionDayGroup
                   key={day.date}
                   day={day}
-                  artistBySongUid={artistBySongUid}
+                  songByUid={songByUid}
                   renderActions={session => (
                     <>
                       <button

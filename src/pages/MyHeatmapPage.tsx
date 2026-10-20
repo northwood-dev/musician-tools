@@ -172,14 +172,9 @@ function MyHeatmapPage() {
     }
   };
 
-  // Resolve artists from the live catalog (the session item only snapshots the
-  // title). Only songs with an artist are mapped — orphan/topic entries and
-  // artist-less songs fall back to title-only, like the Sessions history.
-  const artistBySongUid = useMemo(() => {
-    const map = new Map<string, string>();
-    songs.forEach(song => { if (song.artist) map.set(song.uid, song.artist); });
-    return map;
-  }, [songs]);
+  // Entries show the live artist and title from the songlist (#13); the item's
+  // snapshot label only stands for a deleted song (orphan entry) or a topic.
+  const songByUid = useMemo(() => new Map(songs.map(song => [song.uid, song])), [songs]);
 
   const grid = useMemo(() => buildYearGrid(year), [year]);
   const levelFor = useMemo(() => computeLevels(days ?? []), [days]);
@@ -455,7 +450,7 @@ function MyHeatmapPage() {
                   <SessionHistoryCard
                     key={session.uid}
                     session={session}
-                    artistBySongUid={artistBySongUid}
+                    songByUid={songByUid}
                     showDate={false}
                     actions={
                       <>
