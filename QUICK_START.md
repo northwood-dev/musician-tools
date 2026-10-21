@@ -59,8 +59,8 @@ npm run dev
 3. You're in! Create, edit, delete songs
 4. Each user only sees their own songs 🔒
 
-Rerun the seed any time to reset that account (password, email, verification). It refuses to run
-outside `NODE_ENV=development` or against a non-local database.
+Rerun the seed any time to get that account back fresh: it is deleted and recreated, empty. It
+refuses to run outside `NODE_ENV=development` or against a non-local database.
 
 ---
 

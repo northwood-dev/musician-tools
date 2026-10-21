@@ -54,6 +54,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { fn, col, where: whereFn, Op, QueryTypes } = require('sequelize');
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
+const { isLocalHost } = require('../utils/localDatabase');
 
 const DEFAULT_FILE = path.join(__dirname, 'seed', 'catalog-seed.csv');
 const KNOWN_FLAGS = ['--apply', '--allow-remote'];
@@ -61,11 +62,6 @@ const PHASES = ['seed', 'attach', 'alias', 'enrich', 'publish'];
 // Captured at MODULE LOAD, before anything can require config.js and let dotenv
 // rewrite it. Informational only — the guard below trusts the host, not this.
 const NODE_ENV_AT_STARTUP = process.env.NODE_ENV;
-const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', ''];
-
-function isLocalHost(host) {
-  return LOCAL_HOSTS.includes(String(host || '').toLowerCase());
-}
 
 // --- CSV -------------------------------------------------------------------
 

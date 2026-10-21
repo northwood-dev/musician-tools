@@ -7,9 +7,10 @@ jest.mock('../config/env', () => ({
   get env() { return mockEnv; },
 }));
 jest.mock('../models', () => ({
-  User: { findOne: jest.fn(), create: jest.fn(), destroy: jest.fn() },
+  User: { create: jest.fn(), destroy: jest.fn() },
 }));
 
+const { Op } = require('sequelize');
 const { User } = require('../models');
 const seeder = require('../seeders/20261022000000-dev-test-user');
 
@@ -18,20 +19,19 @@ const queryInterfaceOn = host => ({ sequelize: { config: { host } } });
 beforeEach(() => {
   jest.clearAllMocks();
   mockEnv = 'development';
-  User.findOne.mockResolvedValue(null);
 });
 
 describe('prod guard', () => {
   test('refuses outside development and writes nothing', async () => {
     mockEnv = 'production';
     await expect(seeder.up(queryInterfaceOn('localhost'))).rejects.toThrow(/development/);
-    expect(User.findOne).not.toHaveBeenCalled();
+    expect(User.destroy).not.toHaveBeenCalled();
     expect(User.create).not.toHaveBeenCalled();
   });
 
   test('refuses a remote database even in development (a wrong DATABASE_URL_DEV)', async () => {
     await expect(seeder.up(queryInterfaceOn('aws-1-eu.pooler.supabase.com'))).rejects.toThrow(/supabase/);
-    expect(User.findOne).not.toHaveBeenCalled();
+    expect(User.destroy).not.toHaveBeenCalled();
     expect(User.create).not.toHaveBeenCalled();
   });
 
@@ -53,19 +53,15 @@ describe('up', () => {
     }));
   });
 
-  test('resets an existing account to the known state instead of creating a second one', async () => {
-    const existing = { update: jest.fn() };
-    User.findOne.mockResolvedValue(existing);
+  test('a rerun first deletes any previous test account, by email or by handle, so it comes back empty', async () => {
+    const order = [];
+    User.destroy.mockImplementation(async () => { order.push('destroy'); });
+    User.create.mockImplementation(async () => { order.push('create'); });
     await seeder.up(queryInterfaceOn('db'));
-    expect(User.create).not.toHaveBeenCalled();
-    expect(existing.update).toHaveBeenCalledWith(expect.objectContaining({
-      email: 'test@example.com',
-      password: 'password123',
-      emailVerified: true,
-      pendingEmail: null,
-      isAdmin: false,
-      isCurator: false,
-    }));
+    expect(order).toEqual(['destroy', 'create']);
+    expect(User.destroy).toHaveBeenCalledWith({
+      where: { [Op.or]: [{ email: 'test@example.com' }, { name: 'testuser', discriminator: '0000' }] },
+    });
   });
 });
 
