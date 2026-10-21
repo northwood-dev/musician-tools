@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import { RootLayout, HomePage } from './App';
 import { RequireAuth, GuestOnly } from './components/RequireAuth';
+import { RouteError } from './components/RouteError';
 import Songs from './pages/Songs';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -25,63 +26,68 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 // unknown -> /). Auth stays a client context (no loaders). Of the two former
 // <BrowserRouter> future flags, v7_relativeSplatPath is router-level (here);
 // v7_startTransition is render-level (on <RouterProvider> in main.tsx).
-// Exported so the smoke test can exercise the exact same route tree (paths + auth
-// guards + catch-all) via useRoutes + <MemoryRouter>. Note: the data-router wiring
-// itself (createBrowserRouter / RouterProvider / future flags below) is validated by
-// tsc + manual QA, not by jsdom unit tests — createMemoryRouter needs the Fetch
-// primitives (Request/Response) which jsdom doesn't provide.
+// Exported so tests can mount the exact same route tree: router.test.tsx via useRoutes +
+// <MemoryRouter> (paths, auth guards, catch-all), routeErrors.test.tsx via a real
+// createMemoryRouter, which jsdom supports since story 18.2 (jest.jsdom.env.cjs bridges the
+// Fetch primitives) and which errorElement needs — useRoutes ignores it.
 export const routes: RouteObject[] = [
     {
       element: <RootLayout />,
-      children: [
-        { index: true, element: <HomePage /> },
-        {
-          element: <RequireAuth />,
-          children: [
-            // Story 18.2: the song form is a real route now — /songs (list),
-            // /songs/new (add), /songs/:uid (edit). All render <Songs/>, which reads
-            // useParams to pick the mode.
-            { path: 'songs', element: <Songs /> },
-            { path: 'songs/new', element: <Songs /> },
-            { path: 'songs/:uid', element: <Songs /> },
-            { path: 'my-instruments', element: <MyInstrumentsPage /> },
-            { path: 'my-playlists', element: <MyPlaylistsPage /> },
-            { path: 'my-topics', element: <MyTopicsPage /> },
-            { path: 'my-sessions', element: <MySessionsPage /> },
-            { path: 'my-heatmap', element: <MyHeatmapPage /> },
-            { path: 'profile', element: <ProfilePage /> },
-            // Story 19.3 — Catalog browse (list) + detail. Read surface, auth-gated.
-            { path: 'catalog', element: <Catalog /> },
-            // Story 20.4 — user-facing Collection detail (browse + import). Two-segment
-            // path; no clash with catalog/:uid (fiche) or catalog/manage/collections/:uid.
-            { path: 'catalog/collections/:uid', element: <CatalogCollection /> },
-            // Story 19.5 — Catalog curator management hub (list + edit + delete).
-            { path: 'catalog/manage', element: <CatalogManage /> },
-            // Story 20.2 — curator Collection composer (search + Add/Remove, rename,
-            // delete). Deeper static+:uid path; no clash with catalog/:uid.
-            { path: 'catalog/manage/collections/:uid', element: <CatalogCollectionCompose /> },
-            // Story 19.5 — edit an existing fiche (CatalogAdmin in edit mode). Static
-            // `admin` segment outranks :uid; this stays above catalog/:uid too.
-            { path: 'catalog/admin/:uid', element: <CatalogAdmin /> },
-            // Story 19.2 — Catalog curator admin. Static path outranks :uid, but keep
-            // it before the dynamic detail route for clarity. Role check in-component.
-            { path: 'catalog/admin', element: <CatalogAdmin /> },
-            { path: 'catalog/:uid', element: <CatalogEntry /> },
-          ],
-        },
-        // Public — reached from the email link, possibly while signed out (story 7.9/7.10)
-        { path: 'verify-email', element: <VerifyEmailPage /> },
-        { path: 'forgot-password', element: <ForgotPasswordPage /> },
-        { path: 'reset-password', element: <ResetPasswordPage /> },
-        {
-          element: <GuestOnly />,
-          children: [
-            { path: 'login', element: <LoginPage /> },
-            { path: 'register', element: <RegisterPage /> },
-          ],
-        },
-        { path: '*', element: <Navigate to="/" replace /> },
-      ],
+      children: [{
+        // Issue #19 — pathless wrapper whose only job is the errorElement: a page that throws
+        // is replaced inside RootLayout's <Outlet/>, so the header, banner and footer stay and
+        // navigating elsewhere clears the error.
+        errorElement: <RouteError />,
+        children: [
+          { index: true, element: <HomePage /> },
+          {
+            element: <RequireAuth />,
+            children: [
+              // Story 18.2: the song form is a real route now — /songs (list),
+              // /songs/new (add), /songs/:uid (edit). All render <Songs/>, which reads
+              // useParams to pick the mode.
+              { path: 'songs', element: <Songs /> },
+              { path: 'songs/new', element: <Songs /> },
+              { path: 'songs/:uid', element: <Songs /> },
+              { path: 'my-instruments', element: <MyInstrumentsPage /> },
+              { path: 'my-playlists', element: <MyPlaylistsPage /> },
+              { path: 'my-topics', element: <MyTopicsPage /> },
+              { path: 'my-sessions', element: <MySessionsPage /> },
+              { path: 'my-heatmap', element: <MyHeatmapPage /> },
+              { path: 'profile', element: <ProfilePage /> },
+              // Story 19.3 — Catalog browse (list) + detail. Read surface, auth-gated.
+              { path: 'catalog', element: <Catalog /> },
+              // Story 20.4 — user-facing Collection detail (browse + import). Two-segment
+              // path; no clash with catalog/:uid (fiche) or catalog/manage/collections/:uid.
+              { path: 'catalog/collections/:uid', element: <CatalogCollection /> },
+              // Story 19.5 — Catalog curator management hub (list + edit + delete).
+              { path: 'catalog/manage', element: <CatalogManage /> },
+              // Story 20.2 — curator Collection composer (search + Add/Remove, rename,
+              // delete). Deeper static+:uid path; no clash with catalog/:uid.
+              { path: 'catalog/manage/collections/:uid', element: <CatalogCollectionCompose /> },
+              // Story 19.5 — edit an existing fiche (CatalogAdmin in edit mode). Static
+              // `admin` segment outranks :uid; this stays above catalog/:uid too.
+              { path: 'catalog/admin/:uid', element: <CatalogAdmin /> },
+              // Story 19.2 — Catalog curator admin. Static path outranks :uid, but keep
+              // it before the dynamic detail route for clarity. Role check in-component.
+              { path: 'catalog/admin', element: <CatalogAdmin /> },
+              { path: 'catalog/:uid', element: <CatalogEntry /> },
+            ],
+          },
+          // Public — reached from the email link, possibly while signed out (story 7.9/7.10)
+          { path: 'verify-email', element: <VerifyEmailPage /> },
+          { path: 'forgot-password', element: <ForgotPasswordPage /> },
+          { path: 'reset-password', element: <ResetPasswordPage /> },
+          {
+            element: <GuestOnly />,
+            children: [
+              { path: 'login', element: <LoginPage /> },
+              { path: 'register', element: <RegisterPage /> },
+            ],
+          },
+          { path: '*', element: <Navigate to="/" replace /> },
+        ],
+      }],
     },
 ];
 
