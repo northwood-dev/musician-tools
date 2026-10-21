@@ -3,6 +3,7 @@ import { useAuth } from './contexts/AuthContext';
 import Header from './components/Header';
 import VerifyEmailBanner from './components/VerifyEmailBanner';
 import Footer from './components/Footer';
+import { APP_BACKGROUND } from './constants/appBackground';
 
 export function HomePage() {
   const { isAuthenticated, user } = useAuth();
@@ -62,7 +63,7 @@ export function RootLayout() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950">
+    <div className={`flex flex-col min-h-screen ${APP_BACKGROUND}`}>
       <Header />
       <VerifyEmailBanner />
       <main className="flex-1 flex flex-col">
