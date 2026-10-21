@@ -10,11 +10,10 @@ Every push to `main` deploys to production (Fly). Work on a branch and open a PR
 
 1. **Scope.** Grill the idea (`grilling`), then `to-spec` writes the **parent issue** from `.github/ISSUE_TEMPLATE/feature.md`. The scoping always answers: _does this create a second source of truth, will the next feature have to undo it?_ Data-model changes get scoped before any code.
 2. **Split.** `to-tickets` creates the **sub-issues** of the parent.
-3. **Clear the old debt.** Before starting, take a slice of the frozen `_bmad-output/implementation-artifacts/deferred-work.md`: turn each item into an issue or kill it with a written reason, and delete it from the file.
-4. **Build.** One branch per parent issue; every sub-issue is committed on it.
-5. **Review.** Run `code-review` on the branch. Fix findings now by default; a finding that waits becomes an issue with its reason, never a note buried elsewhere.
-6. **PR.** Open one PR per parent issue, with `closes #<n>` for the parent and every sub-issue, and an `enhancement` or `bug` label (release notes are grouped by these). The PR title is the release-note line: write it for a user. northwood tests by hand; fixes land on the same branch; northwood merges.
-7. **Retro.** Before closing the parent issue, comment a short retro on it (5–10 lines: what got stuck, what we change).
+3. **Build.** One branch per parent issue; every sub-issue is committed on it.
+4. **Review.** Run `code-review` on the branch. Fix findings now by default; a finding that waits becomes an issue with its reason, never a note buried elsewhere. Debt lives only in GitHub issues (the BMAD `deferred-work.md` was emptied into issues #30–#40 on 2026-10-22).
+5. **PR.** Open one PR per parent issue, with `closes #<n>` for the parent and every sub-issue, and an `enhancement` or `bug` label (release notes are grouped by these). The PR title is the release-note line: write it for a user. northwood tests by hand; fixes land on the same branch; northwood merges.
+6. **Retro.** Before closing the parent issue, comment a short retro on it (5–10 lines: what got stuck, what we change).
 
 ## Release
 
