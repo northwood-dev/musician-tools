@@ -59,6 +59,16 @@ describe('up', () => {
     User.create.mockImplementation(async () => { order.push('create'); });
     await seeder.up(queryInterfaceOn('db'));
     expect(order).toEqual(['destroy', 'create']);
+  });
+
+  test('recreates the account under the same fixed uid, so a browser still signed in keeps working', async () => {
+    // Dev sessions live in the backend's memory and hold the uid; a new uid would leave them
+    // pointing at a deleted user (reads empty, writes 500).
+    await seeder.up(queryInterfaceOn('db'));
+    await seeder.up(queryInterfaceOn('db'));
+    const [first, second] = User.create.mock.calls.map(([values]) => values.uid);
+    expect(first).toMatch(/^[0-9a-f-]{36}$/);
+    expect(second).toBe(first);
     expect(User.destroy).toHaveBeenCalledWith({
       where: { [Op.or]: [{ email: 'test@example.com' }, { name: 'testuser', discriminator: '0000' }] },
     });

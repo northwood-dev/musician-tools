@@ -17,6 +17,10 @@ const TEST_USER_HANDLE = {
   discriminator: '0000',
 };
 const TEST_USER_EMAIL = 'test@example.com';
+// Fixed, so a rerun recreates the account under the SAME uid. Dev sessions live in the backend's
+// memory (MemoryStore, see server.js) and only hold the uid: this process cannot revoke them, and
+// with a new uid a browser still signed in would point at a deleted user (reads empty, writes 500).
+const TEST_USER_UID = '00000000-0000-4000-8000-000000000018';
 
 function assertDevDatabase(queryInterface) {
   const { env } = require('../config/env');
@@ -43,6 +47,7 @@ module.exports = {
     await User.destroy({ where: { [Op.or]: [{ email: TEST_USER_EMAIL }, TEST_USER_HANDLE] } });
     // Through the model, not bulkInsert: the password setter is what hashes it.
     await User.create({
+      uid: TEST_USER_UID,
       ...TEST_USER_HANDLE,
       email: TEST_USER_EMAIL,
       password: 'password123',
