@@ -12,13 +12,6 @@
 
 - **16-1 — Titre legacy tout-espaces → `''` par la migration de nettoyage** : `trim('   ')=''` ; une ligne pré-existante au titre tout-espaces (ASCII) devient `title=''` (valide sous NOT NULL, mais que `createSong` refuserait en 400). Donnée **déjà invalide** avant la migration (l'ancien `if(!title)` acceptait un titre truthy tout-espaces) ; la story ne visait que le dédoublonnage d'espaces, pas la réparation des titres vides. Pré-existant, hors périmètre. Fix éventuel : un balayage dédié des titres vides/blancs (produit : que faire d'une chanson sans titre ?), pas un patch de cette migration. [`backend/migrations/20260709000000-trim-song-text-fields.js` UPDATE title] — 🧊 **Tranché passe 2026-07-10 : gardé-avec-raison** (pré-existant, hors périmètre 16.1, mono-user beta ; un vrai balayage des titres vides serait une story produit dédiée si le cas se présente).
 
-## Deferred from: code review of story-10.2 (2026-06-28)
-
-> Review adversariale 3 couches. 1 bug HIGH corrigé (reseed clobber), 1 Med corrigé (filtre non trimmé). 2 reports :
-
-- ~~**10-2 — Pas de garde anti-double-soumission sur `handleCreatePlaylist`**~~ — ✅ **RÉSOLU (lot petits-reports 2026-06-30, branche `fix/petits-reports-2026-06-30`)** : flag in-flight `creatingPlaylistRef` (miroir de `savingRef`), early-return si en vol, relâche en `finally` → un seul `createPlaylist` quel que soit le nombre de clics. Test no-op ajouté. [`src/pages/Songs.tsx` handleCreatePlaylist]
-- **10-2 — Empty-state « No playlists found » trompeur** : taper le nom exact d'une playlist déjà sélectionnée cache l'option Create (correct) mais `filteredPlaylists` (exclut les sélectionnées) est vide → libellé « No playlists found » alors qu'elle existe et est cochée. Cosmétique. [`src/pages/Songs.tsx` picker empty-state]
-
 ## Deferred from: code review of story-12.1 (2026-06-29)
 
 > Review 3 couches. Sécurité validée (pas de session sur token consommé, pas d'oracle). 2 patches appliqués (CTA loggé + test stale). 1 report :
@@ -26,21 +19,6 @@
 - ~~**12-1 — Flux change-email (jumeau) garde le souci 2e-appareil**~~ — ✅ **RÉSOLU (lot petits-reports 2026-06-30, branche `fix/petits-reports-2026-06-30`)** : `confirmEmailChange` a désormais le fallback `findConsumedToken` (miroir 12.1) ; sur un lien consommé dont le changement a réussi (`user.email === payload.pendingEmail`), renvoie `200 { alreadyChanged }` SANS ré-ouvrir de session ni re-switcher → front « Email already updated / sign in ». `findConsumedToken` retourne le `payload`. Garde anti-faux-positif (consume-ok/switch-ko → 400). Review 3 couches OK. [`backend/controllers/usercontroller.js` confirmEmailChange + `src/pages/VerifyEmailPage.tsx`]
   - ⏳ **Résidu reporté (review 2026-06-30, beta)** : closure `isAuthenticated` périmée dans `VerifyEmailPage` (`AuthProvider` hydrate l'user dans un `useEffect` qui tourne après l'effet de montage de l'enfant) → un user **loggé dans le même navigateur** qui re-clique un lien change consommé voit « Sign in » au lieu de « Go to the app », et l'email caché n'est pas rafraîchi avant reload. Racine **pré-existante** (7.11), **UX-only**, étroit. Fix propre = gater l'effet sur `!loading` ou lire l'auth en lazy. [`src/pages/VerifyEmailPage.tsx` branche change-email, `src/contexts/AuthProvider.tsx`]
   - ⏳ **Résidu reporté (review 2026-06-30, beta)** : confirm **concurrent** du même token valide (2 clics cross-device dans la ms entre le consume du gagnant et son `User.update`) → le perdant lit `email` encore ancien → 400 au lieu de « already updated ». Transitoire, rarissime à l'échelle mono-user. Fix éventuel : transaction consume+update. [`backend/controllers/usercontroller.js` confirmEmailChange]
-
-## Deferred from: code review of story-13.1 (2026-06-29)
-
-> Review 3 couches sur l'auto-save. 1 HIGH (clobber lastPlayed) + 5 Med corrigés. 3 reports :
-
-- **13-1 — Doublon résolu sans édition du form** : si le jumeau d'un titre dupliqué est supprimé ailleurs, `liveDuplicate` repasse à null mais l'effet d'auto-save (deps `[form, editingUid, editBaselineJson]`) ne re-tourne pas → le titre tapé (corrigé) n'est pas réécrit. Rarissime à l'échelle mono-user. [`src/pages/Songs.tsx` autoSaveSong/effet debounce]
-- ~~**13-1 — Politique doublon « freeze identité, sauve le reste » (décision 🅰️)**~~ — 🔁 **RÉVISÉE par Epic 17 / 17.2 (2026-07-10)** : la décision 🅰️ (sur collision en **édition**, retirer `title`/`artist` du payload mais continuer à sauver les autres champs) est **abandonnée**. 17.2 pose une **politique doublon unique dans toute l'app** : sur collision (titre+artiste, garde client `findDuplicateSong` OU backstop 409 serveur 17.1), **aucune persistance** — ni création ni update, ni identité ni autres champs — bannière « not saved — already exists » (statut `conflict`), jusqu'à différenciation. Bloquer = refuser d'écrire, jamais supprimer/corrompre. [`src/pages/Songs.tsx` autoSaveSong]
-- ~~**13-1 — Warning doublon = bannière, pas ✗ discret**~~ — 🚫 **CLOS PAR DÉCISION (northwood, 2026-06-30)** : la bannière ambre convient dans les deux modes (création **et** édition) ; le « ✗ discret » de l'AC8 n'est pas souhaité. Pas de code. [`src/components/SongForm.tsx:353-371`]
-- **13-1 — Seed playlist vs toggle avant chargement** : toggler une playlist avant que `playlists` ait chargé peut être clobbé par le re-seed (`seededPlaylistsForEditRef` ne verrouille qu'une fois `playlists.length > 0`). Pré-existant (Epic 10). [`src/pages/Songs.tsx` effet de seed]
-
-## Deferred from: code review of story-11.1 (2026-06-28)
-
-> Review 3 couches. 2 patches appliqués (garde gating `app.listen` ; requête `pg_indexes` qualifiée). 1 report :
-
-- **11-1 — CMD Docker dev en shell-form → SIGTERM non transmis à nodemon** : `CMD npx sequelize-cli db:migrate && npm run dev` tourne sous `/bin/sh -c` (PID 1 = sh, ne forwarde pas SIGTERM) → `docker stop` attend ~10 s puis SIGKILL, pas d'arrêt gracieux du conteneur dev. **Pré-existant** (l'ancien `CMD npm run dev` était déjà shell-form) ; **dev-only** (prod = exec-form `["node","server.js"]`). À durcir avec une exec-form + `exec` si ça gêne. [`backend/Dockerfile:14`]
 
 ## Deferred from: code review of story-10.1 (2026-06-28)
 
