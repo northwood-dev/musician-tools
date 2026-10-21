@@ -31,8 +31,11 @@ cd ..
 ```bash
 cd backend
 npx sequelize-cli db:migrate
+npx sequelize-cli db:seed:all   # verified test account (development only)
 cd ..
 ```
+
+With Docker: `make migrate` then `make seed`.
 
 ### Step 4: Start Servers (1 min)
 
@@ -52,10 +55,12 @@ npm run dev
 ### Step 5: Test It! (✨ Done)
 
 1. Open http://localhost:5173
-2. Click "Create account"
-3. Register: `testuser` / `test@example.com` / `password123`
-4. You're in! Create, edit, delete songs
-5. Each user only sees their own songs 🔒
+2. Sign in with the seeded account: `test@example.com` / `password123` (already verified, empty songlist)
+3. You're in! Create, edit, delete songs
+4. Each user only sees their own songs 🔒
+
+Rerun the seed any time to get that account back fresh: it is deleted and recreated, empty. It
+refuses to run outside `NODE_ENV=development` or against a non-local database.
 
 ---
 

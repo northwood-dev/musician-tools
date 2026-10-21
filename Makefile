@@ -20,7 +20,7 @@ help:
 	@echo "🗄️  Database:"
 	@echo "  migrate           - Run Sequelize migrations in backend"
 	@echo "  migrate-prod      - Run Sequelize migrations against PROD DB URL"
-	@echo "  seed              - Run all Sequelize seeders"
+	@echo "  seed              - Run all Sequelize seeders (verified dev test account, rerun to recreate it empty)"
 	@echo "  reset-db          - Drop volumes, recreate stack, rerun migrations"
 	@echo "  db-psql           - Open psql shell in db container"
 	@echo "  db-backup         - Create timestamped DB backup into backups/"
