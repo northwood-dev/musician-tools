@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 
@@ -56,7 +57,8 @@ const mockAuth = useAuth as jest.Mock;
 
 function renderAt(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(<RouterProvider router={router} />);
+  // StrictMode like main.tsx (see src/test/renderSongs.tsx): effects run twice, as in dev.
+  render(<StrictMode><RouterProvider router={router} /></StrictMode>);
   return router;
 }
 
@@ -121,5 +123,13 @@ describe('the app frame that crashes', () => {
     expect(screen.getByRole('heading', { name: 'Something went wrong' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to songlist' })).toHaveAttribute('href', '/songs');
+  });
+
+  test('stays dark for a dark-mode user even though the crashed header never applied the theme', () => {
+    localStorage.setItem('darkMode', 'true');
+    document.documentElement.classList.remove('dark');
+    mockHeaderThrows = true;
+    renderAt('/songs');
+    expect(document.documentElement).toHaveClass('dark');
   });
 });

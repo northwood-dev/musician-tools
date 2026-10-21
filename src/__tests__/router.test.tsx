@@ -3,10 +3,10 @@ import { MemoryRouter, useRoutes } from 'react-router-dom';
 
 // Story 18.1 — verify the route TREE (paths + auth guards + catch-all) resolves
 // exactly as the old <Routes> did. Mounted via useRoutes + <MemoryRouter> (component
-// router) rather than the real data-router, because createMemoryRouter needs the
-// Fetch primitives jsdom lacks — so this covers the tree/redirects, not the
-// createBrowserRouter/RouterProvider wiring (that's tsc + manual QA). Pages and the
-// layout chrome are stubbed; auth is mocked (client context).
+// router), which covers the tree/redirects but ignores errorElement: the error screens
+// (issue #19) are tested through a real createMemoryRouter in routeErrors.test.tsx, which
+// jsdom supports since story 18.2. Pages and the layout chrome are stubbed; auth is
+// mocked (client context).
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../App', () => {
   const { Outlet } = jest.requireActual('react-router-dom');
