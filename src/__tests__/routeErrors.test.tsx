@@ -10,9 +10,16 @@ let mockIsDevBuild = false;
 jest.mock('../utils/buildMode', () => ({
   get isDevBuild() { return mockIsDevBuild; },
 }));
+let mockHeaderThrows = false;
 jest.mock('../components/Header', () => {
   const { Link: RouterLink } = jest.requireActual('react-router-dom');
-  return { __esModule: true, default: () => <nav>HEADER <RouterLink to="/my-topics">Topics</RouterLink></nav> };
+  return {
+    __esModule: true,
+    default: () => {
+      if (mockHeaderThrows) throw new Error('header exploded');
+      return <nav>HEADER <RouterLink to="/my-topics">Topics</RouterLink></nav>;
+    },
+  };
 });
 jest.mock('../components/Footer', () => ({ __esModule: true, default: () => <footer>FOOTER</footer> }));
 jest.mock('../components/VerifyEmailBanner', () => ({ __esModule: true, default: () => null }));
@@ -55,6 +62,7 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   mockSongsThrows = false;
+  mockHeaderThrows = false;
   mockIsDevBuild = false;
   mockAuth.mockReturnValue({ isAuthenticated: true, loading: false, user: { name: 'Sam', emailVerified: true } });
   // React and our error view both report the caught error; keep the test output readable.
@@ -101,5 +109,17 @@ describe('a page that crashes', () => {
     mockSongsThrows = true;
     renderAt('/songs');
     expect(screen.queryByText(/songs exploded/)).not.toBeInTheDocument();
+  });
+});
+
+describe('the app frame that crashes', () => {
+  test('shows the full-screen fallback with the app name and both ways out', () => {
+    mockHeaderThrows = true;
+    renderAt('/songs');
+    expect(screen.queryByText('FOOTER')).not.toBeInTheDocument();
+    expect(screen.getByText('Musician Tools')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Something went wrong' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to songlist' })).toHaveAttribute('href', '/songs');
   });
 });

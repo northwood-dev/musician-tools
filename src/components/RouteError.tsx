@@ -50,3 +50,20 @@ export function RouteError() {
     </div>
   );
 }
+
+// Issue #19 — errorElement of the RootLayout route itself, for when the chrome (Header,
+// Footer…) is what throws: there is no layout left to keep, so it draws the app's background
+// and name around the same error view.
+export function RootRouteError() {
+  return (
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950">
+      <div className="flex items-center justify-center gap-3 pt-16">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center">
+          <span className="text-white font-bold text-xl">♪</span>
+        </div>
+        <span className="text-2xl font-bold text-gradient">Musician Tools</span>
+      </div>
+      <RouteError />
+    </div>
+  );
+}

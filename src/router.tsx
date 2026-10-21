@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import { RootLayout, HomePage } from './App';
 import { RequireAuth, GuestOnly } from './components/RequireAuth';
-import { RouteError } from './components/RouteError';
+import { RouteError, RootRouteError } from './components/RouteError';
 import Songs from './pages/Songs';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -33,6 +33,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 export const routes: RouteObject[] = [
     {
       element: <RootLayout />,
+      // Issue #19 — when the layout's own chrome throws, nothing of it can be kept.
+      errorElement: <RootRouteError />,
       children: [{
         // Issue #19 — pathless wrapper whose only job is the errorElement: a page that throws
         // is replaced inside RootLayout's <Outlet/>, so the header, banner and footer stay and
