@@ -147,12 +147,6 @@
 
 - ~~**Garde de format UUID incohérente**~~ — ✅ **RÉSOLU (lot ménage dette technique : `backend/utils/uuid.js` partagé, gardes ajoutées song/instrument/playlist ; topic/practicesession basculés dessus)**. [songcontroller, instrumentcontroller, playlistcontroller]
 
-## Deferred from: code review of story-7.3 (2026-06-23)
-
-- ~~**Fixation de session (login/register ne régénèrent pas la session)**~~ — ✅ **RÉSOLU (Durcissement session, v1.6.0 — `sessionService.regenerateSession()` au login ET verify avant de poser `loggedIn`/`user`)**. [backend/controllers/usercontroller.js]
-- ~~**`getCsrfToken` sans dé-duplication en vol**~~ — ✅ **RÉSOLU (lot ménage dette technique : promesse `inFlight` partagée)**. [src/services/csrf.ts]
-- **`withCsrfHeader` suppose des headers objet simple** — un appelant passant un `Headers` ou un tableau `[[k,v]]` perdrait ses headers (dont `Content-Type`) au spread. Non atteint aujourd'hui (tous les services passent un objet littéral) ; latent. [src/services/apiFetch.ts]
-
 ## Deferred from: manual QA of story-7.7 (2026-06-26)
 
 - ~~**Différentiel de comportement register (résidu anti-énumération assumé)**~~ — ✅ **RÉSOLU le 2026-06-26 par la story 7.13** (hard email gate). Register n'auto-connecte plus : email neuf et email existant renvoient désormais la **même** réponse générique `{auth:false, pending:true}` sans session → plus de différentiel observable. La connexion exige la vérification de l'email. [usercontroller.js — voir 7-13-hard-email-verification-gate.md]
@@ -160,19 +154,6 @@
 ## Deferred from: code review of 14-1-favicon-produit (2026-07-04)
 
 - **Favicon SVG-only, sans fallback raster / apple-touch-icon** — `index.html:5` ne déclare qu'un favicon `image/svg+xml`. Contextes sans support du favicon SVG (vieux Safari, bookmark écran d'accueil iOS) n'affichent pas d'icône produit. Pré-existant (l'ancien `vite.svg` était aussi SVG-only) et sanctionné par l'AC2 (SVG seul autorisé) — donc non bloquant. Enhancement futur possible : ajouter `apple-touch-icon.png` (180×180) + éventuel `favicon-32.png` dans `public/` et les déclarer.
-
-## Deferred from: code review of 14-2-header-overflow-non-connecte (2026-07-04)
-
-- **Couplage test↔module — `HomePage` exporté depuis `App.tsx`** — `HomePage.test.tsx` importe `HomePage` via `../App`, ce qui évalue tout le graphe de modules de `App.tsx` (toutes les pages, contexts, Footer) à l'import, juste pour tester un composant. Vert aujourd'hui (aucun effet de bord au chargement ; `tsc -b` exit 0). Fragile à terme : une future page ajoutant un effet de bord au module-load casserait ce test sans rapport. Durcissement optionnel : extraire `HomePage` dans son propre fichier (`src/pages/HomePage.tsx`) et l'importer directement dans App.tsx + le test. Non bloquant, pas de régression actuelle.
-
-## Deferred from: code review of 14-3-songlist-responsive (2026-07-04)
-
-- ~~**En-tête de tableau sticky — fond sur `<thead>` plutôt que sur les cellules `<th>`**~~ — ✅ **CADUC (2026-07-04)** : la décision D2 (cap `max-h-[65vh]` + en-tête `sticky`) a été **retirée lors de la QA manuelle de l'Epic 14** (northwood) — le tableau ne scrolle plus qu'en horizontal (`overflow-x-auto`), la page scrolle verticalement normalement. Plus d'en-tête sticky → ce durcissement n'a plus d'objet.
-
-## Deferred from: code review of 15-1-signal-ux-rate-limit (2026-07-05)
-
-- **`authService.register` sans garde 429 (asymétrie avec `login`)** — `register` utilise un `fetch` brut (comme `login`) mais n'a pas reçu le check `if (response.status === 429) throw new RateLimitError()`. Aujourd'hui `/auth/register` n'a **pas** de limiter → ne peut pas se déclencher. Latent : si un limiter anti-abus est ajouté à register (suite naturelle), le 429 tomberait dans le `throw new Error('Registration failed')` générique en **rouge** au lieu de l'amber rate-limit. Fix trivial le jour où register est rate-limité (1 ligne, miroir de login). Non bloquant, pas de bug actuel. [src/services/authService.ts:51-74]
-- **Asymétrie a11y : erreurs rouges sans role live-region** — les nouveaux affichages amber (rate-limit) reçoivent `role="status"` (`aria-live=polite`), mais les erreurs **rouges** credential/champ sur les mêmes éléments n'ont **aucun** role → silencieuses au lecteur d'écran, alors que l'info moins grave (rate-limit) est annoncée. Pattern **pré-existant** (les divs rouges n'ont jamais eu de role) — pas une régression de 15.1. Durcissement optionnel transverse : donner `role="alert"` aux erreurs dures. Non bloquant. [src/pages/{Login,ForgotPassword,Profile}Page.tsx]
 
 ## Deferred from: code review of story-19.1 (2026-07-15)
 
