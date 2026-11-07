@@ -2133,7 +2133,9 @@ function Songs() {
                             )}
                             {filteredPlaylists.length === 0 && !showCreatePlaylist && (
                               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                                {playlists.length === 0 ? 'Type a name to create your first playlist' : 'No playlists found'}
+                                {/* Reached only when what matches is already selected (those are hidden
+                                    from the list): a name matching nothing offers Create instead. */}
+                                {playlists.length === 0 ? 'Type a name to create your first playlist' : 'Already selected'}
                               </div>
                             )}
                           </div>
