@@ -9,9 +9,10 @@ import { createContext, useContext } from 'react';
 // the very component that would have shown it. A page-local toast dies with its component, so
 // it CANNOT carry that message.
 //
-// Scope of the reversal, on purpose: batches only. The existing page-local toasts
-// (`useState` + `setTimeout(2500)`, the project convention) are untouched, and nothing here
-// invites migrating them.
+// Scope of the reversal, on purpose: messages that must outlive their page, nothing else: an
+// abandoned batch, or an inline row save that fails after the user left (#30). The existing
+// page-local toasts (`useState` + `setTimeout(2500)`, the project convention) are untouched,
+// and nothing here invites migrating them.
 //
 // Split into a .ts (context + hook) and a .tsx (component) because the ESLint rule
 // `react-refresh/only-export-components` rejects a file exporting both — the same split as

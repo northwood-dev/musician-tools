@@ -1,9 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 // ...existing code...
 // ...existing code...
 import { instrumentService, type Instrument, type CreateInstrumentDTO, type UpdateInstrumentDTO } from '../services/instrumentService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
+import { useAutosave } from '../hooks/useAutosave';
+import { useGlobalToast } from '../contexts/GlobalToastContext';
+
+type InstrumentRowForm = { name: string; type: string; brand: string; model: string };
+
+const rowFormOf = (item: Instrument): InstrumentRowForm => ({
+  name: item.name,
+  type: item.type || '',
+  brand: item.brand || '',
+  model: item.model || '',
+});
 
 function MyInstrumentsPage() {
   // const { logout } = useAuth();
@@ -23,6 +34,47 @@ function MyInstrumentsPage() {
   // Separate from `loading`, which swaps the whole table for "Loading...": a row save
   // keeps the table on screen and only freezes the rows.
   const [savingRow, setSavingRow] = useState(false);
+  const [editBaseline, setEditBaseline] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+  const { showGlobalToast } = useGlobalToast();
+
+  // Save-on-exit only: the debounce is never armed, so nothing is sent while typing.
+  const rowForm: InstrumentRowForm = { name: editName, type: editType, brand: editBrand, model: editModel };
+  const { flush } = useAutosave<InstrumentRowForm>({
+    form: rowForm,
+    editingUid,
+    baseline: editBaseline,
+    deps: [],
+    scheduleWhen: () => false,
+    flushWhen: () => editingUid !== null,
+    blockedStatus: () => null,
+    setSaveStatus: status => setSavingRow(status === 'saving'),
+    onCreate: async () => ({ finalize: false }), // a row always exists: this page never creates here
+    onUpdate: async (uid, form, snapshot) => {
+      const payload: UpdateInstrumentDTO = {
+        name: form.name.trim() || undefined,
+        // Always sent: an empty string tells the API to clear the field
+        // (undefined would be dropped by JSON.stringify and leave it unchanged).
+        type: form.type,
+        brand: form.brand,
+        model: form.model,
+      };
+      const updated = await instrumentService.update(uid, payload);
+      setList(prev => prev.map(i => (i.uid === uid ? updated : i)));
+      setEditBaseline(snapshot);
+    },
+    onError: () => {
+      // After leaving the page its error banner is gone: only a global toast can still say so.
+      if (mountedRef.current) setError('Failed to update instrument');
+      else showGlobalToast('Your instrument changes could not be saved.');
+      return 'error';
+    },
+  });
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -71,12 +123,26 @@ function MyInstrumentsPage() {
     }
   };
 
-  const startEdit = (item: Instrument) => {
+  // Saves the open row before it closes. Returns false when the row must stay open.
+  const saveOpenRow = async (): Promise<boolean> => {
+    if (editingUid === null) return true;
+    if (!editName.trim()) {
+      setError('Name is required');
+      return false;
+    }
+    setError(null);
+    return flush();
+  };
+
+  const startEdit = async (item: Instrument) => {
+    if (!(await saveOpenRow())) return;
+    const form = rowFormOf(item);
     setEditingUid(item.uid);
-    setEditName(item.name);
-    setEditType(item.type || '');
-    setEditBrand(item.brand || '');
-    setEditModel(item.model || '');
+    setEditName(form.name);
+    setEditType(form.type);
+    setEditBrand(form.brand);
+    setEditModel(form.model);
+    setEditBaseline(JSON.stringify(form));
   };
 
   const cancelEdit = () => {
@@ -84,25 +150,7 @@ function MyInstrumentsPage() {
   };
 
   const saveEdit = async () => {
-    if (!editingUid) return;
-    try {
-      setSavingRow(true);
-      const payload: UpdateInstrumentDTO = {
-        name: editName.trim() || undefined,
-        // Always sent: an empty string tells the API to clear the field
-        // (undefined would be dropped by JSON.stringify and leave it unchanged).
-        type: editType,
-        brand: editBrand,
-        model: editModel,
-      };
-      const updated = await instrumentService.update(editingUid, payload);
-      setList(list.map(i => (i.uid === editingUid ? updated : i)));
-      setEditingUid(null);
-    } catch {
-      setError('Failed to update instrument');
-    } finally {
-      setSavingRow(false);
-    }
+    if (await saveOpenRow()) setEditingUid(null);
   };
 
   return (
