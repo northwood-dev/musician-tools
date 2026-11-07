@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Catalog from '../pages/Catalog';
 import { catalogService } from '../services/catalogService';
@@ -368,5 +368,49 @@ describe('#49: entries found to be gone are marked on their row', () => {
 
     await waitFor(() => expect(svc.listCatalog).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }), expect.anything()));
     await waitFor(() => expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument());
+  });
+
+  test('a mark from a row button also goes when the list is loaded again', async () => {
+    svc.listCatalog.mockResolvedValue(resp(rows, 48));
+    renderCatalog();
+    await screen.findByText('Zombie');
+    fireEvent.click(screen.getByRole('button', { name: 'Add "Gone" to my songlist' }));
+    await screen.findByText(GONE_MESSAGE);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    await waitFor(() => expect(svc.listCatalog).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }), expect.anything()));
+    expect(await screen.findByRole('button', { name: 'Add "Gone" to my songlist' })).toBeInTheDocument();
+    expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeDisabled();
+  });
+
+  test('changing the search loads the list without the marks', async () => {
+    renderCatalog();
+    await screen.findByText('Zombie');
+    await addBoth();
+    await screen.findByText(GONE_MESSAGE);
+
+    fireEvent.change(screen.getByLabelText('Search the catalog'), { target: { value: 'ghost' } });
+
+    await waitFor(() => expect(svc.listCatalog).toHaveBeenCalledWith(expect.objectContaining({ search: 'ghost' }), expect.anything()));
+    await waitFor(() => expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument());
+  });
+
+  test('a mark set while a load is running survives that load', async () => {
+    svc.listCatalog.mockResolvedValue(resp(rows, 48));
+    renderCatalog();
+    await screen.findByText('Zombie');
+    let finishLoad: (value: ReturnType<typeof resp>) => void = () => {};
+    svc.listCatalog.mockReturnValue(new Promise(resolve => { finishLoad = resolve; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await waitFor(() => expect(svc.listCatalog).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }), expect.anything()));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add "Gone" to my songlist' }));
+    await screen.findByText(GONE_MESSAGE);
+    await act(async () => { finishLoad(resp(rows, 48)); });
+
+    expect(screen.getByText(GONE_MESSAGE)).toBeInTheDocument();
+    expect(screen.getByLabelText('Select Gone by Ghost')).toBeDisabled();
   });
 });

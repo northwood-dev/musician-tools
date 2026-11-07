@@ -10,6 +10,7 @@ import { selectionCell } from '../utils/selectionCell';
 import { useRowSelection } from '../hooks/useRowSelection';
 import { useBulkAddToSonglist, describeAddRecap, isAddRecapNegative } from '../hooks/useBulkAddToSonglist';
 import { BulkRecap } from '../components/BulkRecap';
+import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -231,7 +232,7 @@ export default function CatalogCollection() {
                   <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
                     {entry.title}
                     {goneUids.has(entry.uid) && (
-                      <span role="status" className="block text-xs font-normal text-gray-500 dark:text-gray-400">This song is no longer in the Catalog.</span>
+                      <span role="status" className="block text-xs font-normal text-gray-500 dark:text-gray-400">{CATALOG_ENTRY_GONE_MESSAGE}</span>
                     )}
                   </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.key || '—'}</td>

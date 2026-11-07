@@ -4,6 +4,7 @@ import { catalogService, CatalogNotFoundError } from '../services/catalogService
 import type { CatalogSong } from '../services/catalogService';
 import { SongConflictError } from '../services/songService';
 import type { Song } from '../services/songService';
+import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 
 // "Add to my songlist" — 3 states (DL-8/DL-11), story 19.4:
 //   default  → btn-primary "Add to my songlist"
@@ -81,8 +82,10 @@ export default function CatalogAddButton({
           setDuplicateNoLink(true);
         }
       } else if (err instanceof CatalogNotFoundError) {
-        setGone(true); // permanent — not retryable
-        onGone?.(entry.uid);
+        // Permanent — not retryable. A page that tracks gone entries owns the mark, so its
+        // next list load can lift it; without one, the button remembers by itself.
+        if (onGone) onGone(entry.uid);
+        else setGone(true);
       } else {
         setFailed(true); // re-tentable
       }
@@ -109,7 +112,7 @@ export default function CatalogAddButton({
   }
 
   if (gone || knownGone) {
-    return <span role="status" className="text-xs text-gray-500 dark:text-gray-400">This song is no longer in the Catalog.</span>;
+    return <span role="status" className="text-xs text-gray-500 dark:text-gray-400">{CATALOG_ENTRY_GONE_MESSAGE}</span>;
   }
 
   return (

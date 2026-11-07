@@ -146,8 +146,9 @@ export default function Catalog() {
     abortRef.current = ctrl;
     setLoading(true);
     setError(false);
+    setGoneUids(new Set()); // at the start: a mark set while this load runs must survive it
     catalogService.listCatalog({ search, key, mode, timeSignature, genre, page }, ctrl.signal)
-      .then(res => { setData(res); setGoneUids(new Set()); setLoading(false); })
+      .then(res => { setData(res); setLoading(false); })
       .catch(err => {
         if (err?.name === 'AbortError') return;
         setError(true);
@@ -159,14 +160,14 @@ export default function Catalog() {
   const total = data?.total ?? 0;
   const limit = data?.limit ?? 24;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const displayedUids = data?.items.map(i => i.uid).filter(uid => !goneUids.has(uid)) ?? [];
-  const allDisplayedSelected = selection.allDisplayedSelected(displayedUids);
+  const selectableUids = data?.items.map(i => i.uid).filter(uid => !goneUids.has(uid)) ?? [];
+  const allSelectableSelected = selection.allDisplayedSelected(selectableUids);
   // Select-all is "within page": it unions/subtracts only what is on screen, so a
   // selection made on another page survives.
   const userSelectAll = () => {
     bulkAdd.setRecap(null);
-    if (allDisplayedSelected) selection.removeMany(displayedUids);
-    else selection.addMany(displayedUids);
+    if (allSelectableSelected) selection.removeMany(selectableUids);
+    else selection.addMany(selectableUids);
   };
 
   return (
@@ -284,7 +285,7 @@ export default function Catalog() {
                     onAdded={addToCache}
                     selectedUids={selection.selected}
                     onToggle={userToggle}
-                    allSelected={allDisplayedSelected}
+                    allSelected={allSelectableSelected}
                     onToggleAll={userSelectAll}
                     selectionDisabled={bulkAdd.running || loading}
                     goneUids={goneUids}
