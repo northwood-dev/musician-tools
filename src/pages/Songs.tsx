@@ -889,10 +889,17 @@ function Songs() {
     }
   };
 
+  // The server's answer replaces what the page holds, so membership never drifts from it.
+  const storePlaylist = (playlist: Playlist) => {
+    setPlaylists(prev => (prev.some(p => p.uid === playlist.uid)
+      ? prev.map(p => (p.uid === playlist.uid ? playlist : p))
+      : [playlist, ...prev]));
+  };
+
   // Select a playlist (existing or just-created) into the edited song and reset
   // the picker's search — shared by the create flow and its 409 fallback.
   const selectPlaylistIntoSong = (playlist: Playlist) => {
-    setPlaylists(prev => (prev.some(p => p.uid === playlist.uid) ? prev : [playlist, ...prev]));
+    storePlaylist(playlist);
     setSelectedPlaylistUids(prev => {
       const next = new Set(prev);
       next.add(playlist.uid);
@@ -904,14 +911,24 @@ function Songs() {
   };
 
   // Story 10.2: create a new playlist on the fly (with the edited song already in
-  // it) without leaving the form. The on-Save diff then sees it already has the
-  // song → no double-add. A 409 (stale catalog raced server-side) selects the
-  // existing playlist instead of erroring.
+  // it) without leaving the form. A 409 (stale catalog raced server-side) adds the song
+  // to the existing playlist instead of erroring (#55): only then is it selected.
   // In-flight guard (10-2 deferred): a fast double Enter/click would otherwise fire
   // two concurrent createPlaylist calls — the 2nd 409s and re-selects the 1st
   // (harmless given server-side uniqueness from 10.1, but a possible flicker).
   // Mirrors savingRef. Released in finally so a failure never wedges the picker.
   const creatingPlaylistRef = useRef(false);
+
+  const addSongToExistingPlaylist = async (existing: Playlist) => {
+    try {
+      selectPlaylistIntoSong(editingUid ? await playlistService.addSongToPlaylist(existing.uid, editingUid) : existing);
+    } catch (err) {
+      console.error(err);
+      storePlaylist(existing); // listed, so the user can retry by choosing it
+      setToastMessage('Could not update playlist');
+      setTimeout(() => setToastMessage(null), 2500);
+    }
+  };
 
   const handleCreatePlaylist = async (rawText: string) => {
     const name = rawText.trim();
@@ -926,7 +943,7 @@ function Songs() {
       selectPlaylistIntoSong(created);
     } catch (err) {
       if (err instanceof PlaylistConflictError && err.existingPlaylist) {
-        selectPlaylistIntoSong(err.existingPlaylist);
+        await addSongToExistingPlaylist(err.existingPlaylist);
         return;
       }
       setToastMessage('Could not create playlist');

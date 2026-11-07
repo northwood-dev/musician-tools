@@ -78,6 +78,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockedPlaylistService.getAllPlaylists.mockResolvedValue([]);
   mockedPlaylistService.updatePlaylist.mockResolvedValue({} as Playlist);
+  mockedPlaylistService.addSongToPlaylist.mockImplementation(async uid => ({ uid, name: 'Added', songUids: ['song-a'] }));
+  mockedPlaylistService.removeSongFromPlaylist.mockImplementation(async uid => ({ uid, name: 'Removed', songUids: [] }));
 });
 
 describe('Songs — create a playlist on the fly (story 10.2)', () => {
@@ -126,23 +128,52 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
     );
   });
 
-  test('AC8: a 409 selects the existing playlist, and it STAYS selected (no reseed clobber)', async () => {
+  test('AC8: a 409 adds the song to the existing playlist, and it STAYS selected (no reseed clobber)', async () => {
     // A non-empty catalog (that does NOT contain the typed name) so the seed effect
     // locks; the 409 returns an existing playlist that does NOT contain the song.
     mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Other', songUids: [] }]);
     mockedPlaylistService.createPlaylist.mockRejectedValue(
       new PlaylistConflictError({ uid: 'pl-existing', name: 'Jazz', songUids: [] }),
     );
+    mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-existing', name: 'Jazz', songUids: ['song-a'] });
     await openPickerAndType('Jazz');
 
     fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
 
-    // The existing playlist becomes a selected chip — and survives the seed effect
-    // that re-fires when `playlists` is updated (the bug this guards against).
+    // The song really joins the playlist, then it becomes a selected chip and survives
+    // the seed effect that re-fires when `playlists` is updated.
+    await waitFor(() => expect(mockedPlaylistService.addSongToPlaylist).toHaveBeenCalledWith('pl-existing', 'song-a'));
     expect(await screen.findByTitle('Jazz')).toBeInTheDocument();
     await settle();
     expect(screen.getByTitle('Jazz')).toBeInTheDocument(); // still there after the reseed
     expect(screen.queryByText('Could not create playlist')).not.toBeInTheDocument();
+  });
+
+  test('a 409 whose add fails shows no chip, says so, and lists the playlist for a retry', async () => {
+    mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Other', songUids: [] }]);
+    mockedPlaylistService.createPlaylist.mockRejectedValue(
+      new PlaylistConflictError({ uid: 'pl-existing', name: 'Jazz', songUids: [] }),
+    );
+    mockedPlaylistService.addSongToPlaylist.mockRejectedValue(new Error('offline'));
+    await openPickerAndType('Jazz');
+
+    fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+
+    expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
+    expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Jazz' })).toBeInTheDocument();
+  });
+
+  test('a 409 without the existing playlist says the create failed', async () => {
+    mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Other', songUids: [] }]);
+    mockedPlaylistService.createPlaylist.mockRejectedValue(new PlaylistConflictError(undefined));
+    await openPickerAndType('Jazz');
+
+    fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+
+    expect(await screen.findByText('Could not create playlist')).toBeInTheDocument();
+    expect(mockedPlaylistService.addSongToPlaylist).not.toHaveBeenCalled();
+    expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
   });
 
   test('AC10: creating on the fly keeps a pending toggle of an existing playlist', async () => {
