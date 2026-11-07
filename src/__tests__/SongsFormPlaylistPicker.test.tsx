@@ -34,17 +34,17 @@ jest.mock('../services/playlistService', () => ({
   },
 }));
 
-import { playlistService } from '../services/playlistService';
+import { playlistService, type Playlist } from '../services/playlistService';
 
 const mockedPlaylists = playlistService as jest.Mocked<typeof playlistService>;
 
-const warmups = { uid: 'p1', name: 'Warmups', songUids: ['song-a'] };
-const gigSet = { uid: 'p2', name: 'Gig set', songUids: [] };
+const warmups: Playlist = { uid: 'p1', name: 'Warmups', songUids: ['song-a'] };
+const gigSet: Playlist = { uid: 'p2', name: 'Gig set', songUids: [] };
 
 const settle = () => act(async () => { await new Promise(r => setTimeout(r, 0)); });
 
-const openPickerOfAlpha = async (playlists: unknown[]) => {
-  mockedPlaylists.getAllPlaylists.mockResolvedValue(playlists as never);
+const openPickerWithPlaylists = async (playlists: Playlist[]) => {
+  mockedPlaylists.getAllPlaylists.mockResolvedValue(playlists);
   renderSongs();
   fireEvent.click(await screen.findByText('Alpha'));
   const field = await screen.findByPlaceholderText('Search, select or create a playlist');
@@ -59,7 +59,7 @@ beforeEach(() => {
 });
 
 test('searching the exact name of a selected playlist says it is already selected', async () => {
-  const field = await openPickerOfAlpha([warmups, gigSet]);
+  const field = await openPickerWithPlaylists([warmups, gigSet]);
 
   fireEvent.change(field, { target: { value: 'Warmups' } });
 
@@ -68,20 +68,28 @@ test('searching the exact name of a selected playlist says it is already selecte
 });
 
 test('with every playlist selected, the empty field says so too', async () => {
-  await openPickerOfAlpha([warmups, { ...gigSet, songUids: ['song-a'] }]);
+  await openPickerWithPlaylists([warmups, { ...gigSet, songUids: ['song-a'] }]);
 
   expect(await screen.findByText('Already selected')).toBeInTheDocument();
 });
 
 test('with no playlist at all, the picker invites to create the first one', async () => {
-  await openPickerOfAlpha([]);
+  await openPickerWithPlaylists([]);
 
   expect(await screen.findByText('Type a name to create your first playlist')).toBeInTheDocument();
   expect(screen.queryByText('Already selected')).not.toBeInTheDocument();
 });
 
-test('a new name still offers the Create option', async () => {
-  const field = await openPickerOfAlpha([warmups, gigSet]);
+test('the exact name in another case counts as the same playlist', async () => {
+  const field = await openPickerWithPlaylists([warmups, gigSet]);
+
+  fireEvent.change(field, { target: { value: 'WARMUPS' } });
+
+  expect(await screen.findByText('Already selected')).toBeInTheDocument();
+});
+
+test('a name partly matching a selected playlist still offers the Create option', async () => {
+  const field = await openPickerWithPlaylists([warmups, gigSet]);
 
   fireEvent.change(field, { target: { value: 'Warm' } });
 
@@ -89,8 +97,37 @@ test('a new name still offers the Create option', async () => {
   expect(screen.queryByText('Already selected')).not.toBeInTheDocument();
 });
 
+test('a name matching nothing offers the Create option', async () => {
+  const field = await openPickerWithPlaylists([warmups, gigSet]);
+
+  fireEvent.change(field, { target: { value: 'Jazz' } });
+
+  expect(await screen.findByText('Create playlist "Jazz"')).toBeInTheDocument();
+  expect(screen.queryByText('Already selected')).not.toBeInTheDocument();
+});
+
+test('a search matching an available playlist lists it, with no message', async () => {
+  const field = await openPickerWithPlaylists([warmups, gigSet]);
+
+  fireEvent.change(field, { target: { value: 'Gig' } });
+
+  expect(within(await screen.findByRole('listbox')).getByText('Gig set')).toBeInTheDocument();
+  expect(screen.queryByText('Already selected')).not.toBeInTheDocument();
+});
+
+test('the exact name of a selected playlist that an available one contains lists that one', async () => {
+  const rock: Playlist = { uid: 'p3', name: 'Rock', songUids: ['song-a'] };
+  const rockBallads: Playlist = { uid: 'p4', name: 'Rock ballads', songUids: [] };
+  const field = await openPickerWithPlaylists([rock, rockBallads]);
+
+  fireEvent.change(field, { target: { value: 'Rock' } });
+
+  expect(within(await screen.findByRole('listbox')).getByText('Rock ballads')).toBeInTheDocument();
+  expect(screen.queryByText('Already selected')).not.toBeInTheDocument();
+});
+
 test('available playlists are listed and selected ones stay out of the list', async () => {
-  await openPickerOfAlpha([warmups, gigSet]);
+  await openPickerWithPlaylists([warmups, gigSet]);
 
   const list = await screen.findByRole('listbox');
 
