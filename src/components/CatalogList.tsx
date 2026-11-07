@@ -22,6 +22,8 @@ export default function CatalogList({
   allSelected,
   onToggleAll,
   selectionDisabled,
+  goneUids,
+  onGone,
 }: {
   items: CatalogSong[];
   existingFor?: (entry: CatalogSong) => Song | null;
@@ -31,6 +33,9 @@ export default function CatalogList({
   allSelected?: boolean;
   onToggleAll?: () => void;
   selectionDisabled?: boolean;
+  // Entries found to be gone (#32): marked on their row, and no longer selectable.
+  goneUids?: Set<string>;
+  onGone?: (uid: string) => void;
 }) {
   const navigate = useNavigate();
   const selectable = !!onToggle;
@@ -70,7 +75,7 @@ export default function CatalogList({
                     checked={!!selectedUids?.has(entry.uid)}
                     onChange={() => onToggle?.(entry.uid)}
                     label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
-                    disabled={selectionDisabled}
+                    disabled={selectionDisabled || goneUids?.has(entry.uid)}
                   />
                 </td>
               )}
@@ -86,7 +91,13 @@ export default function CatalogList({
               {/* Action cell: sibling of the title link; stops propagation so clicking
                   Add doesn't also trigger the row's navigate-to-detail. */}
               <td className="px-3 py-2 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
-                <CatalogAddButton entry={entry} existingSong={existingFor ? existingFor(entry) : null} onAdded={onAdded} />
+                <CatalogAddButton
+                  entry={entry}
+                  existingSong={existingFor ? existingFor(entry) : null}
+                  onAdded={onAdded}
+                  knownGone={goneUids?.has(entry.uid)}
+                  onGone={onGone}
+                />
               </td>
             </tr>
           ))}

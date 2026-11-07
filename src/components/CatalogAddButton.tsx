@@ -23,10 +23,16 @@ export default function CatalogAddButton({
   entry,
   existingSong,
   onAdded,
+  knownGone = false,
+  onGone,
 }: {
   entry: CatalogSong;
   existingSong: Song | null;
   onAdded?: (song: Song) => void;
+  // The page already knows this entry is gone (a bulk add found out). Its songlist link,
+  // if any, still wins: the song itself is still there.
+  knownGone?: boolean;
+  onGone?: (uid: string) => void;
 }) {
   const [addedSong, setAddedSong] = useState<Song | null>(null);
   const [duplicateNoLink, setDuplicateNoLink] = useState(false);
@@ -76,6 +82,7 @@ export default function CatalogAddButton({
         }
       } else if (err instanceof CatalogNotFoundError) {
         setGone(true); // permanent — not retryable
+        onGone?.(entry.uid);
       } else {
         setFailed(true); // re-tentable
       }
@@ -84,10 +91,6 @@ export default function CatalogAddButton({
       if (mountedRef.current) setSaving(false);
     }
   };
-
-  if (gone) {
-    return <span role="status" className="text-xs text-gray-500 dark:text-gray-400">This song is no longer in the Catalog.</span>;
-  }
 
   if (flashing) {
     return <span role="status" aria-live="polite" className={ADDED}>✓ Added</span>;
@@ -103,6 +106,10 @@ export default function CatalogAddButton({
 
   if (duplicateNoLink) {
     return <span className={ALREADY}>✓ Already in your songlist</span>;
+  }
+
+  if (gone || knownGone) {
+    return <span role="status" className="text-xs text-gray-500 dark:text-gray-400">This song is no longer in the Catalog.</span>;
   }
 
   return (

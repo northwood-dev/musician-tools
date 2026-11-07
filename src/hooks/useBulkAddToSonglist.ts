@@ -41,6 +41,8 @@ export interface BulkAddResult {
   // Everything that must LEAVE the selection: successes, duplicates, and the permanent
   // 404s. Only the retryable failures stay ticked so the batch can be replayed.
   settledUids: string[];
+  // The permanent 404s on their own, so a page can say WHICH entries are gone on their rows.
+  goneUids: string[];
 }
 
 export function useBulkAddToSonglist(onSongKnown?: (song: Song) => void) {
@@ -85,6 +87,7 @@ export function useBulkAddToSonglist(onSongKnown?: (song: Song) => void) {
 
       const counts: AddToSonglistRecap = { added: 0, alreadyIn: 0, gone: 0, failed: 0, skipped: 0, needsSonglistRefresh: false };
       const settledUids: string[] = [];
+      const goneUids: string[] = [];
 
       results.forEach((result, i) => {
         if (result.status === 'fulfilled') {
@@ -105,6 +108,7 @@ export function useBulkAddToSonglist(onSongKnown?: (song: Song) => void) {
         if (result.reason instanceof CatalogNotFoundError) {
           counts.gone += 1;
           settledUids.push(uids[i]); // permanent: retrying cannot help
+          goneUids.push(uids[i]);
           return;
         }
         if (result.reason instanceof BatchSkippedError) {
@@ -125,7 +129,7 @@ export function useBulkAddToSonglist(onSongKnown?: (song: Song) => void) {
       }
 
       setRecap(counts);
-      return { recap: counts, settledUids };
+      return { recap: counts, settledUids, goneUids };
     } finally {
       runningRef.current = false;
       if (mountedRef.current) setRunning(false);

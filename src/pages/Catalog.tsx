@@ -56,6 +56,10 @@ export default function Catalog() {
   const selection = useRowSelection();
   const bulkAdd = useBulkAddToSonglist(addToCache);
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
+  // Entries found to be gone since the list was loaded (#32). Transient: the next load is
+  // the truth again, so it replaces them.
+  const [goneUids, setGoneUids] = useState<Set<string>>(new Set());
+  const markGone = (uids: string[]) => setGoneUids(prev => new Set([...prev, ...uids]));
 
   // The recap closes at the user's next selection gesture — driven by the handlers, not
   // by comparing snapshots (an empty-selection fingerprint kills the recap on the very
@@ -80,6 +84,7 @@ export default function Catalog() {
     const result = await bulkAdd.run(Array.from(selection.selected));
     if (!result) return;
     selection.removeMany(result.settledUids);
+    markGone(result.goneUids);
     // A 409 without its song leaves the duplicate flag unknowable from the response —
     // reload the songlist so those rows stop advertising "Add".
     if (result.recap.needsSonglistRefresh) refreshSonglist();
@@ -142,7 +147,7 @@ export default function Catalog() {
     setLoading(true);
     setError(false);
     catalogService.listCatalog({ search, key, mode, timeSignature, genre, page }, ctrl.signal)
-      .then(res => { setData(res); setLoading(false); })
+      .then(res => { setData(res); setGoneUids(new Set()); setLoading(false); })
       .catch(err => {
         if (err?.name === 'AbortError') return;
         setError(true);
@@ -154,7 +159,7 @@ export default function Catalog() {
   const total = data?.total ?? 0;
   const limit = data?.limit ?? 24;
   const totalPages = Math.max(1, Math.ceil(total / limit));
-  const displayedUids = data?.items.map(i => i.uid) ?? [];
+  const displayedUids = data?.items.map(i => i.uid).filter(uid => !goneUids.has(uid)) ?? [];
   const allDisplayedSelected = selection.allDisplayedSelected(displayedUids);
   // Select-all is "within page": it unions/subtracts only what is on screen, so a
   // selection made on another page survives.
@@ -282,6 +287,8 @@ export default function Catalog() {
                     allSelected={allDisplayedSelected}
                     onToggleAll={userSelectAll}
                     selectionDisabled={bulkAdd.running || loading}
+                    goneUids={goneUids}
+                    onGone={uid => { markGone([uid]); selection.removeMany([uid]); }}
                   />
                 : <p className="text-gray-500 dark:text-gray-400 py-6 text-center">This page is empty — go back to a previous page.</p>}
               <Pagination page={page} totalPages={totalPages} onPageChange={p => patchParams({ page: String(p) })} />
