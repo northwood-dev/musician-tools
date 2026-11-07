@@ -241,7 +241,13 @@ export default function CatalogAdmin() {
             setDupMessage(null);
           }
         })
-        .catch(() => { /* leave state as-is on error/abort */ });
+        .catch(() => {
+          // Our own abort means a newer check is coming: it will decide. Checked on OUR signal,
+          // not on the error's name: apiFetch's timeout is an AbortError too, and that is a
+          // real failure. A real failure is fail-open, so the screen must say the same as the
+          // form: no banner, Publish back. The unique index 409 stays the backstop.
+          if (!ctrl.signal.aborted) setDupMessage(null);
+        });
     }, 500);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [form.title, form.artist, workingUid]);

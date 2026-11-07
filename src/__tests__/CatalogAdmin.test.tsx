@@ -190,3 +190,87 @@ test('edit mode can delete the entry (confirm → back to manage)', async () => 
   await waitFor(() => expect(cat.deleteCatalogEntry).toHaveBeenCalledWith('c1'));
   await screen.findByText('manage-marker');
 });
+
+describe('#52: a failed duplicate check', () => {
+  const BANNER = /already exists? in the Catalog/i;
+  const typeArtist = (value: string) => fireEvent.change(screen.getByLabelText('Artist'), { target: { value } });
+  const wait = (ms: number) => act(async () => { await jest.advanceTimersByTimeAsync(ms); });
+
+  // A draft whose duplicate check has just put the banner up.
+  const openDraftWithBanner = async () => {
+    mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
+    cat.getCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Zombie', artist: 'A', publishedAt: null });
+    cat.updateCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Zombie' });
+    cat.checkCatalogExists.mockResolvedValue({ exists: true, entry: { uid: 'other', title: 'Zombie', artist: 'B' } });
+    renderAt('/catalog/admin/c1');
+    await wait(0);
+    typeArtist('B');
+    await wait(600);
+    expect(screen.getByText(BANNER)).toBeInTheDocument();
+  };
+
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  test('removes the banner and brings Publish back', async () => {
+    await openDraftWithBanner();
+    cat.checkCatalogExists.mockRejectedValue(new Error('Failed to check catalog existence'));
+
+    typeArtist('Bb');
+    await wait(600);
+
+    expect(screen.queryByText(BANNER)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument();
+  });
+
+  test('a timed-out check counts as a real failure', async () => {
+    await openDraftWithBanner();
+    cat.checkCatalogExists.mockRejectedValue(new DOMException('Timed out', 'AbortError'));
+
+    typeArtist('Bb');
+    await wait(600);
+
+    expect(screen.queryByText(BANNER)).not.toBeInTheDocument();
+  });
+
+  test('a check cancelled by further typing leaves the banner as it is', async () => {
+    await openDraftWithBanner();
+    cat.checkCatalogExists.mockImplementation((_title, _artist, _uid, signal) => new Promise((_resolve, reject) => {
+      signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+
+    typeArtist('Bb');
+    await wait(600);
+    typeArtist('Bbb');
+    await wait(100);
+
+    expect(screen.getByText(BANNER)).toBeInTheDocument();
+  });
+
+  test('shows no message of its own, and a later check can flag a duplicate again', async () => {
+    await openDraftWithBanner();
+    cat.checkCatalogExists.mockRejectedValue(new Error('offline'));
+    typeArtist('Bb');
+    await wait(600);
+    expect(screen.queryByText(/check/i)).not.toBeInTheDocument();
+
+    cat.checkCatalogExists.mockResolvedValue({ exists: true, entry: { uid: 'other', title: 'Zombie', artist: 'B' } });
+    typeArtist('B');
+    await wait(600);
+
+    expect(screen.getByText(BANNER)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Publish' })).toBeNull();
+  });
+
+  test('a 409 on save after a failed check brings the banner back', async () => {
+    await openDraftWithBanner();
+    cat.checkCatalogExists.mockRejectedValue(new Error('offline'));
+    cat.updateCatalogEntry.mockRejectedValue(new CatalogConflictError());
+
+    typeArtist('Bb');
+    await wait(1300);
+
+    expect(cat.updateCatalogEntry).toHaveBeenCalled();
+    expect(screen.getByText('This title and artist already exist in the Catalog.')).toBeInTheDocument();
+  });
+});
