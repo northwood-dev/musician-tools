@@ -1,6 +1,6 @@
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import GlobalToastProvider from '../contexts/GlobalToastProvider';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
+import { leavePage, renderPageWithLeaveLink } from '../testUtils/renderPageWithLeaveLink';
 import MyTopicsPage from '../pages/MyTopicsPage';
 import { topicService, type Topic } from '../services/topicService';
 
@@ -24,6 +24,7 @@ function LocationProbe() {
     <>
       <output aria-label="search">{search}</output>
       <button type="button" onClick={() => navigate('/my-topics?edit=t2')}>Follow another link</button>
+      <button type="button" onClick={() => navigate('/my-topics?edit=t1')}>Follow a link to the first topic</button>
     </>
   );
 }
@@ -404,33 +405,87 @@ describe('#44: what you type in an open row is kept', () => {
     await waitFor(() => expect(screen.queryByLabelText('Edit name')).not.toBeInTheDocument());
   });
 
+  test('a ?edit= link to the row already open keeps what was typed', async () => {
+    renderPage();
+    await openRow('Pentatonic scale');
+
+    typeCategory('Scales');
+    (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = jest.fn();
+    fireEvent.click(screen.getByRole('button', { name: 'Follow a link to the first topic' }));
+
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
+    expect(screen.getByLabelText('Edit category')).toHaveValue('Scales');
+    expect(mockedService.update).not.toHaveBeenCalled();
+    delete (Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  test('a ?edit= link arriving during a save opens its row once the save is done', async () => {
+    let finishSave: (value: Topic) => void = () => {};
+    mockedService.update.mockReturnValue(new Promise(resolve => { finishSave = resolve; }));
+    renderPage();
+    await openRow('Pentatonic scale');
+
+    typeCategory('Scales');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(mockedService.update).toHaveBeenCalled());
+    (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = jest.fn();
+    fireEvent.click(screen.getByRole('button', { name: 'Follow another link' }));
+    await act(async () => { finishSave({ ...existingTopic, category: 'Scales' }); });
+
+    await waitFor(() => expect(screen.getByLabelText('Edit name')).toHaveValue('Walking bass'));
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
+    delete (Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  test('a ?edit= link that can not leave the open row does not scroll away from it', async () => {
+    const scrollSpy = jest.fn();
+    (Element.prototype as unknown as { scrollIntoView: unknown }).scrollIntoView = scrollSpy;
+    renderPage();
+    await openRow('Pentatonic scale');
+
+    typeName('');
+    fireEvent.click(screen.getByRole('button', { name: 'Follow another link' }));
+
+    expect(await screen.findByText('Name is required')).toBeInTheDocument();
+    expect(scrollSpy).not.toHaveBeenCalled();
+    delete (Element.prototype as unknown as { scrollIntoView?: unknown }).scrollIntoView;
+  });
+
+  test('Add is disabled during a row save', async () => {
+    let finishSave: (value: Topic) => void = () => {};
+    mockedService.update.mockReturnValue(new Promise(resolve => { finishSave = resolve; }));
+    renderPage();
+    await openRow('Pentatonic scale');
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Modes' } });
+    typeCategory('Scales');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockedService.update).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+    await act(async () => { finishSave({ ...existingTopic, category: 'Scales' }); });
+  });
+
+  test('Cancel clears the error of the row', async () => {
+    renderPage();
+    await openRow('Pentatonic scale');
+
+    typeName('');
+    await openRow('Walking bass');
+    await screen.findByText('Name is required');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Name is required')).not.toBeInTheDocument();
+  });
+
   describe('leaving the page', () => {
-    function renderWithMenu() {
-      return render(
-        <GlobalToastProvider>
-          <MemoryRouter initialEntries={['/my-topics']}>
-            <Link to="/elsewhere">Leave</Link>
-            <Routes>
-              <Route path="/my-topics" element={<MyTopicsPage />} />
-              <Route path="/elsewhere" element={<p>Another page</p>} />
-            </Routes>
-          </MemoryRouter>
-        </GlobalToastProvider>
-      );
-    }
-
-    async function leave() {
-      fireEvent.click(screen.getByRole('link', { name: 'Leave' }));
-      await screen.findByText('Another page');
-    }
-
     test('saves the open row', async () => {
       mockedService.update.mockResolvedValue({ ...existingTopic, category: 'Scales' });
-      renderWithMenu();
+      renderPageWithLeaveLink(<MyTopicsPage />);
       await openRow('Pentatonic scale');
 
       typeCategory('Scales');
-      await leave();
+      await leavePage();
 
       await waitFor(() => {
         expect(mockedService.update).toHaveBeenCalledWith('t1', { name: 'Pentatonic scale', category: 'Scales' });
@@ -438,22 +493,22 @@ describe('#44: what you type in an open row is kept', () => {
     });
 
     test('sends no save when nothing changed', async () => {
-      renderWithMenu();
+      renderPageWithLeaveLink(<MyTopicsPage />);
       await openRow('Pentatonic scale');
 
-      await leave();
+      await leavePage();
 
       expect(mockedService.update).not.toHaveBeenCalled();
     });
 
     test('with an empty name, saves the other fields and keeps the previous name', async () => {
       mockedService.update.mockResolvedValue({ ...existingTopic, category: 'Scales' });
-      renderWithMenu();
+      renderPageWithLeaveLink(<MyTopicsPage />);
       await openRow('Pentatonic scale');
 
       typeName('');
       typeCategory('Scales');
-      await leave();
+      await leavePage();
 
       await waitFor(() => {
         expect(mockedService.update).toHaveBeenCalledWith('t1', { name: undefined, category: 'Scales' });
@@ -462,11 +517,11 @@ describe('#44: what you type in an open row is kept', () => {
 
     test('a failed save shows a global toast', async () => {
       mockedService.update.mockRejectedValue(new Error('Failed to update topic'));
-      renderWithMenu();
+      renderPageWithLeaveLink(<MyTopicsPage />);
       await openRow('Pentatonic scale');
 
       typeCategory('Scales');
-      await leave();
+      await leavePage();
 
       expect(await screen.findByText('Your topic changes could not be saved.')).toBeInTheDocument();
     });

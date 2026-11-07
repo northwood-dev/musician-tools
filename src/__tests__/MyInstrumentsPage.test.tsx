@@ -1,6 +1,6 @@
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
-import GlobalToastProvider from '../contexts/GlobalToastProvider';
+import { MemoryRouter } from 'react-router-dom';
+import { leavePage, renderPageWithLeaveLink } from '../testUtils/renderPageWithLeaveLink';
 import MyInstrumentsPage from '../pages/MyInstrumentsPage';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 
@@ -189,35 +189,55 @@ describe('#43: moving to another row', () => {
       jest.useRealTimers();
     }
   });
+
+  test('a field cleared before moving rows stays cleared', async () => {
+    mockedService.update.mockResolvedValue({ ...jazzBass, brand: '' });
+    renderPage();
+    await openRow('Jazz Bass');
+
+    fireEvent.change(screen.getByDisplayValue('Player'), { target: { value: '' } });
+    await openRow('Telecaster');
+
+    await waitFor(() => expect(screen.getByDisplayValue('Standard')).toBeInTheDocument());
+    expect(mockedService.update).toHaveBeenCalledWith('i1', { name: 'Jazz Bass', type: 'Bass', brand: 'Fender', model: '' });
+  });
+
+  test('Add is disabled during a row save', async () => {
+    let finishSave: (value: Instrument) => void = () => {};
+    mockedService.update.mockReturnValue(new Promise(resolve => { finishSave = resolve; }));
+    renderPage();
+    await openRow('Jazz Bass');
+
+    fireEvent.change(screen.getByPlaceholderText('Name (ex. 5 strings bass)'), { target: { value: 'Upright' } });
+    fireEvent.change(screen.getByDisplayValue('Player'), { target: { value: 'Vintage' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(mockedService.update).toHaveBeenCalled());
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+    await act(async () => { finishSave({ ...jazzBass, model: 'Vintage' }); });
+  });
+
+  test('Cancel clears the error of the row', async () => {
+    renderPage();
+    await openRow('Jazz Bass');
+
+    fireEvent.change(screen.getByDisplayValue('Jazz Bass'), { target: { value: '' } });
+    await openRow('Telecaster');
+    await screen.findByText('Name is required');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Name is required')).not.toBeInTheDocument();
+  });
 });
 
 describe('#43: leaving the page', () => {
-  function renderWithMenu() {
-    return render(
-      <GlobalToastProvider>
-        <MemoryRouter initialEntries={['/my-instruments']}>
-          <Link to="/elsewhere">Leave</Link>
-          <Routes>
-            <Route path="/my-instruments" element={<MyInstrumentsPage />} />
-            <Route path="/elsewhere" element={<p>Another page</p>} />
-          </Routes>
-        </MemoryRouter>
-      </GlobalToastProvider>
-    );
-  }
-
-  async function leave() {
-    fireEvent.click(screen.getByRole('link', { name: 'Leave' }));
-    await screen.findByText('Another page');
-  }
-
   test('saves the open row', async () => {
     mockedService.update.mockResolvedValue({ ...jazzBass, model: 'Vintage' });
-    renderWithMenu();
+    renderPageWithLeaveLink(<MyInstrumentsPage />);
     await openRow('Jazz Bass');
 
     fireEvent.change(screen.getByDisplayValue('Player'), { target: { value: 'Vintage' } });
-    await leave();
+    await leavePage();
 
     await waitFor(() => {
       expect(mockedService.update).toHaveBeenCalledWith('i1', { name: 'Jazz Bass', type: 'Bass', brand: 'Fender', model: 'Vintage' });
@@ -225,22 +245,22 @@ describe('#43: leaving the page', () => {
   });
 
   test('sends no save when nothing changed', async () => {
-    renderWithMenu();
+    renderPageWithLeaveLink(<MyInstrumentsPage />);
     await openRow('Jazz Bass');
 
-    await leave();
+    await leavePage();
 
     expect(mockedService.update).not.toHaveBeenCalled();
   });
 
   test('with an empty name, saves the other fields and keeps the previous name', async () => {
     mockedService.update.mockResolvedValue({ ...jazzBass, brand: '' });
-    renderWithMenu();
+    renderPageWithLeaveLink(<MyInstrumentsPage />);
     await openRow('Jazz Bass');
 
     fireEvent.change(screen.getByDisplayValue('Jazz Bass'), { target: { value: '' } });
     fireEvent.change(screen.getByDisplayValue('Fender'), { target: { value: '' } });
-    await leave();
+    await leavePage();
 
     await waitFor(() => {
       expect(mockedService.update).toHaveBeenCalledWith('i1', { name: undefined, type: 'Bass', brand: '', model: 'Player' });
@@ -249,11 +269,11 @@ describe('#43: leaving the page', () => {
 
   test('a failed save shows a global toast', async () => {
     mockedService.update.mockRejectedValue(new Error('Failed to update instrument'));
-    renderWithMenu();
+    renderPageWithLeaveLink(<MyInstrumentsPage />);
     await openRow('Jazz Bass');
 
     fireEvent.change(screen.getByDisplayValue('Player'), { target: { value: 'Vintage' } });
-    await leave();
+    await leavePage();
 
     expect(await screen.findByText('Your instrument changes could not be saved.')).toBeInTheDocument();
   });

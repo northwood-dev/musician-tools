@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { topicService, type Topic, type CreateTopicDTO, type UpdateTopicDTO } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -33,14 +33,13 @@ function MyTopicsPage() {
       setList(prev => prev.map(t => (t.uid === uid ? updated : t)));
     },
     setError,
-    errorMessage: err => (err instanceof Error && err.message === 'Topic already exists'
+    validationError: form => (form.name.trim() ? null : 'Name is required'),
+    toErrorMessage: err => (err instanceof Error && err.message === 'Topic already exists'
       ? 'Topic already exists'
       : 'Failed to update topic'),
     leftPageErrorMessage: 'Your topic changes could not be saved.',
   });
-  // The deep-link effect below must always reach the latest open row.
-  const openRowRef = useRef(row.openRow);
-  openRowRef.current = row.openRow;
+  const { openRow, savingRow } = row;
 
   useEffect(() => {
     (async () => {
@@ -64,17 +63,22 @@ function MyTopicsPage() {
   // consume ?edit= right away: a reload never reopens the editor, an unknown uid
   // leaves no trace, and the next link (a new value) is handled the same way.
   useEffect(() => {
-    if (!editParam || !listLoaded) return;
+    // During a row save the link waits: it needs that save to finish before opening its row.
+    if (!editParam || !listLoaded || savingRow) return;
     const target = list.find(t => t.uid === editParam);
-    if (target) {
-      document.getElementById(topicRowId(target.uid))?.scrollIntoView?.({ block: 'center' });
-      if (!target.isSystem) void openRowRef.current(target.uid, rowFormOf(target));
+    const scrollToTarget = () => {
+      if (target) document.getElementById(topicRowId(target.uid))?.scrollIntoView?.({ block: 'center' });
+    };
+    if (target && !target.isSystem) {
+      void openRow(target.uid, rowFormOf(target)).then(opened => { if (opened) scrollToTarget(); });
+    } else {
+      scrollToTarget();
     }
     setSearchParams(prev => {
       prev.delete(TOPIC_EDIT_PARAM);
       return prev;
     }, { replace: true });
-  }, [editParam, listLoaded, list, setSearchParams]);
+  }, [editParam, listLoaded, list, savingRow, openRow, setSearchParams]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,7 +178,7 @@ function MyTopicsPage() {
               <button
                 type="submit"
                 className="btn-primary justify-center"
-                disabled={loading || !name.trim()}
+                disabled={loading || row.savingRow || !name.trim()}
               >
                 Add
               </button>

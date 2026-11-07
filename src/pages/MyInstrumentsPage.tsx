@@ -40,7 +40,8 @@ function MyInstrumentsPage() {
       setList(prev => prev.map(i => (i.uid === uid ? updated : i)));
     },
     setError,
-    errorMessage: () => 'Failed to update instrument',
+    validationError: form => (form.name.trim() ? null : 'Name is required'),
+    toErrorMessage: () => 'Failed to update instrument',
     leftPageErrorMessage: 'Your instrument changes could not be saved.',
   });
 
@@ -65,7 +66,7 @@ function MyInstrumentsPage() {
       setLoading(true);
       const payload: CreateInstrumentDTO = { name: name.trim(), type: type || undefined, brand: brand || undefined, model: model || undefined };
       const created = await instrumentService.create(payload);
-      setList([created, ...list]);
+      setList(prev => [created, ...prev]);
       setName('');
       setType('');
       setBrand('');
@@ -82,7 +83,7 @@ function MyInstrumentsPage() {
     try {
       setLoading(true);
       await instrumentService.remove(deleteUid);
-      setList(list.filter(i => i.uid !== deleteUid));
+      setList(prev => prev.filter(i => i.uid !== deleteUid));
       setDeleteUid(null);
     } catch {
       setError('Failed to delete instrument');
@@ -154,7 +155,7 @@ function MyInstrumentsPage() {
             <button
               type="submit"
               className="btn-primary justify-center"
-              disabled={loading || !name.trim()}
+              disabled={loading || row.savingRow || !name.trim()}
             >
               Add
             </button>
