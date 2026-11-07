@@ -8,9 +8,10 @@ on:
   # trigger the push event above).
   workflow_dispatch:
 
-# A merge and the Release workflow each start a deploy. Run at once, they take one Fly machine
-# lease each and wait for the other until both fail (#62). So they queue, and a running deploy
-# is never cancelled: that could cut a migration or leave the machines on two versions.
+# A merge and the Release workflow each start a deploy. Run at once, they take one
+# Fly machine lease each and wait for the other until both fail (#62). So they wait
+# in line: a running deploy is never cancelled (it could cut a migration or leave
+# the machines on two versions), and a newer pending deploy replaces an older one.
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -21,7 +22,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Always the latest main, not the commit that triggered this run: a deploy that
+      # waited in line must never put an older version back.
       - uses: actions/checkout@v7
+        with:
+          ref: main
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
