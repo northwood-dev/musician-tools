@@ -57,6 +57,7 @@ jest.mock('../services/playlistService', () => {
 
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
 import { songService } from '../services/songService';
+import { songPlayService } from '../services/songPlayService';
 
 const mockedPlaylistService = playlistService as jest.Mocked<typeof playlistService>;
 
@@ -285,6 +286,89 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
 
       expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
       expect(screen.queryByTitle('Keep')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('#55: an answer landing while another song is open, or the same one reopened', () => {
+    const backToSonglist = () => fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    const openBeta = async () => {
+      backToSonglist();
+      fireEvent.click(await screen.findByText('Beta'));
+      await screen.findByDisplayValue('Beta');
+      await settle();
+    };
+
+    beforeEach(() => {
+      (songService.getAllSongs as jest.Mock).mockResolvedValue([
+        { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], durationSeconds: null },
+        { uid: 'song-b', title: 'Beta', artist: 'B', instrument: ['Guitar'], durationSeconds: null },
+      ]);
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Side set', songUids: [] }]);
+    });
+
+    afterEach(() => {
+      (songService.getAllSongs as jest.Mock).mockResolvedValue([
+        { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], durationSeconds: null },
+      ]);
+    });
+
+    test('a 409 add answering after a switch leaves no chip on the other song', async () => {
+      mockedPlaylistService.createPlaylist.mockRejectedValue(
+        new PlaylistConflictError({ uid: 'pl-existing', name: 'Jazz', songUids: [] }),
+      );
+      let finishAdd: (value: Playlist) => void = () => {};
+      mockedPlaylistService.addSongToPlaylist.mockReturnValue(new Promise(resolve => { finishAdd = resolve; }));
+      await openPickerAndType('Jazz');
+      fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+      await waitFor(() => expect(mockedPlaylistService.addSongToPlaylist).toHaveBeenCalled());
+
+      await openBeta();
+      await act(async () => { finishAdd({ uid: 'pl-existing', name: 'Jazz', songUids: ['song-a'] }); });
+
+      expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
+    });
+
+    test('a create answering after a switch leaves no chip on the other song', async () => {
+      let finishCreate: (value: Playlist) => void = () => {};
+      mockedPlaylistService.createPlaylist.mockReturnValue(new Promise(resolve => { finishCreate = resolve; }));
+      await openPickerAndType('Jazz');
+      fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+      await waitFor(() => expect(mockedPlaylistService.createPlaylist).toHaveBeenCalled());
+
+      await openBeta();
+      await act(async () => { finishCreate({ uid: 'pl-new', name: 'Jazz', songUids: ['song-a'] }); });
+
+      expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
+    });
+
+    test('selecting then reopening before the answer still ends selected', async () => {
+      let finishAdd: (value: Playlist) => void = () => {};
+      mockedPlaylistService.addSongToPlaylist.mockReturnValue(new Promise(resolve => { finishAdd = resolve; }));
+      await openPickerAndType('');
+      fireEvent.click(await screen.findByRole('option', { name: 'Side set' }));
+      await screen.findByTitle('Side set');
+
+      mockedPlaylistService.getAllPlaylists.mockReturnValue(new Promise(() => {}));
+      backToSonglist();
+      fireEvent.click(await screen.findByText('Alpha'));
+      await screen.findByPlaceholderText(PLACEHOLDER);
+      await settle();
+      await act(async () => { finishAdd({ uid: 'pl-other', name: 'Side set', songUids: ['song-a'] }); });
+
+      expect(screen.getByTitle('Side set')).toBeInTheDocument();
+    });
+
+    test('selecting a playlist does not reload the song history', async () => {
+      mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-other', name: 'Side set', songUids: ['song-a'] });
+      await openPickerAndType('');
+      await settle();
+      const callsBefore = (songPlayService.getPlays as jest.Mock).mock.calls.length;
+
+      fireEvent.click(await screen.findByRole('option', { name: 'Side set' }));
+      await screen.findByTitle('Side set');
+      await settle();
+
+      expect((songPlayService.getPlays as jest.Mock).mock.calls.length).toBe(callsBefore);
     });
   });
 });
