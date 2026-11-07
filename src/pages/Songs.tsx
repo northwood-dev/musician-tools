@@ -103,6 +103,10 @@ function Songs() {
     setBulkPlaylistOpen(false);
     setBulkPlaylistSelection(new Set());
   };
+  const toggleBulkPlaylistPicker = () => {
+    if (bulkPlaylistOpen) closeBulkPlaylistPicker();
+    else setBulkPlaylistOpen(true);
+  };
   // One rule for every way of emptying the selection (#33): checkmarks left in the picker
   // must never apply to a later, unrelated selection.
   useEffect(() => {
@@ -1295,7 +1299,7 @@ function Songs() {
 
   const handleApplySelectedToPlaylists = async () => {
     if (bulkPlaylistSelection.size === 0 || selectedSongs.size === 0) {
-      setBulkPlaylistOpen(false);
+      closeBulkPlaylistPicker();
       return;
     }
 
@@ -1316,8 +1320,7 @@ function Songs() {
       const refreshed = await playlistService.getAllPlaylists();
       setPlaylists(refreshed);
 
-      setBulkPlaylistOpen(false);
-      setBulkPlaylistSelection(new Set());
+      closeBulkPlaylistPicker();
       setToastMessage('Added to playlist');
       setTimeout(() => setToastMessage(null), 2500);
     } catch (err) {
@@ -1939,7 +1942,8 @@ function Songs() {
           setLanguageAccordionOpen={setLanguageAccordionOpen}
           languageFilterOptions={languageFilterOptions}
           bulkPlaylistOpen={bulkPlaylistOpen}
-          setBulkPlaylistOpen={setBulkPlaylistOpen}
+          toggleBulkPlaylistPicker={toggleBulkPlaylistPicker}
+          closeBulkPlaylistPicker={closeBulkPlaylistPicker}
           playlists={playlists}
           myInstruments={myInstruments}
           instrumentTypeOptions={instrumentTypeOptions}

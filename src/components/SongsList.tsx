@@ -105,7 +105,8 @@ export interface SongsListProps {
   setPitchAccordionOpen: (o: boolean) => void;
   setTimeSignatureAccordionOpen: (o: boolean) => void;
   setModeAccordionOpen: (o: boolean) => void;
-  setBulkPlaylistOpen: (o: boolean) => void;
+  toggleBulkPlaylistPicker: () => void;
+  closeBulkPlaylistPicker: () => void;
   toggleSelectSong: (uid: string) => void;
   toggleSelectAll: () => void;
   toggleBulkPlaylistSelection: (uid: string) => void;
@@ -260,7 +261,7 @@ export default function SongsList(props: SongsListProps) {
               <button
                 type="button"
                 className="btn-primary text-sm px-3 py-1.5"
-                onClick={() => props.setBulkPlaylistOpen(!props.bulkPlaylistOpen)}
+                onClick={props.toggleBulkPlaylistPicker}
                 disabled={props.loading || props.playlists.length === 0}
               >
                 Add to playlist
@@ -272,7 +273,7 @@ export default function SongsList(props: SongsListProps) {
                     <button
                       type="button"
                       className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                      onClick={() => props.setBulkPlaylistOpen(false)}
+                      onClick={props.closeBulkPlaylistPicker}
                     >
                       ✕
                     </button>
@@ -305,7 +306,7 @@ export default function SongsList(props: SongsListProps) {
                         <button
                           type="button"
                           className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          onClick={() => props.setBulkPlaylistOpen(false)}
+                          onClick={props.closeBulkPlaylistPicker}
                         >
                           Cancel
                         </button>
