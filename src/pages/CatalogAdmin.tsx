@@ -230,23 +230,27 @@ export default function CatalogAdmin() {
     if (!title) { setDupMessage(null); return; }
     const artist = (form.artist || '').trim();
     const ctrl = new AbortController();
+    // The banner and the autosave block are one fact: they only ever clear together. A save's
+    // 409 can set the block after this edit lifted it, so the check must lift it again.
+    const clearDuplicate = () => {
+      dupRef.current = false;
+      setDupMessage(null);
+    };
     const t = setTimeout(() => {
       catalogService.checkCatalogExists(title, artist, workingUid ?? undefined, ctrl.signal)
         .then(res => {
+          if (ctrl.signal.aborted) return; // a newer check decides
           if (res.exists) {
             dupRef.current = true;
             setDupMessage(artist ? `A "${title}" by ${artist} already exists in the Catalog.` : `A "${title}" already exists in the Catalog.`);
           } else {
-            dupRef.current = false;
-            setDupMessage(null);
+            clearDuplicate();
           }
         })
         .catch(() => {
-          // Our own abort means a newer check is coming: it will decide. Checked on OUR signal,
-          // not on the error's name: apiFetch's timeout is an AbortError too, and that is a
-          // real failure. A real failure is fail-open, so the screen must say the same as the
-          // form: no banner, Publish back. The unique index 409 stays the backstop.
-          if (!ctrl.signal.aborted) setDupMessage(null);
+          // Checked on OUR signal, not on the error's name: apiFetch's timeout is an AbortError
+          // too, and that is a real failure, so the screen must match the fail-open form.
+          if (!ctrl.signal.aborted) clearDuplicate();
         });
     }, 500);
     return () => { clearTimeout(t); ctrl.abort(); };
