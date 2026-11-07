@@ -99,6 +99,15 @@ function Songs() {
   const selectedSongs = songSelection.selected; // the live Set — .size / .has / Array.from stay as-is
   const [bulkPlaylistOpen, setBulkPlaylistOpen] = useState(false);
   const [bulkPlaylistSelection, setBulkPlaylistSelection] = useState<Set<string>>(new Set());
+  const closeBulkPlaylistPicker = () => {
+    setBulkPlaylistOpen(false);
+    setBulkPlaylistSelection(new Set());
+  };
+  // One rule for every way of emptying the selection (#33): checkmarks left in the picker
+  // must never apply to a later, unrelated selection.
+  useEffect(() => {
+    if (selectedSongs.size === 0) closeBulkPlaylistPicker();
+  }, [selectedSongs.size]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   // Story 17.2: popup shown when leaving a song whose title was emptied AND it has
