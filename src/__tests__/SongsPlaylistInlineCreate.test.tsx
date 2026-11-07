@@ -57,6 +57,7 @@ jest.mock('../services/playlistService', () => {
 
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
 import { songService } from '../services/songService';
+import { songPlayService } from '../services/songPlayService';
 
 const mockedPlaylistService = playlistService as jest.Mocked<typeof playlistService>;
 
@@ -78,6 +79,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockedPlaylistService.getAllPlaylists.mockResolvedValue([]);
   mockedPlaylistService.updatePlaylist.mockResolvedValue({} as Playlist);
+  mockedPlaylistService.addSongToPlaylist.mockImplementation(async uid => ({ uid, name: 'Added', songUids: ['song-a'] }));
+  mockedPlaylistService.removeSongFromPlaylist.mockImplementation(async uid => ({ uid, name: 'Removed', songUids: [] }));
 });
 
 describe('Songs — create a playlist on the fly (story 10.2)', () => {
@@ -126,23 +129,52 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
     );
   });
 
-  test('AC8: a 409 selects the existing playlist, and it STAYS selected (no reseed clobber)', async () => {
+  test('AC8: a 409 adds the song to the existing playlist, and it STAYS selected (no reseed clobber)', async () => {
     // A non-empty catalog (that does NOT contain the typed name) so the seed effect
     // locks; the 409 returns an existing playlist that does NOT contain the song.
     mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Other', songUids: [] }]);
     mockedPlaylistService.createPlaylist.mockRejectedValue(
       new PlaylistConflictError({ uid: 'pl-existing', name: 'Jazz', songUids: [] }),
     );
+    mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-existing', name: 'Jazz', songUids: ['song-a'] });
     await openPickerAndType('Jazz');
 
     fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
 
-    // The existing playlist becomes a selected chip — and survives the seed effect
-    // that re-fires when `playlists` is updated (the bug this guards against).
+    // The song really joins the playlist, then it becomes a selected chip and survives
+    // the seed effect that re-fires when `playlists` is updated.
+    await waitFor(() => expect(mockedPlaylistService.addSongToPlaylist).toHaveBeenCalledWith('pl-existing', 'song-a'));
     expect(await screen.findByTitle('Jazz')).toBeInTheDocument();
     await settle();
     expect(screen.getByTitle('Jazz')).toBeInTheDocument(); // still there after the reseed
     expect(screen.queryByText('Could not create playlist')).not.toBeInTheDocument();
+  });
+
+  test('a 409 whose add fails shows no chip, says so, and lists the playlist for a retry', async () => {
+    mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Other', songUids: [] }]);
+    mockedPlaylistService.createPlaylist.mockRejectedValue(
+      new PlaylistConflictError({ uid: 'pl-existing', name: 'Jazz', songUids: [] }),
+    );
+    mockedPlaylistService.addSongToPlaylist.mockRejectedValue(new Error('offline'));
+    await openPickerAndType('Jazz');
+
+    fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+
+    expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
+    expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Jazz' })).toBeInTheDocument();
+  });
+
+  test('a 409 without the existing playlist says the create failed', async () => {
+    mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Other', songUids: [] }]);
+    mockedPlaylistService.createPlaylist.mockRejectedValue(new PlaylistConflictError(undefined));
+    await openPickerAndType('Jazz');
+
+    fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+
+    expect(await screen.findByText('Could not create playlist')).toBeInTheDocument();
+    expect(mockedPlaylistService.addSongToPlaylist).not.toHaveBeenCalled();
+    expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
   });
 
   test('AC10: creating on the fly keeps a pending toggle of an existing playlist', async () => {
@@ -150,6 +182,7 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
     // then creates a new playlist on the fly — 'Keep' must remain selected.
     mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: [] }]);
     mockedPlaylistService.createPlaylist.mockResolvedValue({ uid: 'pl-new', name: 'New set', songUids: ['song-a'] });
+    mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-keep', name: 'Keep', songUids: ['song-a'] });
 
     const input = await openPickerAndType('');
     fireEvent.click(await screen.findByRole('option', { name: 'Keep' })); // toggle it ON
@@ -205,5 +238,137 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
       expect(mockedPlaylistService.createPlaylist).toHaveBeenCalledWith({ name: 'Blues', songUids: ['song-a'] }),
     );
     expect(songService.updateSong).not.toHaveBeenCalled();
+  });
+
+  describe('#59: reopening a song right after a change', () => {
+    // The list reload that follows leaving the form hasn't answered yet: the selection can
+    // only come from what the page kept of the server's answer.
+    const reopenAlphaBeforeTheListReloads = async () => {
+      mockedPlaylistService.getAllPlaylists.mockReturnValue(new Promise(() => {}));
+      fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+      fireEvent.click(await screen.findByText('Alpha'));
+      await screen.findByPlaceholderText(PLACEHOLDER);
+      await settle();
+    };
+
+    test('a playlist just selected is still selected', async () => {
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: [] }]);
+      mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-keep', name: 'Keep', songUids: ['song-a'] });
+      await openPickerAndType('');
+      fireEvent.click(await screen.findByRole('option', { name: 'Keep' }));
+      await screen.findByTitle('Keep');
+      await settle();
+
+      await reopenAlphaBeforeTheListReloads();
+
+      expect(screen.getByTitle('Keep')).toBeInTheDocument();
+    });
+
+    test('a playlist just unselected is still unselected', async () => {
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: ['song-a'] }]);
+      mockedPlaylistService.removeSongFromPlaylist.mockResolvedValue({ uid: 'pl-keep', name: 'Keep', songUids: [] });
+      await openPickerAndType('');
+      fireEvent.click(await screen.findByTitle('Keep'));
+      await waitFor(() => expect(screen.queryByTitle('Keep')).not.toBeInTheDocument());
+      await settle();
+
+      await reopenAlphaBeforeTheListReloads();
+
+      expect(screen.queryByTitle('Keep')).not.toBeInTheDocument();
+    });
+
+    test('a failed change is rolled back and says so', async () => {
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: [] }]);
+      mockedPlaylistService.addSongToPlaylist.mockRejectedValue(new Error('offline'));
+      await openPickerAndType('');
+
+      fireEvent.click(await screen.findByRole('option', { name: 'Keep' }));
+
+      expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
+      expect(screen.queryByTitle('Keep')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('#55: an answer landing while another song is open, or the same one reopened', () => {
+    const backToSonglist = () => fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    const openBeta = async () => {
+      backToSonglist();
+      fireEvent.click(await screen.findByText('Beta'));
+      await screen.findByDisplayValue('Beta');
+      await settle();
+    };
+
+    beforeEach(() => {
+      (songService.getAllSongs as jest.Mock).mockResolvedValue([
+        { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], durationSeconds: null },
+        { uid: 'song-b', title: 'Beta', artist: 'B', instrument: ['Guitar'], durationSeconds: null },
+      ]);
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-other', name: 'Side set', songUids: [] }]);
+    });
+
+    afterEach(() => {
+      (songService.getAllSongs as jest.Mock).mockResolvedValue([
+        { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], durationSeconds: null },
+      ]);
+    });
+
+    test('a 409 add answering after a switch leaves no chip on the other song', async () => {
+      mockedPlaylistService.createPlaylist.mockRejectedValue(
+        new PlaylistConflictError({ uid: 'pl-existing', name: 'Jazz', songUids: [] }),
+      );
+      let finishAdd: (value: Playlist) => void = () => {};
+      mockedPlaylistService.addSongToPlaylist.mockReturnValue(new Promise(resolve => { finishAdd = resolve; }));
+      await openPickerAndType('Jazz');
+      fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+      await waitFor(() => expect(mockedPlaylistService.addSongToPlaylist).toHaveBeenCalled());
+
+      await openBeta();
+      await act(async () => { finishAdd({ uid: 'pl-existing', name: 'Jazz', songUids: ['song-a'] }); });
+
+      expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
+    });
+
+    test('a create answering after a switch leaves no chip on the other song', async () => {
+      let finishCreate: (value: Playlist) => void = () => {};
+      mockedPlaylistService.createPlaylist.mockReturnValue(new Promise(resolve => { finishCreate = resolve; }));
+      await openPickerAndType('Jazz');
+      fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+      await waitFor(() => expect(mockedPlaylistService.createPlaylist).toHaveBeenCalled());
+
+      await openBeta();
+      await act(async () => { finishCreate({ uid: 'pl-new', name: 'Jazz', songUids: ['song-a'] }); });
+
+      expect(screen.queryByTitle('Jazz')).not.toBeInTheDocument();
+    });
+
+    test('selecting then reopening before the answer still ends selected', async () => {
+      let finishAdd: (value: Playlist) => void = () => {};
+      mockedPlaylistService.addSongToPlaylist.mockReturnValue(new Promise(resolve => { finishAdd = resolve; }));
+      await openPickerAndType('');
+      fireEvent.click(await screen.findByRole('option', { name: 'Side set' }));
+      await screen.findByTitle('Side set');
+
+      mockedPlaylistService.getAllPlaylists.mockReturnValue(new Promise(() => {}));
+      backToSonglist();
+      fireEvent.click(await screen.findByText('Alpha'));
+      await screen.findByPlaceholderText(PLACEHOLDER);
+      await settle();
+      await act(async () => { finishAdd({ uid: 'pl-other', name: 'Side set', songUids: ['song-a'] }); });
+
+      expect(screen.getByTitle('Side set')).toBeInTheDocument();
+    });
+
+    test('selecting a playlist does not reload the song history', async () => {
+      mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-other', name: 'Side set', songUids: ['song-a'] });
+      await openPickerAndType('');
+      await settle();
+      const callsBefore = (songPlayService.getPlays as jest.Mock).mock.calls.length;
+
+      fireEvent.click(await screen.findByRole('option', { name: 'Side set' }));
+      await screen.findByTitle('Side set');
+      await settle();
+
+      expect((songPlayService.getPlays as jest.Mock).mock.calls.length).toBe(callsBefore);
+    });
   });
 });

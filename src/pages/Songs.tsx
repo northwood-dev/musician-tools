@@ -318,6 +318,9 @@ function Songs() {
   // 'songs/new' route over 'songs/:uid', so params.uid is never 'new'.)
   const isNewSongRoute = location.pathname === '/songs/new';
   const editingUid = params.uid ?? null;
+  // The song open right now, for an async answer to tell it hasn't moved on to another one.
+  const editingUidRef = useRef(editingUid);
+  editingUidRef.current = editingUid;
   const page: 'list' | 'form' = editingUid !== null || isNewSongRoute ? 'form' : 'list';
   // Which song uid the `form` currently represents ('__new__' = the blank add draft,
   // undefined = nothing). Lets the load effect skip rebuilding the form when the URL
@@ -825,7 +828,19 @@ function Songs() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, isNewSongRoute, editingUid, songs, location.state]);
 
-  // Load plays and playlists for song being edited
+  // Load the plays of the song being edited: once per song, not on every playlist change.
+  useEffect(() => {
+    if (!editingUid) return;
+    (async () => {
+      try {
+        setEditingSongPlays(await songPlayService.getPlays(editingUid));
+      } catch (err) {
+        console.error('Error loading editing data:', err);
+      }
+    })();
+  }, [editingUid]);
+
+  // Seed the playlists of the song being edited
   useEffect(() => {
     if (!editingUid) {
       setEditingSongPlays([]);
@@ -833,18 +848,6 @@ function Songs() {
       seededPlaylistsForEditRef.current = null;
       return;
     }
-
-    const loadEditingData = async () => {
-      try {
-        // Load plays for the song being edited
-        const plays = await songPlayService.getPlays(editingUid);
-        setEditingSongPlays(plays);
-      } catch (err) {
-        console.error('Error loading editing data:', err);
-      }
-    };
-
-    loadEditingData();
 
     // Seed the playlist selection from persisted membership ONCE per edit session.
     // Re-seeding on every `playlists` change would clobber unsaved toggles and the
@@ -863,36 +866,49 @@ function Songs() {
 
 
 
+  // The server's answer replaces what the page holds, so membership never drifts from it.
+  const upsertPlaylist = (playlist: Playlist) => {
+    setPlaylists(prev => (prev.some(p => p.uid === playlist.uid)
+      ? prev.map(p => (p.uid === playlist.uid ? playlist : p))
+      : [playlist, ...prev]));
+  };
+
   const handleTogglePlaylist = async (playlistUid: string) => {
     const wasIn = selectedPlaylistUids.has(playlistUid);
     const next = new Set(selectedPlaylistUids);
     if (wasIn) next.delete(playlistUid); else next.add(playlistUid);
     setSelectedPlaylistUids(next);
-    // Story 13.1: no more Save button — in edit mode, membership is persisted
-    // immediately on toggle (like inline playlist creation). In add mode there's
-    // no song uid yet, so it's committed on Add (handleSubmit create branch).
-    if (editingUid !== null) {
-      try {
-        if (wasIn) await playlistService.removeSongFromPlaylist(playlistUid, editingUid);
-        else await playlistService.addSongToPlaylist(playlistUid, editingUid);
-      } catch (err) {
-        console.error(err);
-        // Roll back the optimistic toggle so the UI matches the server.
-        setSelectedPlaylistUids(prev => {
-          const reverted = new Set(prev);
-          if (wasIn) reverted.add(playlistUid); else reverted.delete(playlistUid);
-          return reverted;
-        });
-        setToastMessage('Could not update playlist');
-        setTimeout(() => setToastMessage(null), 2500);
-      }
+    // Story 13.1: no more Save button — membership is persisted immediately on toggle.
+    // The picker only exists on an open song, so there is always a song uid here.
+    const songUid = editingUid;
+    if (songUid === null) return;
+    const setSelected = (selected: boolean) => {
+      if (editingUidRef.current !== songUid) return; // the answer is about a song no longer open
+      setSelectedPlaylistUids(prev => {
+        const aligned = new Set(prev);
+        if (selected) aligned.add(playlistUid); else aligned.delete(playlistUid);
+        return aligned;
+      });
+    };
+    try {
+      const updated = wasIn
+        ? await playlistService.removeSongFromPlaylist(playlistUid, songUid)
+        : await playlistService.addSongToPlaylist(playlistUid, songUid);
+      upsertPlaylist(updated);
+      setSelected(!!updated.songUids?.includes(songUid));
+    } catch (err) {
+      console.error(err);
+      setSelected(wasIn); // roll back the optimistic toggle so the UI matches the server
+      setToastMessage('Could not update playlist');
+      setTimeout(() => setToastMessage(null), 2500);
     }
   };
 
   // Select a playlist (existing or just-created) into the edited song and reset
   // the picker's search — shared by the create flow and its 409 fallback.
-  const selectPlaylistIntoSong = (playlist: Playlist) => {
-    setPlaylists(prev => (prev.some(p => p.uid === playlist.uid) ? prev : [playlist, ...prev]));
+  const selectPlaylistIntoSong = (playlist: Playlist, songUid: string) => {
+    upsertPlaylist(playlist);
+    if (editingUidRef.current !== songUid) return; // the answer is about a song no longer open
     setSelectedPlaylistUids(prev => {
       const next = new Set(prev);
       next.add(playlist.uid);
@@ -904,29 +920,40 @@ function Songs() {
   };
 
   // Story 10.2: create a new playlist on the fly (with the edited song already in
-  // it) without leaving the form. The on-Save diff then sees it already has the
-  // song → no double-add. A 409 (stale catalog raced server-side) selects the
-  // existing playlist instead of erroring.
+  // it) without leaving the form. A 409 (a stale playlist list) adds the song
+  // to the existing playlist instead of erroring (#55): only then is it selected.
   // In-flight guard (10-2 deferred): a fast double Enter/click would otherwise fire
   // two concurrent createPlaylist calls — the 2nd 409s and re-selects the 1st
   // (harmless given server-side uniqueness from 10.1, but a possible flicker).
   // Mirrors savingRef. Released in finally so a failure never wedges the picker.
   const creatingPlaylistRef = useRef(false);
 
+  const addSongToExistingPlaylist = async (existing: Playlist, songUid: string) => {
+    try {
+      selectPlaylistIntoSong(await playlistService.addSongToPlaylist(existing.uid, songUid), songUid);
+    } catch (err) {
+      console.error(err);
+      upsertPlaylist(existing); // listed, so the user can retry by choosing it
+      setToastMessage('Could not update playlist');
+      setTimeout(() => setToastMessage(null), 2500);
+    }
+  };
+
   const handleCreatePlaylist = async (rawText: string) => {
     const name = rawText.trim();
-    if (!name) return;
+    const songUid = editingUid; // the picker only exists on an open song
+    if (!name || songUid === null) return;
     if (creatingPlaylistRef.current) return; // a create is already in flight
     creatingPlaylistRef.current = true;
     try {
       const created = await playlistService.createPlaylist({
         name,
-        songUids: editingUid ? [editingUid] : [],
+        songUids: [songUid],
       });
-      selectPlaylistIntoSong(created);
+      selectPlaylistIntoSong(created, songUid);
     } catch (err) {
       if (err instanceof PlaylistConflictError && err.existingPlaylist) {
-        selectPlaylistIntoSong(err.existingPlaylist);
+        await addSongToExistingPlaylist(err.existingPlaylist, songUid);
         return;
       }
       setToastMessage('Could not create playlist');
