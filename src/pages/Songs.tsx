@@ -873,8 +873,9 @@ function Songs() {
     // no song uid yet, so it's committed on Add (handleSubmit create branch).
     if (editingUid !== null) {
       try {
-        if (wasIn) await playlistService.removeSongFromPlaylist(playlistUid, editingUid);
-        else await playlistService.addSongToPlaylist(playlistUid, editingUid);
+        storePlaylist(wasIn
+          ? await playlistService.removeSongFromPlaylist(playlistUid, editingUid)
+          : await playlistService.addSongToPlaylist(playlistUid, editingUid));
       } catch (err) {
         console.error(err);
         // Roll back the optimistic toggle so the UI matches the server.

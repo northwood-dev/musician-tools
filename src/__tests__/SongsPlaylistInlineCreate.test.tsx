@@ -181,6 +181,7 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
     // then creates a new playlist on the fly — 'Keep' must remain selected.
     mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: [] }]);
     mockedPlaylistService.createPlaylist.mockResolvedValue({ uid: 'pl-new', name: 'New set', songUids: ['song-a'] });
+    mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-keep', name: 'Keep', songUids: ['song-a'] });
 
     const input = await openPickerAndType('');
     fireEvent.click(await screen.findByRole('option', { name: 'Keep' })); // toggle it ON
@@ -236,5 +237,54 @@ describe('Songs — create a playlist on the fly (story 10.2)', () => {
       expect(mockedPlaylistService.createPlaylist).toHaveBeenCalledWith({ name: 'Blues', songUids: ['song-a'] }),
     );
     expect(songService.updateSong).not.toHaveBeenCalled();
+  });
+
+  describe('#59: reopening a song right after a change', () => {
+    // The list reload that follows leaving the form hasn't answered yet: the selection can
+    // only come from what the page kept of the server's answer.
+    const reopenAlphaBeforeTheListReloads = async () => {
+      mockedPlaylistService.getAllPlaylists.mockReturnValue(new Promise(() => {}));
+      fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+      fireEvent.click(await screen.findByText('Alpha'));
+      await screen.findByPlaceholderText(PLACEHOLDER);
+      await settle();
+    };
+
+    test('a playlist just selected is still selected', async () => {
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: [] }]);
+      mockedPlaylistService.addSongToPlaylist.mockResolvedValue({ uid: 'pl-keep', name: 'Keep', songUids: ['song-a'] });
+      await openPickerAndType('');
+      fireEvent.click(await screen.findByRole('option', { name: 'Keep' }));
+      await screen.findByTitle('Keep');
+      await settle();
+
+      await reopenAlphaBeforeTheListReloads();
+
+      expect(screen.getByTitle('Keep')).toBeInTheDocument();
+    });
+
+    test('a playlist just unselected is still unselected', async () => {
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: ['song-a'] }]);
+      mockedPlaylistService.removeSongFromPlaylist.mockResolvedValue({ uid: 'pl-keep', name: 'Keep', songUids: [] });
+      await openPickerAndType('');
+      fireEvent.click(await screen.findByTitle('Keep'));
+      await waitFor(() => expect(screen.queryByTitle('Keep')).not.toBeInTheDocument());
+      await settle();
+
+      await reopenAlphaBeforeTheListReloads();
+
+      expect(screen.queryByTitle('Keep')).not.toBeInTheDocument();
+    });
+
+    test('a failed change is rolled back and says so', async () => {
+      mockedPlaylistService.getAllPlaylists.mockResolvedValue([{ uid: 'pl-keep', name: 'Keep', songUids: [] }]);
+      mockedPlaylistService.addSongToPlaylist.mockRejectedValue(new Error('offline'));
+      await openPickerAndType('');
+
+      fireEvent.click(await screen.findByRole('option', { name: 'Keep' }));
+
+      expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
+      expect(screen.queryByTitle('Keep')).not.toBeInTheDocument();
+    });
   });
 });
