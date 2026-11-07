@@ -1,8 +1,8 @@
 import { StrictMode } from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogCollection from '../pages/CatalogCollection';
-import { catalogService, CollectionNotFoundError } from '../services/catalogService';
+import { catalogService, CatalogNotFoundError, CollectionNotFoundError } from '../services/catalogService';
 
 // Story 20.4 — user-facing Collection detail + whole-collection import.
 jest.mock('../services/catalogService', () => {
@@ -129,4 +129,77 @@ test('22.4: the whole-collection import stays frozen while a selection batch run
   expect(cat.importCollection).not.toHaveBeenCalled();
 
   await act(async () => { releases.forEach(r => r()); });
+});
+
+describe('#50: entries found to be gone are marked on their row', () => {
+  const GONE_MESSAGE = 'This song is no longer in the Catalog.';
+  const rowOf = (title: string) => screen.getByText(title).closest('tr') as HTMLElement;
+
+  const addAll = async () => {
+    fireEvent.click(await screen.findByLabelText('Select all'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add to my songlist' }));
+  };
+
+  beforeEach(() => {
+    cat.addToSonglist.mockImplementation(async (uid: string) => {
+      if (uid === 's2') throw new CatalogNotFoundError();
+      return { uid: 'song-1', title: 'Zombie' } as never;
+    });
+  });
+
+  test('after a bulk add, only the entry that is gone shows the message', async () => {
+    renderDetail();
+
+    await addAll();
+
+    expect(await within(rowOf('Creep')).findByText(GONE_MESSAGE)).toBeInTheDocument();
+    expect(within(rowOf('Zombie')).queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  test('the checkbox of a marked row is disabled', async () => {
+    renderDetail();
+
+    await addAll();
+
+    await screen.findByText(GONE_MESSAGE);
+    await waitFor(() => expect(screen.getByLabelText('Select Zombie by The Cranberries')).not.toBeDisabled());
+    expect(screen.getByLabelText('Select Creep by Radiohead')).toBeDisabled();
+  });
+
+  test('select-all skips marked rows and reads as fully selected without them', async () => {
+    renderDetail();
+    await addAll();
+    await screen.findByText(GONE_MESSAGE);
+    await waitFor(() => expect(screen.getByLabelText('Select all')).not.toBeDisabled());
+
+    fireEvent.click(screen.getByLabelText('Select all'));
+
+    expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeChecked();
+    expect(screen.getByLabelText('Select Creep by Radiohead')).not.toBeChecked();
+    expect(screen.getByLabelText('Deselect all')).toBeInTheDocument();
+  });
+
+  test('a row that failed for another reason is not marked and stays selected', async () => {
+    cat.addToSonglist.mockRejectedValue(new Error('offline'));
+    renderDetail();
+
+    await addAll();
+
+    await screen.findByRole('alert', { name: 'Bulk action result' });
+    expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Select Creep by Radiohead')).toBeChecked();
+  });
+
+  test('opening the page again shows no leftover mark', async () => {
+    const { unmount } = renderDetail();
+    await addAll();
+    await screen.findByText(GONE_MESSAGE);
+
+    unmount();
+    renderDetail();
+
+    await screen.findByText('Creep');
+    expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
+  });
 });
