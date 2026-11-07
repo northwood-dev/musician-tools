@@ -5,6 +5,7 @@ import type { CatalogSong } from '../services/catalogService';
 import CatalogAddButton from '../components/CatalogAddButton';
 import { DetailPageSkeleton } from '../components/ListSkeleton';
 import { useSonglistMatcher } from '../hooks/useSonglistMatcher';
+import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 
 // Read-only detail of a Catalog entry (story 19.3). Intrinsic fields only (DL-17) +
 // clickable streaming links. A deep-link to a removed/unknown entry shows a calm
@@ -57,7 +58,7 @@ export default function CatalogEntry() {
   if (notFound) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600 dark:text-gray-300">This song is no longer in the Catalog.</p>
+        <p className="text-gray-600 dark:text-gray-300">{CATALOG_ENTRY_GONE_MESSAGE}</p>
         <Link to="/catalog" className="btn-secondary inline-block mt-4">Browse the Catalog</Link>
       </div>
     );

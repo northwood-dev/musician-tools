@@ -10,6 +10,7 @@ import { selectionCell } from '../utils/selectionCell';
 import { useRowSelection } from '../hooks/useRowSelection';
 import { useBulkAddToSonglist, describeAddRecap, isAddRecapNegative } from '../hooks/useBulkAddToSonglist';
 import { BulkRecap } from '../components/BulkRecap';
+import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -36,6 +37,10 @@ export default function CatalogCollection() {
   const selection = useRowSelection();
   const bulkAdd = useBulkAddToSonglist();
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
+  // Entries found to be gone by a bulk add (#32). Transient: this page has no reload of its
+  // own, so they last as long as it does, and opening it again asks the server.
+  const [goneUids, setGoneUids] = useState<Set<string>>(new Set());
+  const selectableUids = (collection?.songs ?? []).map(s => s.uid).filter(u => !goneUids.has(u));
 
   // Only one feedback banner at a time: the whole-collection recap and the subset recap
   // describe different actions and must not stack (three live regions already compete
@@ -55,6 +60,7 @@ export default function CatalogCollection() {
     const res = await bulkAdd.run(Array.from(selection.selected));
     if (!res) return;
     selection.removeMany(res.settledUids);
+    setGoneUids(prev => new Set([...prev, ...res.goneUids]));
     setConfirmAddOpen(false);
   };
 
@@ -196,8 +202,8 @@ export default function CatalogCollection() {
               <tr className="text-left text-gray-500 dark:text-gray-400">
                 <th scope="col" className={selectionCell('px-3 py-2 w-12 text-center')}>
                   <SelectAllCheckbox
-                    allSelected={selection.allDisplayedSelected(collection.songs.map(s => s.uid))}
-                    onToggle={() => userSelectAll(collection.songs.map(s => s.uid))}
+                    allSelected={selection.allDisplayedSelected(selectableUids)}
+                    onToggle={() => userSelectAll(selectableUids)}
                     disabled={bulkAdd.running}
                   />
                 </th>
@@ -219,11 +225,16 @@ export default function CatalogCollection() {
                       checked={selection.isSelected(entry.uid)}
                       onChange={() => userToggle(entry.uid)}
                       label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
-                      disabled={bulkAdd.running}
+                      disabled={bulkAdd.running || goneUids.has(entry.uid)}
                     />
                   </td>
                   <td className="px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">{entry.artist || '—'}</td>
-                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{entry.title}</td>
+                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
+                    {entry.title}
+                    {goneUids.has(entry.uid) && (
+                      <span role="status" className="block text-xs font-normal text-gray-500 dark:text-gray-400">{CATALOG_ENTRY_GONE_MESSAGE}</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.key || '—'}</td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap text-right">{entry.bpm ?? '—'}</td>
                 </tr>
