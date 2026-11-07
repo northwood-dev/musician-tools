@@ -272,8 +272,9 @@ export default function SongsList(props: SongsListProps) {
                     <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
                     <button
                       type="button"
-                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
                       onClick={props.closeBulkPlaylistPicker}
+                      disabled={props.loading}
                     >
                       ✕
                     </button>
@@ -305,8 +306,9 @@ export default function SongsList(props: SongsListProps) {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
                           onClick={props.closeBulkPlaylistPicker}
+                          disabled={props.loading}
                         >
                           Cancel
                         </button>

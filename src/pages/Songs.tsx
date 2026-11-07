@@ -49,6 +49,7 @@ function Songs() {
   };
 
   const [songs, setSongs] = useState<Song[]>([]);
+  const [songsLoaded, setSongsLoaded] = useState(false);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   // Story 18.2: editingUid + the list/form mode are DERIVED from the URL (see the
   // useParams block below), not useState — /songs (list), /songs/new (add),
@@ -107,6 +108,16 @@ function Songs() {
     if (bulkPlaylistOpen) closeBulkPlaylistPicker();
     else setBulkPlaylistOpen(true);
   };
+  // The selection is restored from the browser, so it can name songs that no longer exist
+  // (deleted elsewhere, another account). They would keep it from ever being empty (#33).
+  // Only after a successful load: before that, every restored song looks missing.
+  useEffect(() => {
+    if (!songsLoaded) return;
+    const liveUids = new Set(songs.map(song => song.uid));
+    const missingUids = Array.from(selectedSongs).filter(uid => !liveUids.has(uid));
+    if (missingUids.length > 0) songSelection.removeMany(missingUids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- songSelection is a new object each render
+  }, [songsLoaded, songs, selectedSongs]);
   // One rule for every way of emptying the selection (#33): checkmarks left in the picker
   // must never apply to a later, unrelated selection.
   useEffect(() => {
@@ -416,6 +427,7 @@ function Songs() {
         setError(null);
         const data = await songService.getAllSongs();
         setSongs(data);
+        setSongsLoaded(true);
         // Charger les plays pour toutes les chansons
         const playsMap = new Map<string, SongPlay[]>();
         await Promise.all(
