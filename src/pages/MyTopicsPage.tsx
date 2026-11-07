@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { topicService, type Topic, type CreateTopicDTO, type UpdateTopicDTO } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TOPIC_EDIT_PARAM } from '../utils/liveNames';
+import { useInlineRowSave } from '../hooks/useInlineRowSave';
 
 const topicRowId = (uid: string) => `topic-${uid}`;
+
+type TopicRowForm = { name: string; category: string };
+
+const rowFormOf = (item: Topic): TopicRowForm => ({ name: item.name, category: item.category || '' });
 
 function MyTopicsPage() {
   const [list, setList] = useState<Topic[]>([]);
@@ -14,13 +19,27 @@ function MyTopicsPage() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('');
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
-  const [editingUid, setEditingUid] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editCategory, setEditCategory] = useState('');
   const [listLoaded, setListLoaded] = useState(false);
   // #16: the session history links a topic entry here as ?edit=<uid>
   const [searchParams, setSearchParams] = useSearchParams();
   const editParam = searchParams.get(TOPIC_EDIT_PARAM);
+  const row = useInlineRowSave<TopicRowForm>({
+    initialForm: { name: '', category: '' },
+    save: async (uid, form) => {
+      // Always send category: an empty string tells the API to clear it
+      // (undefined would be dropped by JSON.stringify and leave it unchanged).
+      const payload: UpdateTopicDTO = { name: form.name.trim() || undefined, category: form.category.trim() };
+      const updated = await topicService.update(uid, payload);
+      setList(prev => prev.map(t => (t.uid === uid ? updated : t)));
+    },
+    setError,
+    validationError: form => (form.name.trim() ? null : 'Name is required'),
+    toErrorMessage: err => (err instanceof Error && err.message === 'Topic already exists'
+      ? 'Topic already exists'
+      : 'Failed to update topic'),
+    leftPageErrorMessage: 'Your topic changes could not be saved.',
+  });
+  const { openRow, savingRow } = row;
 
   useEffect(() => {
     (async () => {
@@ -39,28 +58,27 @@ function MyTopicsPage() {
     })();
   }, []);
 
-  const startEdit = useCallback((item: Topic) => {
-    setEditingUid(item.uid);
-    setEditName(item.name);
-    setEditCategory(item.category || '');
-  }, []);
-
   // Once the topics are loaded, bring the deep-linked row into view and open it
   // for editing (the system topic is not editable: shown, not opened), then
   // consume ?edit= right away: a reload never reopens the editor, an unknown uid
   // leaves no trace, and the next link (a new value) is handled the same way.
   useEffect(() => {
-    if (!editParam || !listLoaded) return;
+    // During a row save the link waits: it needs that save to finish before opening its row.
+    if (!editParam || !listLoaded || savingRow) return;
     const target = list.find(t => t.uid === editParam);
-    if (target) {
-      document.getElementById(topicRowId(target.uid))?.scrollIntoView?.({ block: 'center' });
-      if (!target.isSystem) startEdit(target);
+    const scrollToTarget = () => {
+      if (target) document.getElementById(topicRowId(target.uid))?.scrollIntoView?.({ block: 'center' });
+    };
+    if (target && !target.isSystem) {
+      void openRow(target.uid, rowFormOf(target)).then(opened => { if (opened) scrollToTarget(); });
+    } else {
+      scrollToTarget();
     }
     setSearchParams(prev => {
       prev.delete(TOPIC_EDIT_PARAM);
       return prev;
     }, { replace: true });
-  }, [editParam, listLoaded, list, startEdit, setSearchParams]);
+  }, [editParam, listLoaded, list, savingRow, openRow, setSearchParams]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,30 +113,6 @@ function MyTopicsPage() {
       setList(prev => prev.filter(t => t.uid !== uid));
     } catch {
       setError('Failed to delete topic');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cancelEdit = () => {
-    setEditingUid(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editingUid || !editName.trim()) return;
-    try {
-      setLoading(true);
-      setError(null);
-      // Always send category: an empty string tells the API to clear it
-      // (undefined would be dropped by JSON.stringify and leave it unchanged).
-      const payload: UpdateTopicDTO = { name: editName.trim(), category: editCategory.trim() };
-      const updated = await topicService.update(editingUid, payload);
-      setList(prev => prev.map(t => (t.uid === editingUid ? updated : t)));
-      setEditingUid(null);
-    } catch (err) {
-      setError(err instanceof Error && err.message === 'Topic already exists'
-        ? 'Topic already exists'
-        : 'Failed to update topic');
     } finally {
       setLoading(false);
     }
@@ -184,7 +178,7 @@ function MyTopicsPage() {
               <button
                 type="submit"
                 className="btn-primary justify-center"
-                disabled={loading || !name.trim()}
+                disabled={loading || row.savingRow || !name.trim()}
               >
                 Add
               </button>
@@ -210,26 +204,26 @@ function MyTopicsPage() {
                   </thead>
                   <tbody>
                     {list.map(item => (
-                      editingUid === item.uid ? (
+                      row.editingUid === item.uid ? (
                         <tr key={item.uid} id={topicRowId(item.uid)} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
                           <td className="p-2 align-top">
                             <input
                               aria-label="Edit name"
-                              value={editName}
-                              onChange={e => setEditName(e.target.value)}
+                              value={row.form.name}
+                              onChange={e => row.setField('name', e.target.value)}
                               className="input-base text-sm"
                               maxLength={255}
-                              disabled={loading}
+                              disabled={loading || row.savingRow}
                             />
                           </td>
                           <td className="p-2 align-top">
                             <input
                               aria-label="Edit category"
-                              value={editCategory}
-                              onChange={e => setEditCategory(e.target.value)}
+                              value={row.form.category}
+                              onChange={e => row.setField('category', e.target.value)}
                               className="input-base text-sm"
                               maxLength={255}
-                              disabled={loading}
+                              disabled={loading || row.savingRow}
                             />
                           </td>
                           <td className="p-2 align-top text-right">
@@ -237,16 +231,16 @@ function MyTopicsPage() {
                               <button
                                 type="button"
                                 className="btn-secondary text-sm"
-                                onClick={cancelEdit}
-                                disabled={loading}
+                                onClick={row.cancel}
+                                disabled={loading || row.savingRow}
                               >
                                 Cancel
                               </button>
                               <button
                                 type="button"
                                 className="btn-primary text-sm"
-                                onClick={saveEdit}
-                                disabled={loading || !editName.trim()}
+                                onClick={row.saveAndClose}
+                                disabled={loading || row.savingRow || !row.form.name.trim()}
                               >
                                 Save
                               </button>
@@ -271,8 +265,8 @@ function MyTopicsPage() {
                                   type="button"
                                   aria-label={`Edit ${item.name}`}
                                   className="btn-secondary text-sm"
-                                  onClick={() => startEdit(item)}
-                                  disabled={loading}
+                                  onClick={() => row.openRow(item.uid, rowFormOf(item))}
+                                  disabled={loading || row.savingRow}
                                 >
                                   Edit
                                 </button>
@@ -281,7 +275,7 @@ function MyTopicsPage() {
                                   aria-label={`Delete ${item.name}`}
                                   className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
                                   onClick={() => setDeleteUid(item.uid)}
-                                  disabled={loading}
+                                  disabled={loading || row.savingRow}
                                 >
                                   Delete
                                 </button>

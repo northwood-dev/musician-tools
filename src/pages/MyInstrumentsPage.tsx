@@ -4,6 +4,16 @@ import { useEffect, useState } from 'react';
 import { instrumentService, type Instrument, type CreateInstrumentDTO, type UpdateInstrumentDTO } from '../services/instrumentService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
+import { useInlineRowSave } from '../hooks/useInlineRowSave';
+
+type InstrumentRowForm = { name: string; type: string; brand: string; model: string };
+
+const rowFormOf = (item: Instrument): InstrumentRowForm => ({
+  name: item.name,
+  type: item.type || '',
+  brand: item.brand || '',
+  model: item.model || '',
+});
 
 function MyInstrumentsPage() {
   // const { logout } = useAuth();
@@ -15,11 +25,25 @@ function MyInstrumentsPage() {
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
-  const [editingUid, setEditingUid] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editType, setEditType] = useState('');
-  const [editBrand, setEditBrand] = useState('');
-  const [editModel, setEditModel] = useState('');
+  const row = useInlineRowSave<InstrumentRowForm>({
+    initialForm: { name: '', type: '', brand: '', model: '' },
+    save: async (uid, form) => {
+      const payload: UpdateInstrumentDTO = {
+        name: form.name.trim() || undefined,
+        // Always sent: an empty string tells the API to clear the field
+        // (undefined would be dropped by JSON.stringify and leave it unchanged).
+        type: form.type,
+        brand: form.brand,
+        model: form.model,
+      };
+      const updated = await instrumentService.update(uid, payload);
+      setList(prev => prev.map(i => (i.uid === uid ? updated : i)));
+    },
+    setError,
+    validationError: form => (form.name.trim() ? null : 'Name is required'),
+    toErrorMessage: () => 'Failed to update instrument',
+    leftPageErrorMessage: 'Your instrument changes could not be saved.',
+  });
 
   useEffect(() => {
     (async () => {
@@ -42,7 +66,7 @@ function MyInstrumentsPage() {
       setLoading(true);
       const payload: CreateInstrumentDTO = { name: name.trim(), type: type || undefined, brand: brand || undefined, model: model || undefined };
       const created = await instrumentService.create(payload);
-      setList([created, ...list]);
+      setList(prev => [created, ...prev]);
       setName('');
       setType('');
       setBrand('');
@@ -59,42 +83,10 @@ function MyInstrumentsPage() {
     try {
       setLoading(true);
       await instrumentService.remove(deleteUid);
-      setList(list.filter(i => i.uid !== deleteUid));
+      setList(prev => prev.filter(i => i.uid !== deleteUid));
       setDeleteUid(null);
     } catch {
       setError('Failed to delete instrument');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const startEdit = (item: Instrument) => {
-    setEditingUid(item.uid);
-    setEditName(item.name);
-    setEditType(item.type || '');
-    setEditBrand(item.brand || '');
-    setEditModel(item.model || '');
-  };
-
-  const cancelEdit = () => {
-    setEditingUid(null);
-  };
-
-  const saveEdit = async () => {
-    if (!editingUid) return;
-    try {
-      setLoading(true);
-      const payload: UpdateInstrumentDTO = {
-        name: editName.trim() || undefined,
-        type: editType || undefined,
-        brand: editBrand || undefined,
-        model: editModel || undefined,
-      };
-      const updated = await instrumentService.update(editingUid, payload);
-      setList(list.map(i => (i.uid === editingUid ? updated : i)));
-      setEditingUid(null);
-    } catch {
-      setError('Failed to update instrument');
     } finally {
       setLoading(false);
     }
@@ -163,7 +155,7 @@ function MyInstrumentsPage() {
             <button
               type="submit"
               className="btn-primary justify-center"
-              disabled={loading || !name.trim()}
+              disabled={loading || row.savingRow || !name.trim()}
             >
               Add
             </button>
@@ -189,14 +181,14 @@ function MyInstrumentsPage() {
                   </thead>
                   <tbody>
                     {list.map(item => (
-                      editingUid === item.uid ? (
+                      row.editingUid === item.uid ? (
                         <tr key={item.uid} className="bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60">
                           <td className="p-2 align-top">
                             <select
-                              value={editType}
-                              onChange={e => setEditType(e.target.value)}
+                              value={row.form.type}
+                              onChange={e => row.setField('type', e.target.value)}
                               className="input-base text-sm"
-                              disabled={loading}
+                              disabled={loading || row.savingRow}
                             >
                               <option value="">Select type</option>
                               {instrumentTypeOptions.map(opt => (
@@ -206,26 +198,26 @@ function MyInstrumentsPage() {
                           </td>
                           <td className="p-2 align-top">
                             <input
-                              value={editName}
-                              onChange={e => setEditName(e.target.value)}
+                              value={row.form.name}
+                              onChange={e => row.setField('name', e.target.value)}
                               className="input-base text-sm"
-                              disabled={loading}
+                              disabled={loading || row.savingRow}
                             />
                           </td>
                           <td className="p-2 align-top">
                             <input
-                              value={editBrand}
-                              onChange={e => setEditBrand(e.target.value)}
+                              value={row.form.brand}
+                              onChange={e => row.setField('brand', e.target.value)}
                               className="input-base text-sm"
-                              disabled={loading}
+                              disabled={loading || row.savingRow}
                             />
                           </td>
                           <td className="p-2 align-top">
                             <input
-                              value={editModel}
-                              onChange={e => setEditModel(e.target.value)}
+                              value={row.form.model}
+                              onChange={e => row.setField('model', e.target.value)}
                               className="input-base text-sm"
-                              disabled={loading}
+                              disabled={loading || row.savingRow}
                             />
                           </td>
                           <td className="p-2 align-top text-right">
@@ -233,16 +225,16 @@ function MyInstrumentsPage() {
                               <button
                                 type="button"
                                 className="btn-secondary text-sm"
-                                onClick={cancelEdit}
-                                disabled={loading}
+                                onClick={row.cancel}
+                                disabled={loading || row.savingRow}
                               >
                                 Cancel
                               </button>
                               <button
                                 type="button"
                                 className="btn-primary text-sm"
-                                onClick={saveEdit}
-                                disabled={loading || !editName.trim()}
+                                onClick={row.saveAndClose}
+                                disabled={loading || row.savingRow || !row.form.name.trim()}
                               >
                                 Save
                               </button>
@@ -260,8 +252,8 @@ function MyInstrumentsPage() {
                               <button
                                 type="button"
                                 className="btn-secondary text-sm"
-                                onClick={() => startEdit(item)}
-                                disabled={loading}
+                                onClick={() => row.openRow(item.uid, rowFormOf(item))}
+                                disabled={loading || row.savingRow}
                               >
                                 Edit
                               </button>
@@ -269,7 +261,7 @@ function MyInstrumentsPage() {
                                 type="button"
                                 className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50"
                                 onClick={() => setDeleteUid(item.uid)}
-                                disabled={loading}
+                                disabled={loading || row.savingRow}
                               >
                                 Delete
                               </button>

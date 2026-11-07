@@ -1,6 +1,7 @@
 import { useEffect, useRef, type DependencyList, type MutableRefObject } from 'react';
 
-// Shared autosave engine for the Song form and the Catalog form (story 19.7). The
+// Shared autosave engine for the Song form, the Catalog form (story 19.7) and, in
+// save-on-exit mode, the inline rows of useInlineRowSave (#30). The first
 // two pages copied-then-diverged the same mechanics; the 19.6 QA proved that silently
 // loses guards (4 review patches: conflict surfacing, title-required, baseline, flush).
 // This hook owns the GENERIC lifecycle so it can never drift again:
