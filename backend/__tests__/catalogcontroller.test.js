@@ -14,9 +14,12 @@ jest.mock('../models', () => ({
   User: {
     findByPk: jest.fn(),
   },
+  ArtistAlias: {
+    findOne: jest.fn(),
+  },
 }));
 
-const { CatalogSong, Song, User } = require('../models');
+const { CatalogSong, Song, User, ArtistAlias } = require('../models');
 const { Op } = require('sequelize');
 const controller = require('../controllers/catalogcontroller');
 
@@ -281,6 +284,39 @@ describe('catalogcontroller', () => {
     expect(clauses).toHaveLength(3);
     expect(typed(clauses[2])).toBe(expected);
     expect(clauses[2].attribute.args[0].col).toBe('artist');
+  });
+
+  test('#76: an alias typed in full also searches for its artist', async () => {
+    ArtistAlias.findOne.mockResolvedValueOnce({ alias: 'RHCP', artist: 'Red Hot Chili Peppers' });
+    const clauses = await searchClauses('rhcp');
+    expect(clauses).toHaveLength(3);
+    expect(typed(clauses[0])).toBe('rhcp'); // normal results stay
+    expect(typed(clauses[2])).toBe('Red Hot Chili Peppers');
+    expect(clauses[2].attribute.args[0].col).toBe('artist');
+  });
+
+  test('#76: the alias lookup compares the whole search key', async () => {
+    ArtistAlias.findOne.mockResolvedValueOnce(null);
+    await searchClauses('rhcp');
+    const { where } = ArtistAlias.findOne.mock.calls[0][0];
+    expect(where.attribute.fn).toBe('f_search_key');
+    expect(where.attribute.args[0].col).toBe('alias');
+    expect(where.logic.fn).toBe('f_search_key');
+    expect(where.logic.args[0]).toBe('rhcp');
+  });
+
+  test('#76: no alias found means the normal search only', async () => {
+    ArtistAlias.findOne.mockResolvedValueOnce(null);
+    expect(await searchClauses('rhcp')).toHaveLength(2);
+  });
+
+  test('#76: a failing alias lookup does not break the search', async () => {
+    ArtistAlias.findOne.mockRejectedValueOnce(new Error('boom'));
+    const next = mockNext();
+    CatalogSong.findAndCountAll.mockResolvedValue({ rows: [], count: 0 });
+    await controller.getCatalogList({ query: { search: 'rhcp' } }, mockRes(), next);
+    expect(next).not.toHaveBeenCalled();
+    expect(CatalogSong.findAndCountAll).toHaveBeenCalled();
   });
 
   test('#76: a search compares search keys, on the title and the artist', async () => {

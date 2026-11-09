@@ -97,6 +97,46 @@ const makeOpts = (overrides: Partial<Parameters<typeof applySongFilters>[1]> = {
   ...overrides,
 });
 
+describe('#76: an artist alias typed in full also searches for its artist', () => {
+  const artistAliases = [
+    { alias: 'RHCP', artist: 'Red Hot Chili Peppers' },
+    { alias: 'Guns and Roses', artist: "Guns N' Roses" },
+    { alias: 'EWF', artist: 'Earth, Wind & Fire' },
+  ];
+  const found = (songs: Partial<Song>[], searchQuery: string, aliases = artistAliases) =>
+    applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery, artistAliases: aliases })).map(s => s.uid);
+
+  test.each([
+    ['RHCP', { artist: 'Red Hot Chili Peppers' }],
+    ['rhcp', { artist: 'Red Hot Chili Peppers feat. Someone' }],
+    ['r.h.c.p', { artist: 'Red Hot Chili Peppers' }],
+    ['guns and roses', { artist: "Guns N' Roses" }],
+    ['Guns & Roses', { artist: "Guns N' Roses" }],
+    ['ewf', { artist: 'Earth Wind & Fire' }], // the Catalog's spelling can change
+    ['ewf', { artist: 'Earth, Wind and Fire' }],
+  ])('"%s" finds %j', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test('normal results stay: a song whose title contains the alias still appears', () => {
+    const songs = [{ title: 'RHCP Blues', artist: 'Someone' }, { title: 'Otherside', artist: 'Red Hot Chili Peppers' }];
+    expect(found(songs, 'RHCP')).toEqual(['0', '1']);
+  });
+
+  test.each([['rh'], ['rhc'], ['rhcpp']])('a partial or longer text "%s" does not trigger the alias', (query) => {
+    expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], query)).toEqual([]);
+  });
+
+  test('an alias only applies to the artist, not to titles or albums', () => {
+    expect(found([{ title: 'Red Hot Chili Peppers', artist: 'Someone', album: 'Red Hot Chili Peppers' }], 'RHCP')).toEqual([]);
+  });
+
+  test('without aliases, search still works', () => {
+    expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], 'chili', [])).toEqual(['0']);
+    expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], 'RHCP', [])).toEqual([]);
+  });
+});
+
 describe('#76: search ignores punctuation and spaces, and & counts as and', () => {
   const found = (songs: Partial<Song>[], searchQuery: string) =>
     applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery })).map(s => s.uid);

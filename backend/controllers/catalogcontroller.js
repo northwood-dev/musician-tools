@@ -5,7 +5,7 @@
 //
 // Story 19.1 scope: curator write CRUD on catalog entries. Read (list/detail)
 // endpoints land in story 19.3; "Add to my songlist" in story 19.4.
-const { CatalogSong, Song, User, CatalogCollection, CatalogCollectionSong, Playlist, PlaylistSong } = require('../models');
+const { CatalogSong, Song, User, CatalogCollection, CatalogCollectionSong, Playlist, PlaylistSong, ArtistAlias } = require('../models');
 const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const logger = require('../logger');
@@ -275,6 +275,10 @@ function matchesSearchKey(column, text) {
   );
 }
 
+async function findArtistAlias(text) {
+  return ArtistAlias.findOne({ where: whereFn(fn('f_search_key', col('alias')), fn('f_search_key', text)) });
+}
+
 // Is the requester a curator? Looks up the session user's isCurator. Called LAZILY —
 // only on the draft-aware paths (?includeDrafts, or accessing a draft by uid) — so
 // normal public reads pay no extra query. Story 19.6.
@@ -317,6 +321,13 @@ const getCatalogList = async (req, res, next) => {
         // An artist can be typed with an article it isn't stored with (#36).
         const withoutArticle = withoutLeadingArticle(search);
         if (withoutArticle !== search) clauses.push(matchesSearchKey('artist', withoutArticle));
+        // An alias typed in full also searches for its artist (#76). A failing lookup only
+        // loses the alias: the search itself still works.
+        const alias = await findArtistAlias(search).catch((error) => {
+          logger.error('Error looking up an artist alias:', error);
+          return null;
+        });
+        if (alias) clauses.push(matchesSearchKey('artist', alias.artist));
         and.push({ [Op.or]: clauses });
       } else {
         // Only punctuation: no key to compare, so it looks for that text (not for everything).

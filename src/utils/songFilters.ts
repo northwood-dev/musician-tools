@@ -8,6 +8,8 @@ export const NO_INSTRUMENT = '__none__';
 
 export type SongFilterOptions = {
   searchQuery: string;
+  /** Typing an alias in full also searches for its artist (#76). */
+  artistAliases?: { alias: string; artist: string }[];
   instrumentFilter: string;
   instrumentMatchMode: 'all' | 'any';
   myInstrumentFilter: string;
@@ -79,6 +81,7 @@ export function countActiveFilters(f: ActiveFilterState): number {
 export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[] {
   const {
     searchQuery,
+    artistAliases = [],
     instrumentFilter,
     instrumentMatchMode,
     myInstrumentFilter,
@@ -108,6 +111,8 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
   const query = searchKey(searchQuery);
   const artistQuery = searchKey(artistKey(searchQuery));
   const literalQuery = foldText(searchQuery);
+  const alias = query ? artistAliases.find(a => searchKey(a.alias) === query) : undefined;
+  const aliasArtist = alias ? searchKey(alias.artist) : '';
 
   return songs.filter(song => {
     const passesSearch = query
@@ -115,6 +120,7 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
         searchKey(song.title).includes(query) ||
         searchKey(song.artist).includes(query) ||
         searchKey(song.artist).includes(artistQuery) ||
+        (aliasArtist !== '' && searchKey(song.artist).includes(aliasArtist)) ||
         searchKey(song.album).includes(query)
       )
       : (
