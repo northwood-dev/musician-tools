@@ -16,7 +16,7 @@ import { Toast } from '../components/Toast';
 import EmptySonglistCollections from '../components/EmptySonglistCollections';
 import { StickyActionBar } from '../components/StickyActionBar';
 import CatalogSourceBanner from '../components/CatalogSourceBanner';
-import { findDuplicateSong } from '../utils/songDuplicate';
+import { findDuplicateSong, songIdentityKey } from '../utils/songDuplicate';
 import { formatLocalDate } from '../utils/heatmap';
 
 const initialSong: CreateSongDTO = {
@@ -980,8 +980,7 @@ function Songs() {
   // (so the client-side liveDuplicate guard couldn't pick it up). Cleared implicitly
   // by comparing against the current key — a differentiated title/artist no longer matches.
   const conflictKeyRef = useRef<string | null>(null);
-  const foldedTitleArtistKey = (): string =>
-    `${(form.title || '').trim().toLowerCase()}|${(form.artist || '').trim().toLowerCase()}`;
+  const foldedTitleArtistKey = (): string => songIdentityKey(form.title, form.artist);
 
   // `lastPlayed` is server-managed → never sent; empty collections normalized (HIGH 13.1).
   const buildAutosavePayload = (f: CreateSongDTO): UpdateSongDTO => {

@@ -10,6 +10,7 @@ const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
+const { sameTitle, sameArtist } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
 // columns ; language title-cased like the Song form ; durationSeconds factored out).
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
@@ -413,13 +414,10 @@ function buildSongFromCatalog(catalog, userUid, instrument) {
   };
 }
 
-// Per-user existing song on the SAME folded key as the Epic 17 unique index
-// (user_uid, lower(title), COALESCE(lower(artist), '')). Scoped by userUid → no
-// cross-user existence oracle. Replicated from songcontroller (additive strict).
+// Per-user existing song on the SAME key as the unique index (utils/songIdentity). Scoped by
+// userUid → no cross-user existence oracle.
 function findExistingUserSong(userUid, title, artist) {
-  const foldedTitle = whereFn(fn('lower', col('title')), String(title == null ? '' : title).toLowerCase());
-  const foldedArtist = whereFn(fn('coalesce', fn('lower', col('artist')), ''), artist ? String(artist).toLowerCase() : '');
-  return Song.findOne({ where: { [Op.and]: [{ userUid }, foldedTitle, foldedArtist] } });
+  return Song.findOne({ where: { [Op.and]: [{ userUid }, sameTitle(title), sameArtist(artist)] } });
 }
 
 const MAX_INSTRUMENT_LENGTH = 255; // same bound as the played instrument (songcontroller)

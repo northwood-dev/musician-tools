@@ -6,6 +6,7 @@ const { fetchSongMetadata } = require('../services/songMetadataService');
 // Shared FR19 day-validation helpers (same definition as the session controller)
 const { DATE_PATTERN, MIN_DATE, isValidCalendarDate, maxAllowedDate } = require('../utils/sessionDates');
 const { isUuid } = require('../utils/uuid');
+const { sameTitle, sameArtist } = require('../utils/songIdentity');
 const { sumMinutes } = require('../utils/sessionMerge');
 const { findOrCreateDaySession } = require('../services/daySession');
 // Story 19.8 — shared normalizers (reject-to-null; INTEGER columns can't 500 on a
@@ -36,17 +37,12 @@ const normalizeText = (value) => {
 };
 
 // Story 17.1: look up the user's existing song that collides with (title, artist)
-// on the SAME folded key as the unique index — lower(title) + COALESCE(lower(artist), '').
+// on the SAME key as the unique index (utils/songIdentity).
 // Used to enrich the 409 body so the front (17.2) can point at the existing song.
 // Scoped to userUid -> no cross-user existence oracle. title/artist passed in are
 // already trimmed (normalizeText). excludeUid skips the row being edited (update).
 function findExistingByTitleArtist(userUid, title, artist, excludeUid) {
-  const foldedTitle = whereFn(fn('lower', col('title')), String(title).toLowerCase());
-  const foldedArtist = whereFn(
-    fn('coalesce', fn('lower', col('artist')), ''),
-    artist ? String(artist).toLowerCase() : ''
-  );
-  const and = [{ userUid }, foldedTitle, foldedArtist];
+  const and = [{ userUid }, sameTitle(title), sameArtist(artist)];
   if (excludeUid) and.push({ uid: { [Op.ne]: excludeUid } });
   return Song.findOne({ where: { [Op.and]: and } });
 }
