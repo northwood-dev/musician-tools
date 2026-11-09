@@ -7,7 +7,9 @@ name: Release
 # .github/release.yml), then redeploys so the footer shows the new version.
 #
 # The bump is pushed with GITHUB_TOKEN, which by design does NOT trigger
-# deploy.yml's push event, so the deploy is dispatched explicitly at the end.
+# deploy.yml's push event, so the deploy is called as a job at the end. Release is
+# therefore green only if the deploy succeeded. If it fails, re-run the failed job
+# alone: that retries the deploy without creating another version.
 
 on:
   workflow_dispatch:
@@ -27,7 +29,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
 
     steps:
       - uses: actions/checkout@v7
@@ -61,7 +62,11 @@ jobs:
           gh release create "v$VERSION" --target main \
             --title "🎵 Musician Tools v$VERSION" --generate-notes
 
-      - name: Deploy the bumped version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref main
+  deploy:
+    name: Deploy the bumped version
+    needs: release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
