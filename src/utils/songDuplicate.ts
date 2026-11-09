@@ -9,15 +9,15 @@ import type { Song } from '../services/songService';
 // it drops accents on Latin and Greek only (й, kana and Indic vowel signs change the letter,
 // so they stay), and spells out letters that have no separate accent (œ → oe). Rarer letters
 // differ, and the server's refusal decides for them.
-const SPELLED_OUT: Record<string, string> = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i', ð: 'd', þ: 'th' };
+const SPELLED_OUT: Record<string, string> = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i', ð: 'd', þ: 'th', ё: 'е', '©': '(c)', '®': '(r)' };
 
 export const foldText = (value: string | null | undefined): string =>
   (value ?? '')
     .normalize('NFD')
-    .replace(/([\p{Script=Latin}\p{Script=Greek}])[̀-ͯ]+/gu, '$1')
+    .replace(/([\p{Script=Latin}\p{Script=Greek}])[\u0300-\u036f]+/gu, '$1')
     .normalize('NFC')
     .toLowerCase()
-    .replace(/[œæøßłđıðþ]/g, letter => SPELLED_OUT[letter])
+    .replace(/[œæøßłđıðþё©®]/g, letter => SPELLED_OUT[letter])
     .replace(/\s+/g, ' ')
     .trim();
 

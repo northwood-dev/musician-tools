@@ -95,8 +95,38 @@ test('an empty value sends nothing and says why', async () => {
 
   add('  ', 'Queen');
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Enter an alias and an artist.');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Enter an alias and an artist, with at least one letter or digit.');
   expect(svc.create).not.toHaveBeenCalled();
+});
+
+test('a value of only punctuation sends nothing and says why', async () => {
+  renderPage();
+  await screen.findByText('RHCP');
+
+  add('...', 'Queen');
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Enter an alias and an artist, with at least one letter or digit.');
+  expect(svc.create).not.toHaveBeenCalled();
+});
+
+test('the announcement regions are there before any message, so that screen readers announce it', async () => {
+  renderPage();
+  await screen.findByText('RHCP');
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  expect(screen.getByRole('alert')).toBeEmptyDOMElement();
+});
+
+test('a failed removal says so and reloads the list', async () => {
+  svc.remove.mockRejectedValue(new Error('gone'));
+  renderPage();
+  await screen.findByText('RHCP');
+  const loads = svc.listWithCounts.mock.calls.length;
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove alias RHCP' }));
+  fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
+
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not remove "RHCP".'));
+  await waitFor(() => expect(svc.listWithCounts.mock.calls.length).toBeGreaterThan(loads));
 });
 
 test('a failed add says so and keeps what was typed', async () => {

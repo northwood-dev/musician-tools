@@ -9,7 +9,8 @@ const crypto = require('node:crypto');
 //
 // A fixed list of characters, and not [^[:alnum:]]: measured on 2026-11-09, [:alnum:] drops the
 // vowel sign of "पि" in production and keeps it in dev, because they use different locale
-// providers. A search that behaves differently in production can't be tested here.
+// providers. The spaces are listed too: \\s removes a no-break space in production, not in dev.
+// A search that behaves differently in production can't be tested here.
 
 const SEARCH_KEY = `
   CREATE OR REPLACE FUNCTION f_search_key(text)
@@ -18,7 +19,7 @@ const SEARCH_KEY = `
   AS $function$
     SELECT regexp_replace(
       replace(lower(public.f_unaccent(coalesce($1, ''))), '&', 'and'),
-      '[\\s!"#$%''()*+,\\-./:;<=>?@\\[\\\\\\]^_\`{|}~´‘’‚“”„«»‹›–—―…·•¡¿]',
+      '[ \\t\\n\\r\\f\\v\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff!"#$%''()*+,\\-./:;<=>?@\\[\\\\\\]^_\`{|}~´‘’‚“”„«»‹›\u2010\u2011\u2012–—―…·•¡¿]',
       '',
       'g'
     )

@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ListSkeleton } from '../components/ListSkeleton';
 import { artistAliasService, ArtistAliasConflictError } from '../services/artistAliasService';
 import type { ArtistAliasWithCount } from '../services/artistAliasService';
+import { searchKey } from '../utils/searchKey';
 
 // #76: curators manage the artist aliases search uses. To change one, remove it and add it
 // again. The count of Catalog entries is what makes a broken alias visible: the artist is free
@@ -22,7 +23,7 @@ export default function CatalogArtistAliases() {
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const [doneMessage, setDoneMessage] = useState<string | null>(null);
   const [toRemove, setToRemove] = useState<ArtistAliasWithCount | null>(null);
 
   const load = useCallback(async () => {
@@ -45,11 +46,11 @@ export default function CatalogArtistAliases() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
-    setDone(null);
+    setDoneMessage(null);
     const newAlias = alias.trim();
     const newArtist = artist.trim();
-    if (!newAlias || !newArtist) {
-      setError('Enter an alias and an artist.');
+    if (!searchKey(newAlias) || !searchKey(newArtist)) {
+      setError('Enter an alias and an artist, with at least one letter or digit.');
       return;
     }
     setError(null);
@@ -58,7 +59,7 @@ export default function CatalogArtistAliases() {
       await artistAliasService.create({ alias: newAlias, artist: newArtist });
       setAlias('');
       setArtist('');
-      setDone(`Alias "${newAlias}" added.`);
+      setDoneMessage(`Alias "${newAlias}" added.`);
       await load();
     } catch (err) {
       if (err instanceof ArtistAliasConflictError) {
@@ -76,14 +77,15 @@ export default function CatalogArtistAliases() {
   const handleRemove = async () => {
     if (!toRemove || removing) return;
     setRemoving(true);
-    setDone(null);
+    setDoneMessage(null);
     setError(null);
     try {
       await artistAliasService.remove(toRemove.uid);
-      setDone(`Alias "${toRemove.alias}" removed.`);
+      setDoneMessage(`Alias "${toRemove.alias}" removed.`);
       await load();
     } catch {
       setError(`Could not remove "${toRemove.alias}".`);
+      await load(); // it may already be gone: show what is really there
     } finally {
       setRemoving(false);
       setToRemove(null);
@@ -111,8 +113,9 @@ export default function CatalogArtistAliases() {
         </button>
       </form>
 
-      {error && <p role="alert" className="mb-4 text-sm text-red-700 dark:text-red-300">{error}</p>}
-      {done && <p role="status" className="mb-4 text-sm text-green-700 dark:text-green-300">{done}</p>}
+      {/* Always mounted: a region that appears with its message may not be announced. */}
+      <p role="alert" className={error ? 'mb-4 text-sm text-red-700 dark:text-red-300' : undefined}>{error}</p>
+      <p role="status" className={doneMessage ? 'mb-4 text-sm text-green-700 dark:text-green-300' : undefined}>{doneMessage}</p>
 
       {loadFailed && (
         <div className="text-center py-10">

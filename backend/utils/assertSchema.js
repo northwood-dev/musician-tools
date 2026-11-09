@@ -11,7 +11,9 @@ const EXPECTED_INDEXES = [
   // migration 20260625000000-topics-name-ci-unaccent (story 7.12)
   { table: 'Topics', index: 'topics_user_uid_name_ci_unaccent' },
   // migration 20260628000200-playlists-name-ci-unique (story 10.1)
-  { table: 'Playlists', index: 'playlists_user_uid_name_ci' }
+  { table: 'Playlists', index: 'playlists_user_uid_name_ci' },
+  // migration 20261109100000-search-key-and-artist-aliases (#76): shared, not per-user
+  { table: 'ArtistAliases', index: 'artist_aliases_alias_search_key' }
 ];
 
 // Throws (does NOT exit — the caller decides) when a functional unique index is

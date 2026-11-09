@@ -271,7 +271,17 @@ describe('catalogcontroller', () => {
     return and.find((clause) => clause[Op.or])[Op.or];
   };
   // What a search clause looks for: f_search_key(column) LIKE '%' || f_search_key(<text>) || '%'.
-  const typed = (clause) => clause.logic[Op.like].args[1].args[0];
+  const typed = (clause) => clause.logic[Op.like].args[1].args[0].val;
+
+  test.each([['the ...'], ['la -'], ['the /'], ["l'?!"]])('#76: "%s" has nothing left after its article: no clause that would match everything', async (search) => {
+    expect(await searchClauses(search)).toHaveLength(2);
+  });
+
+  test('#76: an alias to an artist with an article searches without it, to find both spellings', async () => {
+    ArtistAlias.findOne.mockResolvedValueOnce({ alias: 'TBT', artist: 'The Beatles' });
+    const clauses = await searchClauses('tbt');
+    expect(typed(clauses[2])).toBe('Beatles');
+  });
 
   test.each([
     ['The Red Hot Chili Peppers', 'Red Hot Chili Peppers'],
@@ -302,7 +312,7 @@ describe('catalogcontroller', () => {
     expect(where.attribute.fn).toBe('f_search_key');
     expect(where.attribute.args[0].col).toBe('alias');
     expect(where.logic.fn).toBe('f_search_key');
-    expect(where.logic.args[0]).toBe('rhcp');
+    expect(where.logic.args[0].val).toBe('rhcp');
   });
 
   test('#76: no alias found means the normal search only', async () => {
@@ -325,6 +335,12 @@ describe('catalogcontroller', () => {
     expect(title.attribute.args[0].col).toBe('title');
     expect(artist.attribute.args[0].col).toBe('artist');
     expect(typed(title)).toBe('earth wind and fire');
+  });
+
+  test('#76: a value containing $ reaches the database once, not doubled by Sequelize', async () => {
+    const [title] = await searchClauses('ke$ha');
+    expect(typed(title)).toBe('ke$ha');
+    expect(title.logic[Op.like].args[1].args[0].type).toBe('text');
   });
 
   test.each([['!'], ['%'], ['...'], ['_']])('#76: a search made only of punctuation (%s) looks for that text, not for everything', async (search) => {

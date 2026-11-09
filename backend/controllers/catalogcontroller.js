@@ -6,11 +6,11 @@
 // Story 19.1 scope: curator write CRUD on catalog entries. Read (list/detail)
 // endpoints land in story 19.3; "Add to my songlist" in story 19.4.
 const { CatalogSong, Song, User, CatalogCollection, CatalogCollectionSong, Playlist, PlaylistSong, ArtistAlias } = require('../models');
-const { Op, fn, col, where: whereFn } = require('sequelize');
+const { Op, fn, col, cast, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
-const { sameTitle, sameArtist, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
+const { sameTitle, sameArtist, sameAlias, containsSearchKey, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
 // columns ; language title-cased like the Song form ; durationSeconds factored out).
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
@@ -262,21 +262,13 @@ function clampInt(value, def, min, max) {
 function foldedLike(column, pattern) {
   return whereFn(
     fn('lower', fn('f_unaccent', col(column))),
-    { [Op.like]: fn('lower', fn('f_unaccent', pattern)) }
-  );
-}
-
-// Does a column contain what was typed, however it was typed (#76)? A key can't contain % or
-// _ or \, which it drops as punctuation, so nothing needs escaping here.
-function matchesSearchKey(column, text) {
-  return whereFn(
-    fn('f_search_key', col(column)),
-    { [Op.like]: fn('concat', '%', fn('f_search_key', text), '%') }
+    // cast: Sequelize doubles every $ in a string argument of fn(), so "$" would miss "Ke$ha".
+    { [Op.like]: fn('lower', fn('f_unaccent', cast(pattern, 'text'))) }
   );
 }
 
 async function findArtistAlias(text) {
-  return ArtistAlias.findOne({ where: whereFn(fn('f_search_key', col('alias')), fn('f_search_key', text)) });
+  return ArtistAlias.findOne({ where: sameAlias(text) });
 }
 
 // Is the requester a curator? Looks up the session user's isCurator. Called LAZILY —
@@ -313,24 +305,26 @@ const getCatalogList = async (req, res, next) => {
     if (genres.length) and.push({ [Op.or]: genres.map(g => ({ genre: { [Op.contains]: [g] } })) });
     const search = typeof q.search === 'string' ? q.search.trim() : '';
     if (search) {
-      // Escape LIKE metacharacters so a user typing %/_/\ searches for them LITERALLY
-      // (Postgres' default LIKE escape is backslash). Prevents "50%" from matching
-      // everything or "a_c" from matching "abc".
       if (searchKey(search)) {
-        const clauses = [matchesSearchKey('title', search), matchesSearchKey('artist', search)];
-        // An artist can be typed with an article it isn't stored with (#36).
+        const clauses = [containsSearchKey('title', search), containsSearchKey('artist', search)];
+        // An artist can be typed with an article it isn't stored with (#36). Nothing left once
+        // it's gone ("the ...") must not become a clause that matches everything.
         const withoutArticle = withoutLeadingArticle(search);
-        if (withoutArticle !== search) clauses.push(matchesSearchKey('artist', withoutArticle));
-        // An alias typed in full also searches for its artist (#76). A failing lookup only
-        // loses the alias: the search itself still works.
+        if (withoutArticle !== search && searchKey(withoutArticle)) {
+          clauses.push(containsSearchKey('artist', withoutArticle));
+        }
+        // An alias typed in full also searches for its artist (#76), with or without its
+        // article. A failing lookup only loses the alias: the search itself still works.
         const alias = await findArtistAlias(search).catch((error) => {
           logger.error('Error looking up an artist alias:', error);
           return null;
         });
-        if (alias) clauses.push(matchesSearchKey('artist', alias.artist));
+        if (alias) clauses.push(containsSearchKey('artist', withoutLeadingArticle(alias.artist)));
         and.push({ [Op.or]: clauses });
       } else {
         // Only punctuation: no key to compare, so it looks for that text (not for everything).
+        // Escape LIKE metacharacters so a user typing %/_/\ searches for them LITERALLY
+        // (Postgres' default LIKE escape is backslash).
         const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
         and.push({ [Op.or]: [foldedLike('title', pattern), foldedLike('artist', pattern)] });
       }

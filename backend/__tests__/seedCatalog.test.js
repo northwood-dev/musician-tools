@@ -116,18 +116,18 @@ describe('seedCatalog', () => {
     expect(title.attribute.fn).toBe('lower');
     expect(title.attribute.args[0].fn).toBe('f_unaccent');
     expect(title.attribute.args[0].args[0].col).toBe('title');
-    expect(title.logic.args[0].args[0]).toBe('Back in Black');
+    expect(title.logic.args[0].args[0].val).toBe('Back in Black');
 
     // f_artist_key(artist) = f_artist_key(<artist>)
     expect(artist.attribute.fn).toBe('f_artist_key');
     expect(artist.logic.fn).toBe('f_artist_key');
-    expect(artist.logic.args[0]).toBe('AC/DC');
+    expect(artist.logic.args[0].val).toBe('AC/DC');
   });
 
   test('an entry without an artist folds to the empty string, like COALESCE does', async () => {
     await seedCatalog({ CatalogSong, rows: [{ artist: null, title: 'Untitled' }], apply: false });
     const [, artist] = CatalogSong.findOne.mock.calls[0][0].where[Op.and];
-    expect(artist.logic.args[0]).toBe('');
+    expect(artist.logic.args[0].val).toBe('');
   });
 });
 
@@ -189,6 +189,7 @@ describe('#36: identityKey ignores case, accents and a leading article on the ar
     ['Oui', 'L’Algérino', 'Oui', "l'Algerino"],
     ['Solo', 'The', 'Solo', 'The The'],
     ['Cœur', 'Mø', 'Coeur', 'Mo'], // measured on the real f_unaccent
+    ['Семён', 'Кто', 'Семен', 'Кто'],
   ])('%s by %s is %s by %s', (t1, a1, t2, a2) => {
     expect(identityKey(t1, a1)).toBe(identityKey(t2, a2));
   });

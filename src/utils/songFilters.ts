@@ -1,5 +1,6 @@
 import type { Playlist } from '../services/playlistService';
 import type { Song } from '../services/songService';
+import type { ArtistAlias } from '../services/artistAliasService';
 import { artistKey, foldText } from './songDuplicate';
 import { searchKey } from './searchKey';
 
@@ -9,7 +10,7 @@ export const NO_INSTRUMENT = '__none__';
 export type SongFilterOptions = {
   searchQuery: string;
   /** Typing an alias in full also searches for its artist (#76). */
-  artistAliases?: { alias: string; artist: string }[];
+  artistAliases?: Pick<ArtistAlias, 'alias' | 'artist'>[];
   instrumentFilter: string;
   instrumentMatchMode: 'all' | 'any';
   myInstrumentFilter: string;
@@ -112,15 +113,17 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
   const artistQuery = searchKey(artistKey(searchQuery));
   const literalQuery = foldText(searchQuery);
   const alias = query ? artistAliases.find(a => searchKey(a.alias) === query) : undefined;
-  const aliasArtist = alias ? searchKey(alias.artist) : '';
+  const aliasArtist = alias ? searchKey(artistKey(alias.artist)) : '';
 
   return songs.filter(song => {
+    const songArtist = searchKey(song.artist);
     const passesSearch = query
       ? (
         searchKey(song.title).includes(query) ||
-        searchKey(song.artist).includes(query) ||
-        searchKey(song.artist).includes(artistQuery) ||
-        (aliasArtist !== '' && searchKey(song.artist).includes(aliasArtist)) ||
+        songArtist.includes(query) ||
+        // Nothing left once the article is gone ("the ...") must not match everything.
+        (artistQuery !== '' && songArtist.includes(artistQuery)) ||
+        (aliasArtist !== '' && songArtist.includes(aliasArtist)) ||
         searchKey(song.album).includes(query)
       )
       : (

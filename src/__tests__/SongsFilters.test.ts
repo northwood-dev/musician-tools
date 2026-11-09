@@ -131,6 +131,11 @@ describe('#76: an artist alias typed in full also searches for its artist', () =
     expect(found([{ title: 'Red Hot Chili Peppers', artist: 'Someone', album: 'Red Hot Chili Peppers' }], 'RHCP')).toEqual([]);
   });
 
+  test('an alias to an artist with an article also finds the artist stored without it', () => {
+    const aliases = [{ alias: 'TBT', artist: 'The Beatles' }];
+    expect(found([{ artist: 'Beatles' }, { artist: 'The Beatles' }, { artist: 'Queen' }], 'tbt', aliases)).toEqual(['0', '1']);
+  });
+
   test('without aliases, search still works', () => {
     expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], 'chili', [])).toEqual(['0']);
     expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], 'RHCP', [])).toEqual([]);
@@ -168,6 +173,25 @@ describe('#76: search ignores punctuation and spaces, and & counts as and', () =
 
   test('a search made only of punctuation looks for that text, and does not return everything', () => {
     expect(found([{ title: 'Help!', artist: 'Someone' }, { title: 'Wow', artist: 'Someone' }], '!')).toEqual(['0']);
+  });
+
+  test.each([['the ...'], ['la -'], ['the /'], ["l'?!"]])('"%s" has nothing left after its article, and does not return everything', (query) => {
+    expect(found([{ title: 'Cry', artist: 'Mxyz', album: 'Pop' }], query)).toEqual([]);
+  });
+
+  // Expected values measured on the real f_unaccent and regexp_replace, in dev and in production.
+  test.each([
+    ['ab', { title: 'a\u00a0b' }], // a no-break space: production's \s removes it, dev's doesn't
+    ['ab', { title: 'a\u2010b' }], // a typographic hyphen
+    ['семен', { artist: 'Семён' }],
+    ['c', { title: '©' }],
+    ['r', { title: '®' }],
+  ])('"%s" finds %j, as the database does', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test('й stays й, as the database does', () => {
+    expect(found([{ artist: 'Семён' }, { artist: 'Майк' }], 'маик')).toEqual([]);
   });
 
   test('an empty search still returns everything', () => {
