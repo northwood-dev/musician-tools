@@ -10,6 +10,7 @@ const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
+const { sameTitle, sameArtist, withoutLeadingArticle } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
 // columns ; language title-cased like the Song form ; durationSeconds factored out).
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
@@ -35,16 +36,11 @@ const INTRINSIC_FIELDS = [
 ];
 
 // Look up the existing catalog entry that collides with (title, artist) on the
-// SAME folded key as the GLOBAL unique index — lower(title) + COALESCE(lower(artist), '').
+// SAME key as the GLOBAL unique index (utils/songIdentity).
 // No userUid (the Catalog is global). title/artist are already trimmed. excludeUid
 // skips the row being edited (update/rename).
 function findExistingByTitleArtist(title, artist, excludeUid) {
-  const foldedTitle = whereFn(fn('lower', col('title')), String(title == null ? '' : title).toLowerCase());
-  const foldedArtist = whereFn(
-    fn('coalesce', fn('lower', col('artist')), ''),
-    artist ? String(artist).toLowerCase() : ''
-  );
-  const and = [foldedTitle, foldedArtist];
+  const and = [sameTitle(title), sameArtist(artist)];
   if (excludeUid) and.push({ uid: { [Op.ne]: excludeUid } });
   return CatalogSong.findOne({ where: { [Op.and]: and } });
 }
@@ -262,8 +258,7 @@ function clampInt(value, def, min, max) {
 }
 
 // Accent- AND case-insensitive substring match on a text column, reusing the
-// IMMUTABLE f_unaccent wrapper (topics migration 20260625, already in prod). This
-// is a DIFFERENT normalization from the canonical key (case-only, accents kept).
+// IMMUTABLE f_unaccent wrapper (topics migration 20260625, already in prod).
 function foldedLike(column, pattern) {
   return whereFn(
     fn('lower', fn('f_unaccent', col(column))),
@@ -308,9 +303,12 @@ const getCatalogList = async (req, res, next) => {
       // Escape LIKE metacharacters so a user typing %/_/\ searches for them LITERALLY
       // (Postgres' default LIKE escape is backslash). Prevents "50%" from matching
       // everything or "a_c" from matching "abc".
-      const escaped = search.replace(/[\\%_]/g, '\\$&');
-      const pattern = `%${escaped}%`;
-      and.push({ [Op.or]: [foldedLike('title', pattern), foldedLike('artist', pattern)] });
+      const contains = (text) => `%${text.replace(/[\\%_]/g, '\\$&')}%`;
+      const clauses = [foldedLike('title', contains(search)), foldedLike('artist', contains(search))];
+      // An artist can be typed with an article it isn't stored with (#36).
+      const withoutArticle = withoutLeadingArticle(search);
+      if (withoutArticle !== search) clauses.push(foldedLike('artist', contains(withoutArticle)));
+      and.push({ [Op.or]: clauses });
     }
     // Draft/publish scoping (19.6): browse shows PUBLISHED only. A curator may pass
     // ?includeDrafts=1 (the manage hub) to also see drafts — honoured only if the
@@ -413,13 +411,10 @@ function buildSongFromCatalog(catalog, userUid, instrument) {
   };
 }
 
-// Per-user existing song on the SAME folded key as the Epic 17 unique index
-// (user_uid, lower(title), COALESCE(lower(artist), '')). Scoped by userUid → no
-// cross-user existence oracle. Replicated from songcontroller (additive strict).
+// Per-user existing song on the SAME key as the unique index (utils/songIdentity). Scoped by
+// userUid → no cross-user existence oracle.
 function findExistingUserSong(userUid, title, artist) {
-  const foldedTitle = whereFn(fn('lower', col('title')), String(title == null ? '' : title).toLowerCase());
-  const foldedArtist = whereFn(fn('coalesce', fn('lower', col('artist')), ''), artist ? String(artist).toLowerCase() : '');
-  return Song.findOne({ where: { [Op.and]: [{ userUid }, foldedTitle, foldedArtist] } });
+  return Song.findOne({ where: { [Op.and]: [{ userUid }, sameTitle(title), sameArtist(artist)] } });
 }
 
 const MAX_INSTRUMENT_LENGTH = 255; // same bound as the played instrument (songcontroller)

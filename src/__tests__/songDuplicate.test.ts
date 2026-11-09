@@ -44,9 +44,67 @@ describe('findDuplicateSong', () => {
     expect(findDuplicateSong(songs, { title: nfd, artist: nfd })).toBe(songs[0]);
   });
 
-  it('keeps accents distinct from their unaccented form (no folding)', () => {
-    const songs = [makeSong({ title: 'Beyoncé', artist: 'Beyoncé' })];
-    expect(findDuplicateSong(songs, { title: 'Beyonce', artist: 'Beyonce' })).toBeNull();
+  it('#36: ignores accents on the artist and the title', () => {
+    const songs = [makeSong({ title: 'Déjà Vu', artist: 'Beyoncé' })];
+    expect(findDuplicateSong(songs, { title: 'Deja Vu', artist: 'Beyonce' })).toBe(songs[0]);
+  });
+
+  it.each([
+    ['The Beatles', 'Beatles'],
+    ['Beatles', 'THE beatles'],
+    ['Les Rita Mitsouko', 'Rita Mitsouko'],
+    ['Le Tigre', 'Tigre'],
+    ['La Roux', 'Roux'],
+    ["L'Algérino", 'Algerino'],
+    ['L’Algérino', "l'algerino"],
+    ['The  Beatles', 'Beatles'],
+  ])('#36: ignores a leading article on the artist: %s = %s', (stored, typed) => {
+    const songs = [makeSong({ title: 'Help!', artist: stored })];
+    expect(findDuplicateSong(songs, { title: 'Help!', artist: typed })).toBe(songs[0]);
+  });
+
+  it.each([
+    ['The', 'Who'], // an artist that is only the article is kept
+    ['Les', 'Paul'],
+    ['Theatre', 'Atre'], // the article must be a whole word
+    ['Lara', 'Ra'],
+    ['The Who', 'The Band'],
+  ])('#36: does not confuse %s with %s', (stored, typed) => {
+    const songs = [makeSong({ title: 'Help!', artist: stored })];
+    expect(findDuplicateSong(songs, { title: 'Help!', artist: typed })).toBeNull();
+  });
+
+  it('#36: an artist that is only the article matches itself, and "The The" is "The"', () => {
+    const songs = [makeSong({ title: 'Help!', artist: 'The' })];
+    expect(findDuplicateSong(songs, { title: 'Help!', artist: 'the' })).toBe(songs[0]);
+    expect(findDuplicateSong(songs, { title: 'Help!', artist: 'The The' })).toBe(songs[0]);
+  });
+
+  // Expected values measured on the real f_unaccent, which the unique index uses.
+  it.each([
+    ['Cœur', 'Coeur'],
+    ['Ægir', 'Aegir'],
+    ['Sigur Rós', 'Sigur Ros'],
+    ['Mø', 'Mo'],
+    ['Straße', 'Strasse'],
+    ['Stanisław', 'Stanislaw'],
+  ])('#36: folds %s like the database: %s', (stored, typed) => {
+    const songs = [makeSong({ title: stored, artist: stored })];
+    expect(findDuplicateSong(songs, { title: typed, artist: typed })).toBe(songs[0]);
+  });
+
+  it.each([
+    ['ガ', 'カ'],
+    ['पि', 'प'],
+    ['กิ', 'ก'],
+  ])('#36: keeps %s and %s apart, as the database does', (stored, typed) => {
+    const songs = [makeSong({ title: stored, artist: 'Someone' })];
+    expect(findDuplicateSong(songs, { title: typed, artist: 'Someone' })).toBeNull();
+  });
+
+  it('#36: a leading article in the title still counts', () => {
+    const songs = [makeSong({ title: 'The Wall', artist: 'Pink Floyd' })];
+    expect(findDuplicateSong(songs, { title: 'Wall', artist: 'Pink Floyd' })).toBeNull();
   });
 
   it('returns null when the artist differs (same title, other artist)', () => {

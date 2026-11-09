@@ -52,9 +52,10 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { fn, col, where: whereFn, Op, QueryTypes } = require('sequelize');
+const { Op, QueryTypes } = require('sequelize');
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
 const { isLocalHost } = require('../utils/localDatabase');
+const { sameTitle, sameArtist, identityKey } = require('../utils/songIdentity');
 
 const DEFAULT_FILE = path.join(__dirname, 'seed', 'catalog-seed.csv');
 const KNOWN_FLAGS = ['--apply', '--allow-remote'];
@@ -88,22 +89,11 @@ function splitCsvLine(line) {
   return out.map(f => f.trim());
 }
 
-// The IDENTITY fold — the one the unique index uses: lower() on both parts, an absent
-// artist collapsing to ''. Accents are KEPT on purpose: the index does not unaccent, so
-// « Hôtel California » and « Hotel California » are two distinct entries. The f_unaccent
-// fold (catalogcontroller.foldedLike) is for LIKE SEARCH only — using it here would
-// skip a legitimate creation.
-//
-// NOTE: this JS key and the SQL index are two implementations of the same rule. They
-// agree on case and on a missing artist. They can still DISAGREE on a pre-existing row
-// stored with surrounding whitespace, because the script trims its input and the index
-// does not — deferred, see the story.
-//
-// The separator is NUL, which cannot occur in a Postgres text value. Any printable
-// separator collides: with '|', ('a|b','c') and ('a','b|c') give the same key; with a
-// space it is worse still — ('a b','c') and ('a','b c') collide, and both are perfectly
-// ordinary song titles.
-function identityKey(title, artist) {
+// The attach and alias phases compare on case alone, like their SQL join: stricter than the
+// unique indexes (#36). With the wider rule, an alias "Beatles → The Beatles" would look
+// already handled by the exact phase, which doesn't take it, and be lost silently. The NUL
+// separator can't occur in a Postgres text value: any printable one could collide two pairs.
+function exactKey(title, artist) {
   return `${String(title || '').toLowerCase()}\u0000${String(artist || '').toLowerCase()}`;
 }
 
@@ -162,17 +152,9 @@ function parseSeedCsv(text) {
 
 // --- Seeding ---------------------------------------------------------------
 
-// Same folded lookup as catalogcontroller.findExistingByTitleArtist — deliberately the
-// same shape so the skip and the unique index agree on case and on a null artist.
+// The same key as the unique index (utils/songIdentity), so the skip and the index agree.
 function findExisting(CatalogSong, title, artist) {
-  return CatalogSong.findOne({
-    where: {
-      [Op.and]: [
-        whereFn(fn('lower', col('title')), String(title == null ? '' : title).toLowerCase()),
-        whereFn(fn('coalesce', fn('lower', col('artist')), ''), artist ? String(artist).toLowerCase() : ''),
-      ],
-    },
-  });
+  return CatalogSong.findOne({ where: { [Op.and]: [sameTitle(title), sameArtist(artist)] } });
 }
 
 async function seedCatalog({ CatalogSong, rows, apply = false }) {
@@ -245,15 +227,13 @@ function formatReport(report, { log = console.log } = {}) {
 // --- Attach (story 23.2) -----------------------------------------------------
 
 // The matching happens HERE, in SQL, and not by loading every Song into JS: the JS fold
-// (identityKey) and the index expression are two implementations of the same rule and can
-// drift apart — they already disagree on surrounding whitespace.
+// (exactKey) and this join must agree, and SQL is what touches the rows.
 //
-// Be honest about how strong that is: this statement is a THIRD hand-typed spelling of the
-// same rule, and nothing automated proves it matches the index. It was verified by hand
-// against the dev database (story 23.2) and is verified again in 23.4. Note also that
+// #36: this join is deliberately STRICTER than the unique indexes, which also ignore accents
+// and a leading article. Attaching writes into personal Songs and creates nothing, so being
+// stricter can only attach fewer songs, never break an index. Note also that
 // `songs_user_uid_title_artist_ci` leads on `user_uid`, which this join deliberately does
-// NOT constrain — so that index cannot serve this join, and "agrees with the index" is a
-// claim about the EXPRESSION only, not about the plan.
+// NOT constrain, so that index cannot serve this join.
 //
 // `count(*) OVER (PARTITION BY s.uid)` is the ambiguity probe. In theory it is always 1:
 // `catalog_songs_title_artist_ci` makes the fold unique on the Catalog side. Measuring it
@@ -490,8 +470,8 @@ function parseAliasCsv(text) {
       continue;
     }
 
-    const aliasKey = identityKey(aliasTitle, aliasArtist);
-    const canonKey = identityKey(title, artist);
+    const aliasKey = exactKey(aliasTitle, aliasArtist);
+    const canonKey = exactKey(title, artist);
     // The conflict test compares the LITERAL canonical pair, not its fold: the whole point of
     // this phase is to write one precise spelling into a user's row, so « AC/DC » and « ac/dc »
     // are a contradiction to raise, not a duplicate to collapse.
@@ -562,8 +542,8 @@ function buildAliasCandidatesSql(count) {
          (SELECT count(*) FROM "Songs" o
            WHERE o.user_uid = s.user_uid
              AND o.uid <> s.uid
-             AND lower(o.title) = lower(a.canon_title)
-             AND coalesce(lower(o.artist), '') = coalesce(lower(a.canon_artist), '')) AS collision_count,
+             AND lower(f_unaccent(o.title)) = lower(f_unaccent(a.canon_title))
+             AND f_artist_key(o.artist) = f_artist_key(a.canon_artist)) AS collision_count,
          (SELECT count(*) FROM "SessionItems" i WHERE i.song_uid = s.uid)             AS session_item_count
     FROM "Songs" s
     JOIN alias a
@@ -624,7 +604,7 @@ async function attachAliasSongs({ Song, candidates, apply = false, log = () => {
     if (seen.has(c.songUid)) continue;
     seen.add(c.songUid);
     report.candidates += 1;
-    report.matchedAliases.add(identityKey(c.aliasTitle, c.aliasArtist));
+    report.matchedAliases.add(exactKey(c.aliasTitle, c.aliasArtist));
 
     const typed = describeSong(c.songArtist, c.songTitle);
     const canonical = describeSong(c.canonArtist, c.canonTitle);
@@ -802,7 +782,7 @@ async function runAlias(db, opts) {
   // handful of NAMED songs, so "0 matched" is not "nothing to do", it is a miss — a trailing
   // space, a curly apostrophe, an NFD accent. Without this block the run looks identical
   // whether 9 aliases worked or 4 did.
-  const dead = parsed.rows.filter(r => !report.matchedAliases.has(identityKey(r.aliasTitle, r.aliasArtist)));
+  const dead = parsed.rows.filter(r => !report.matchedAliases.has(exactKey(r.aliasTitle, r.aliasArtist)));
   if (dead.length) {
     console.error(`\n⚠️  ${dead.length} alias sur ${parsed.rows.length} n'ont trouvé AUCUNE chanson :`);
     for (const d of dead) console.error(`      • ${d.aliasArtist} / ${d.aliasTitle}   (visait « ${d.artist} / ${d.title} »)`);
@@ -1734,7 +1714,7 @@ async function main(argv) {
 }
 
 module.exports = {
-  parseSeedCsv, seedCatalog, identityKey, formatReport, parseArgs, isLocalHost, SeedFileError, main,
+  parseSeedCsv, seedCatalog, exactKey, formatReport, parseArgs, isLocalHost, SeedFileError, main,
   // Story 23.2 — attach phase
   ATTACH_CANDIDATES_SQL, selectAttachCandidates, attachSongs, countGuardedTables, diffCounts,
   formatAttachReport, runAttach,

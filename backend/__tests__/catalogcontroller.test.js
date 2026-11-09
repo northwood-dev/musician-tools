@@ -261,6 +261,31 @@ describe('catalogcontroller', () => {
     expect(next).not.toHaveBeenCalled(); // no 500
   });
 
+  const searchClauses = async (search) => {
+    CatalogSong.findAndCountAll.mockResolvedValue({ rows: [], count: 0 });
+    await controller.getCatalogList({ query: { search } }, mockRes(), mockNext());
+    const and = CatalogSong.findAndCountAll.mock.calls[0][0].where[Op.and];
+    return and.find((clause) => clause[Op.or])[Op.or];
+  };
+  const pattern = (clause) => clause.logic[Op.like].args[0].args[0];
+
+  test.each([
+    ['The Red Hot Chili Peppers', '%Red Hot Chili Peppers%'],
+    ['les rita', '%rita%'],
+    ["L'Algerino", '%Algerino%'],
+    ['L’Algerino', '%Algerino%'],
+    ['THE 50%', '%50\\%%'],
+  ])('#36: searching "%s" also looks for the artist without the article', async (search, expected) => {
+    const clauses = await searchClauses(search);
+    expect(clauses).toHaveLength(3);
+    expect(pattern(clauses[2])).toBe(expected);
+    expect(clauses[2].attribute.args[0].args[0].col).toBe('artist');
+  });
+
+  test.each([['Beatles'], ['The'], ['Theatre'], ['La']])('#36: searching "%s" has no article to drop', async (search) => {
+    expect(await searchClauses(search)).toHaveLength(2);
+  });
+
   test('getCatalogList accepts comma-separated multi-value filters (facet pills)', async () => {
     CatalogSong.findAndCountAll.mockResolvedValue({ rows: [], count: 0 });
     await controller.getCatalogList({ query: { key: 'Em,Am', genre: 'Rock,Reggae' } }, mockRes(), mockNext());

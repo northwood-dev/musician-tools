@@ -112,25 +112,22 @@ describe('seedCatalog', () => {
     await seedCatalog({ CatalogSong, rows: [{ artist: 'AC/DC', title: 'Back in Black' }], apply: false });
     const [title, artist] = CatalogSong.findOne.mock.calls[0][0].where[Op.and];
 
-    // lower(title) = <lowercased title>
+    // lower(f_unaccent(title)) = lower(f_unaccent(<title>))
     expect(title.attribute.fn).toBe('lower');
-    expect(title.attribute.args[0].col).toBe('title');
-    expect(title.logic).toBe('back in black');
+    expect(title.attribute.args[0].fn).toBe('f_unaccent');
+    expect(title.attribute.args[0].args[0].col).toBe('title');
+    expect(title.logic.args[0].args[0]).toBe('Back in Black');
 
-    // coalesce(lower(artist), '') = <lowercased artist>
-    expect(artist.attribute.fn).toBe('coalesce');
-    expect(artist.attribute.args[0].fn).toBe('lower');
-    expect(artist.logic).toBe('ac/dc');
-
-    // NO f_unaccent anywhere: accents are part of the identity
-    // (« Hôtel California » ≠ « Hotel California »), unlike the LIKE search of the browse.
-    expect(JSON.stringify([title.attribute, artist.attribute])).not.toContain('f_unaccent');
+    // f_artist_key(artist) = f_artist_key(<artist>)
+    expect(artist.attribute.fn).toBe('f_artist_key');
+    expect(artist.logic.fn).toBe('f_artist_key');
+    expect(artist.logic.args[0]).toBe('AC/DC');
   });
 
   test('an entry without an artist folds to the empty string, like COALESCE does', async () => {
     await seedCatalog({ CatalogSong, rows: [{ artist: null, title: 'Untitled' }], apply: false });
     const [, artist] = CatalogSong.findOne.mock.calls[0][0].where[Op.and];
-    expect(artist.logic).toBe('');
+    expect(artist.logic.args[0]).toBe('');
   });
 });
 
@@ -138,7 +135,8 @@ describe('seedCatalog', () => {
 // Review 23.1 — the guards a data script needs, and that the first version lacked
 // ---------------------------------------------------------------------------
 
-const { parseArgs, formatReport, SeedFileError, identityKey } = require('../scripts/seed-catalog');
+const { parseArgs, formatReport, SeedFileError, exactKey } = require('../scripts/seed-catalog');
+const { identityKey } = require('../utils/songIdentity');
 
 describe('parseSeedCsv — refuse rather than guess', () => {
   test('a leading blank line does NOT turn the header into a Catalog entry', () => {
@@ -180,6 +178,27 @@ describe('parseSeedCsv — refuse rather than guess', () => {
     const { rows, skipped } = parseSeedCsv('artist,title\nBeyoncé,Halo\nBeyoncé,Halo\n');
     expect(rows).toHaveLength(1);
     expect(skipped[0].reason).toBe('doublon interne au fichier');
+  });
+});
+
+describe('#36: identityKey ignores case, accents and a leading article on the artist', () => {
+  test.each([
+    ['Help!', 'The Beatles', 'HELP!', 'beatles'],
+    ['Déjà Vu', 'Beyoncé', 'Deja Vu', 'Beyonce'],
+    ['Oui', 'Les Rita Mitsouko', 'Oui', 'Rita Mitsouko'],
+    ['Oui', 'L’Algérino', 'Oui', "l'Algerino"],
+    ['Solo', 'The', 'Solo', 'The The'],
+    ['Cœur', 'Mø', 'Coeur', 'Mo'], // measured on the real f_unaccent
+  ])('%s by %s is %s by %s', (t1, a1, t2, a2) => {
+    expect(identityKey(t1, a1)).toBe(identityKey(t2, a2));
+  });
+
+  test.each([
+    ['Solo', 'The', 'Solo', 'Theatre'],
+    ['The Wall', 'Pink Floyd', 'Wall', 'Pink Floyd'],
+    ['ガ', 'Someone', 'カ', 'Someone'], // measured on the real f_unaccent
+  ])('%s by %s is not %s by %s', (t1, a1, t2, a2) => {
+    expect(identityKey(t1, a1)).not.toBe(identityKey(t2, a2));
   });
 });
 
@@ -687,9 +706,13 @@ describe('buildAliasCandidatesSql — le rapprochement ET la détection de colli
     expect(sql()).toMatch(/s\.source_catalog_uid IS NULL/);
   });
 
-  test('il joint la saisie sur le fold d’identité, accents conservés', () => {
+  test('il joint la saisie sur la casse seule, plus strict que les index (#36)', () => {
     expect(sql()).toMatch(/lower\(s\.title\)\s*=\s*lower\(a\.alias_title\)/);
-    expect(sql()).not.toMatch(/unaccent/i);
+  });
+
+  test('il compte les collisions avec la règle de l’index : c’est lui qui refusera le renommage (#36)', () => {
+    expect(sql()).toMatch(/lower\(f_unaccent\(o\.title\)\)\s*=\s*lower\(f_unaccent\(a\.canon_title\)\)/);
+    expect(sql()).toMatch(/f_artist_key\(o\.artist\)\s*=\s*f_artist_key\(a\.canon_artist\)/);
   });
 
   test('l’entrée canonique est jointe en LEFT JOIN : absente, la ligne remonte quand même pour être refusée', () => {
@@ -974,7 +997,7 @@ describe('attachAliasSongs — refus, réservation et traçabilité', () => {
   test('les alias effectivement rencontrés sont tracés, pour pouvoir nommer ceux qui n’ont rien trouvé', async () => {
     const Song = makeSong();
     const report = await attachAliasSongs({ Song, candidates: [aliasCandidate()], apply: false });
-    expect(report.matchedAliases.has(identityKey('Back in black', 'AC DC'))).toBe(true);
+    expect(report.matchedAliases.has(exactKey('Back in black', 'AC DC'))).toBe(true);
   });
 });
 

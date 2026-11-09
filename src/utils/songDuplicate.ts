@@ -1,20 +1,37 @@
 import type { Song } from '../services/songService';
 
-// Normalize for comparison: canonicalize Unicode encoding (NFC, so the two
-// encodings of an accented char compare equal), fold case, and collapse internal
-// whitespace. So "Rage  Against" === "Rage Against". Accents are deliberately
-// KEPT distinct ("Beyoncé" !== "Beyonce") — folding them would hard-block
-// genuinely different titles with no override.
-const norm = (value: string | null | undefined): string =>
+// Normalize for comparison: fold case and accents, and collapse internal whitespace.
+// So "Rage  Against" === "Rage Against" and "Beyoncé" === "Beyonce" (#36). Two different
+// songs by one artist whose titles differ only by an accent can't coexist: a rare case,
+// accepted over a copy each time someone types without accents.
+//
+// Follows the database's f_unaccent, which the unique index uses: it drops Latin accents only
+// (kana and Indic vowel signs change the letter, so they stay), and spells out letters that
+// have no separate accent (œ → oe).
+const SPELLED_OUT: Record<string, string> = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i' };
+
+export const foldText = (value: string | null | undefined): string =>
   (value ?? '')
-    .normalize('NFC')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
+    .replace(/[œæøßłđı]/g, letter => SPELLED_OUT[letter])
     .replace(/\s+/g, ' ')
     .trim();
 
+// A leading article doesn't make another artist: "The Beatles" === "Beatles" (#36). An artist
+// that is only the article keeps it. Mirrors the database's f_artist_key, which the unique
+// index uses: if they differ on a rare character, the server's 409 decides.
+export const artistKey = (artist: string | null | undefined): string =>
+  foldText(artist).replace(/^(?:(?:the|le|la|les) |l['’] ?)(?=\S)/, '');
+
+/** What makes two songs the same song, as one comparable value. */
+export const songIdentityKey = (title: string | null | undefined, artist: string | null | undefined): string =>
+  `${foldText(title)}\u0000${artistKey(artist)}`;
+
 /**
- * Finds an existing song matching the given title + artist (case- and
- * surrounding-whitespace-insensitive), or null.
+ * Finds an existing song matching the given title + artist (see `foldText` and `artistKey`),
+ * or null.
  *
  * Single source of truth for "does this song already exist", shared by the
  * live hint shown while adding a song and the submit-time guard. Keeping one
@@ -30,15 +47,9 @@ export function findDuplicateSong(
   candidate: { title?: string | null; artist?: string | null },
   excludeUid?: string | null,
 ): Song | null {
-  const title = norm(candidate.title);
-  if (!title) return null; // title is the required field — empty matches nothing useful
-  const artist = norm(candidate.artist);
+  if (!foldText(candidate.title)) return null; // title is the required field — empty matches nothing useful
+  const key = songIdentityKey(candidate.title, candidate.artist);
   return (
-    songs.find(
-      song =>
-        song.uid !== excludeUid &&
-        norm(song.title) === title &&
-        norm(song.artist) === artist,
-    ) ?? null
+    songs.find(song => song.uid !== excludeUid && songIdentityKey(song.title, song.artist) === key) ?? null
   );
 }

@@ -97,6 +97,42 @@ const makeOpts = (overrides: Partial<Parameters<typeof applySongFilters>[1]> = {
   ...overrides,
 });
 
+describe('#36: search ignores accents and a leading article', () => {
+  const found = (songs: Partial<Song>[], searchQuery: string) =>
+    applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery })).map(s => s.uid);
+
+  test.each([
+    ['Beyonce', { artist: 'Beyoncé' }],
+    ['Beyoncé', { artist: 'Beyonce' }],
+    ['deja vu', { title: 'Déjà Vu' }],
+    ['pandora', { album: "Pandorá's Box" }],
+    ['The Red Hot Chili Peppers', { artist: 'Red Hot Chili Peppers' }],
+    ['les rita', { artist: 'Rita Mitsouko' }],
+    ["L'Algerino", { artist: 'Algérino' }],
+    ['L’Algerino', { artist: 'Algérino' }],
+    ['Beatles', { artist: 'The Beatles' }],
+    ['Coeur', { title: 'Cœur de pirate' }],
+  ])('"%s" finds %j', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test.each([
+    ['The', { title: 'The Wall' }],
+    ['The Wall', { title: 'The Wall' }],
+    ['La', { artist: 'La Roux' }],
+    ['the', { artist: 'The' }],
+  ])('"%s" still finds what it found before: %j', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test.each([
+    ['The Wall', { title: 'Wall', artist: 'Pink Floyd' }], // only the artist drops the article
+    ['The Beatles', { artist: 'Rolling Stones' }],
+  ])('"%s" does not find %j', (query, song) => {
+    expect(found([song], query)).toEqual([]);
+  });
+});
+
 test('filters by BPM range', () => {
   const songs: Song[] = [
     { ...baseSong, uid: '1', bpm: 90 },

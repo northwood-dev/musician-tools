@@ -145,6 +145,18 @@ const addBoth = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Add to my songlist' }));
 };
 
+test.each([
+  ['Beatles', 'The Beatles', 'Help!', 'Help!'],
+  ['Beyonce', 'Beyoncé', 'Deja Vu', 'Déjà Vu'],
+])('#36: "%s" in the songlist shows "Already in your songlist" on "%s"', async (songArtist, entryArtist, songTitle, entryTitle) => {
+  (songService.getAllSongs as jest.Mock).mockResolvedValueOnce([asSong({ uid: 's1', title: songTitle, artist: songArtist })]);
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: entryTitle, artist: entryArtist }]));
+  renderCatalog();
+  const already = await screen.findByText(/Already in your songlist/);
+  expect(already.closest('a')).toHaveAttribute('href', '/songs/s1');
+  expect(screen.queryByRole('button', { name: `Add "${entryTitle}" to my songlist` })).toBeNull();
+});
+
 describe('#34: bulk add with the chosen instrument', () => {
   const openBulkAdd = () => {
     fireEvent.click(screen.getByLabelText('Select all'));
