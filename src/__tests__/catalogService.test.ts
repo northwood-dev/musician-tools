@@ -212,6 +212,25 @@ describe('catalogService.importCollection', () => {
     );
   });
 
+  test('#34: importCollection sends the instrument, and no body without one', async () => {
+    const recap = { added: 1, skipped: 0, failed: 0, playlistUid: 'p1' };
+    const fetchMock = mockFetchWithCsrf({ ok: true, status: 200, json: async () => recap });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await catalogService.importCollection('col1', 'Bass');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/catalog/collections/col1/add-to-songlist',
+      expect.objectContaining({ body: JSON.stringify({ instrument: 'Bass' }) })
+    );
+
+    fetchMock.mockClear();
+    await catalogService.importCollection('col1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/catalog/collections/col1/add-to-songlist',
+      expect.not.objectContaining({ body: expect.anything() })
+    );
+  });
+
   test('POSTs add-to-songlist and returns the recap', async () => {
     const recap = { added: 18, skipped: 2, failed: 0, playlistUid: 'p1' };
     const fetchMock = mockFetchWithCsrf({ ok: true, status: 200, json: async () => recap });

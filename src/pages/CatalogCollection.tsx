@@ -88,10 +88,12 @@ export default function CatalogCollection() {
 
   const handleImport = async () => {
     if (!collection || importing || bulkAdd.running) return;
+    const chosen = addAs.requireChoice();
+    if (!chosen) return;
     bulkAdd.setRecap(null); // this banner replaces the subset recap
     setImporting(true);
     try {
-      const recap = await catalogService.importCollection(collection.uid);
+      const recap = await catalogService.importCollection(collection.uid, chosen.instrument);
       // Build the recap from segments so an all-skipped re-import reads clearly
       // ("3 already in your songlist") instead of a confusing "Added 0 · …".
       const parts: string[] = [];
@@ -147,7 +149,7 @@ export default function CatalogCollection() {
         <button
           type="button"
           className="btn-primary min-h-[44px]"
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => { if (addAs.requireChoice()) setConfirmOpen(true); }}
           disabled={importing || count === 0 || bulkAdd.running || confirmAddOpen}
         >
           {importing ? 'Adding…' : 'Add collection to my songlist'}
@@ -267,7 +269,7 @@ export default function CatalogCollection() {
       <ConfirmDialog
         isOpen={confirmOpen}
         title="Add collection to my songlist"
-        message={`Add ${count} ${count === 1 ? 'song' : 'songs'} to your Songlist? A "${collection.name}" playlist will be created or reused.`}
+        message={`Add ${count} ${count === 1 ? 'song' : 'songs'} to your Songlist? A "${collection.name}" playlist will be created or reused. ${describeAddAsChoice(addAs.choice)}`}
         confirmText={importing ? 'Adding…' : 'Add to my songlist'}
         cancelText="Cancel"
         onConfirm={handleImport}

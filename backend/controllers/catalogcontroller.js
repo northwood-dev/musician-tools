@@ -721,6 +721,12 @@ const importCollectionToSonglist = async (req, res, next) => {
     if (!isUuid(req.params.uid)) {
       return next(createError(404, 'Collection not found'));
     }
+    let instrument;
+    try {
+      instrument = parseAddInstrument(req.body);
+    } catch (invalid) {
+      return next(invalid);
+    }
     // Published members only — a draft is not public (19.6) and 19.4 refuses to copy it.
     // Full attributes (default) are needed for buildSongFromCatalog.
     const collection = await CatalogCollection.findByPk(req.params.uid, {
@@ -743,7 +749,7 @@ const importCollectionToSonglist = async (req, res, next) => {
     // loop continues (the whole point of the story; do not "fix" by wrapping this).
     for (const entry of members) {
       try {
-        const song = await Song.create(buildSongFromCatalog(entry, userId));
+        const song = await Song.create(buildSongFromCatalog(entry, userId, instrument));
         songUidsToAttach.push(song.uid);
         added += 1;
       } catch (error) {

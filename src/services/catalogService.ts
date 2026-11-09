@@ -405,12 +405,13 @@ export const catalogService = {
   // Import a whole Collection into the user's Songlist (story 20.3, any logged-in user):
   // copies every published member (best-effort) + creates/reuses a mirror Playlist named
   // after the Collection. Returns the {added,skipped,failed,playlistUid} recap. 404 -> gone.
-  async importCollection(uid: string, signal?: AbortSignal): Promise<ImportCollectionResult> {
+  async importCollection(uid: string, instrument?: string, signal?: AbortSignal): Promise<ImportCollectionResult> {
     const response = await apiFetch(`${API_BASE}/catalog/collections/${uid}/add-to-songlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       signal,
+      ...(instrument ? { body: JSON.stringify({ instrument }) } : {}),
     });
     if (response.status === 404) {
       throw new CollectionNotFoundError();
