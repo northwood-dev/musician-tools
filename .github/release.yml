@@ -2,7 +2,7 @@
 changelog:
   categories:
     - title: New
-      labels: [enhancement]
+      labels: [major, enhancement]
     - title: Fixed
       labels: [bug]
     - title: Other changes

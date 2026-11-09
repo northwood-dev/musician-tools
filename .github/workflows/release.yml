@@ -1,6 +1,10 @@
 name: Release
 
-# Cut a release from the Actions tab ("Run workflow", pick patch/minor/major).
+# Starts on its own when a PR is merged into main, the bump given by the PR's highest
+# label: major, then enhancement (minor), then bug (patch). A merged PR with none of
+# them only gets the deploy of its merge. The Actions tab ("Run workflow", pick
+# patch/minor/major) stays as a fallback.
+#
 # Bumps the version in the root package.json and its lockfile, the only place it
 # lives (the footer reads it at build time), commits it to main, tags v<version>, publishes a GitHub release whose notes are
 # generated from the PRs merged since the previous tag (grouped by label, see
@@ -20,13 +24,24 @@ on:
         type: choice
         options: [patch, minor, major]
         default: patch
-
-concurrency: release
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 jobs:
   release:
     name: Release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true && (
+        contains(github.event.pull_request.labels.*.name, 'major') ||
+        contains(github.event.pull_request.labels.*.name, 'enhancement') ||
+        contains(github.event.pull_request.labels.*.name, 'bug')
+      ))
     runs-on: ubuntu-latest
+    # On the job, not the workflow: every closed PR starts this workflow, and one that
+    # releases nothing must not replace a release waiting in line.
+    concurrency: release
     permissions:
       contents: write
 
@@ -41,8 +56,16 @@ jobs:
 
       - name: Bump version
         id: bump
+        env:
+          # The job's condition guarantees a label here when there is no manual choice,
+          # so the last fallback only ever means the bug label.
+          BUMP: >-
+            ${{ inputs.bump
+              || (contains(github.event.pull_request.labels.*.name, 'major') && 'major')
+              || (contains(github.event.pull_request.labels.*.name, 'enhancement') && 'minor')
+              || 'patch' }}
         run: |
-          npm version "${{ inputs.bump }}" --no-git-tag-version
+          npm version "$BUMP" --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
