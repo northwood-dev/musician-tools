@@ -1,6 +1,7 @@
 import type { Playlist } from '../services/playlistService';
 import type { Song } from '../services/songService';
 import { artistKey, foldText } from './songDuplicate';
+import { searchKey } from './searchKey';
 
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
@@ -101,18 +102,26 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     playlists,
   } = opts;
 
-  // Accents don't count, and an artist can be typed with an article it isn't stored with (#36).
-  const query = foldText(searchQuery);
-  const artistQuery = artistKey(searchQuery);
+  // Accents, punctuation and spaces don't count (#36, #76), and an artist can be typed with an
+  // article it isn't stored with. A search made only of punctuation has no key: it looks for
+  // that text, rather than matching everything.
+  const query = searchKey(searchQuery);
+  const artistQuery = searchKey(artistKey(searchQuery));
+  const literalQuery = foldText(searchQuery);
 
   return songs.filter(song => {
-    const artist = foldText(song.artist);
-    const passesSearch = (
-      foldText(song.title).includes(query) ||
-      artist.includes(query) ||
-      artist.includes(artistQuery) ||
-      foldText(song.album).includes(query)
-    );
+    const passesSearch = query
+      ? (
+        searchKey(song.title).includes(query) ||
+        searchKey(song.artist).includes(query) ||
+        searchKey(song.artist).includes(artistQuery) ||
+        searchKey(song.album).includes(query)
+      )
+      : (
+        foldText(song.title).includes(literalQuery) ||
+        foldText(song.artist).includes(literalQuery) ||
+        foldText(song.album).includes(literalQuery)
+      );
 
     const isNoInstrument = instrumentFilter === NO_INSTRUMENT;
     const selected = instrumentFilter && !isNoInstrument ? [instrumentFilter] : [];

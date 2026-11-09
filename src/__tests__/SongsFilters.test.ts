@@ -97,6 +97,44 @@ const makeOpts = (overrides: Partial<Parameters<typeof applySongFilters>[1]> = {
   ...overrides,
 });
 
+describe('#76: search ignores punctuation and spaces, and & counts as and', () => {
+  const found = (songs: Partial<Song>[], searchQuery: string) =>
+    applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery })).map(s => s.uid);
+
+  test.each([
+    ['earth wind and fire', { artist: 'Earth, Wind & Fire' }],
+    ['Earth Wind & Fire', { artist: 'Earth, Wind & Fire' }],
+    ['earth, wind & fire', { artist: 'Earth Wind and Fire' }],
+    ['ben e king', { artist: 'Ben E. King' }],
+    ['acdc', { artist: 'AC/DC' }],
+    ['ac dc', { artist: 'AC/DC' }],
+    ['ac-dc', { artist: 'AC/DC' }],
+    ['dont stop', { title: "Don't Stop" }],
+    ['dont stop', { title: 'Don’t Stop' }],
+    ["don't", { album: 'Dont' }],
+    ['the earth wind and fire', { artist: 'Earth, Wind & Fire' }],
+    ['ガ', { artist: 'ガ!' }],
+  ])('"%s" finds %j', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test.each([
+    ['ガ', { artist: 'カ' }], // a letter is never reduced to another one
+    ['पि', { artist: 'प' }],
+    ['ben e king', { artist: 'Ben King' }],
+  ])('"%s" does not find %j', (query, song) => {
+    expect(found([song], query)).toEqual([]);
+  });
+
+  test('a search made only of punctuation looks for that text, and does not return everything', () => {
+    expect(found([{ title: 'Help!', artist: 'Someone' }, { title: 'Wow', artist: 'Someone' }], '!')).toEqual(['0']);
+  });
+
+  test('an empty search still returns everything', () => {
+    expect(found([{ title: 'Help!' }, { title: 'Wow' }], '')).toEqual(['0', '1']);
+  });
+});
+
 describe('#36: search ignores accents and a leading article', () => {
   const found = (songs: Partial<Song>[], searchQuery: string) =>
     applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery })).map(s => s.uid);

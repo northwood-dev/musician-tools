@@ -267,19 +267,34 @@ describe('catalogcontroller', () => {
     const and = CatalogSong.findAndCountAll.mock.calls[0][0].where[Op.and];
     return and.find((clause) => clause[Op.or])[Op.or];
   };
-  const pattern = (clause) => clause.logic[Op.like].args[0].args[0];
+  // What a search clause looks for: f_search_key(column) LIKE '%' || f_search_key(<text>) || '%'.
+  const typed = (clause) => clause.logic[Op.like].args[1].args[0];
 
   test.each([
-    ['The Red Hot Chili Peppers', '%Red Hot Chili Peppers%'],
-    ['les rita', '%rita%'],
-    ["L'Algerino", '%Algerino%'],
-    ['L’Algerino', '%Algerino%'],
-    ['THE 50%', '%50\\%%'],
+    ['The Red Hot Chili Peppers', 'Red Hot Chili Peppers'],
+    ['les rita', 'rita'],
+    ["L'Algerino", 'Algerino'],
+    ['L’Algerino', 'Algerino'],
+    ['THE 50%', '50%'],
   ])('#36: searching "%s" also looks for the artist without the article', async (search, expected) => {
     const clauses = await searchClauses(search);
     expect(clauses).toHaveLength(3);
-    expect(pattern(clauses[2])).toBe(expected);
-    expect(clauses[2].attribute.args[0].args[0].col).toBe('artist');
+    expect(typed(clauses[2])).toBe(expected);
+    expect(clauses[2].attribute.args[0].col).toBe('artist');
+  });
+
+  test('#76: a search compares search keys, on the title and the artist', async () => {
+    const [title, artist] = await searchClauses('earth wind and fire');
+    expect(title.attribute.fn).toBe('f_search_key');
+    expect(title.attribute.args[0].col).toBe('title');
+    expect(artist.attribute.args[0].col).toBe('artist');
+    expect(typed(title)).toBe('earth wind and fire');
+  });
+
+  test.each([['!'], ['%'], ['...'], ['_']])('#76: a search made only of punctuation (%s) looks for that text, not for everything', async (search) => {
+    const [title, artist] = await searchClauses(search);
+    expect(title.attribute.fn).toBe('lower');
+    expect(artist.attribute.fn).toBe('lower');
   });
 
   test.each([['Beatles'], ['The'], ['Theatre'], ['La']])('#36: searching "%s" has no article to drop', async (search) => {

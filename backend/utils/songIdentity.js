@@ -15,14 +15,16 @@ const sameArtist = (artist) => whereFn(
   fn('f_artist_key', artist ? String(artist) : '')
 );
 
-// Follows f_unaccent: Latin accents only (kana and Indic vowel signs change the letter), and
-// letters with no separate accent are spelled out (œ → oe).
-const SPELLED_OUT = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i' };
+// Follows f_unaccent, measured letter by letter: accents on Latin and Greek only (й, kana and
+// Indic vowel signs change the letter), and letters with no separate accent are spelled out
+// (œ → oe). Rarer letters differ, and the index decides for them.
+const SPELLED_OUT = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i', ð: 'd', þ: 'th' };
 const fold = (value) => String(value || '')
   .normalize('NFD')
-  .replace(/[̀-ͯ]/g, '')
+  .replace(/([\p{Script=Latin}\p{Script=Greek}])[̀-ͯ]+/gu, '$1')
+  .normalize('NFC')
   .toLowerCase()
-  .replace(/[œæøßłđı]/g, (letter) => SPELLED_OUT[letter]);
+  .replace(/[œæøßłđıðþ]/g, (letter) => SPELLED_OUT[letter]);
 
 // A value that is only the article keeps it, as in f_artist_key.
 const withoutLeadingArticle = (value) => String(value).replace(/^((the|le|la|les)\s+|l['’]\s*)(?=\S)/i, '');
@@ -32,4 +34,10 @@ const withoutLeadingArticle = (value) => String(value).replace(/^((the|le|la|les
 // which can't occur in a Postgres text value: any printable one could collide two pairs.
 const identityKey = (title, artist) => `${fold(title)}\u0000${withoutLeadingArticle(fold(artist))}`;
 
-module.exports = { sameTitle, sameArtist, identityKey, withoutLeadingArticle };
+// What search compares, as in f_search_key (migration 20261109100000): only for finding, not
+// for deciding that two songs are the same.
+const searchKey = (value) => fold(value)
+  .replace(/&/g, 'and')
+  .replace(/[\s!"#$%'()*+,\-./:;<=>?@[\\\]^_`{|}~´‘’‚“”„«»‹›–—―…·•¡¿]/g, '');
+
+module.exports = { sameTitle, sameArtist, identityKey, withoutLeadingArticle, searchKey };

@@ -10,7 +10,7 @@ const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
-const { sameTitle, sameArtist, withoutLeadingArticle } = require('../utils/songIdentity');
+const { sameTitle, sameArtist, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
 // columns ; language title-cased like the Song form ; durationSeconds factored out).
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
@@ -266,6 +266,15 @@ function foldedLike(column, pattern) {
   );
 }
 
+// Does a column contain what was typed, however it was typed (#76)? A key can't contain % or
+// _ or \, which it drops as punctuation, so nothing needs escaping here.
+function matchesSearchKey(column, text) {
+  return whereFn(
+    fn('f_search_key', col(column)),
+    { [Op.like]: fn('concat', '%', fn('f_search_key', text), '%') }
+  );
+}
+
 // Is the requester a curator? Looks up the session user's isCurator. Called LAZILY —
 // only on the draft-aware paths (?includeDrafts, or accessing a draft by uid) — so
 // normal public reads pay no extra query. Story 19.6.
@@ -303,12 +312,17 @@ const getCatalogList = async (req, res, next) => {
       // Escape LIKE metacharacters so a user typing %/_/\ searches for them LITERALLY
       // (Postgres' default LIKE escape is backslash). Prevents "50%" from matching
       // everything or "a_c" from matching "abc".
-      const contains = (text) => `%${text.replace(/[\\%_]/g, '\\$&')}%`;
-      const clauses = [foldedLike('title', contains(search)), foldedLike('artist', contains(search))];
-      // An artist can be typed with an article it isn't stored with (#36).
-      const withoutArticle = withoutLeadingArticle(search);
-      if (withoutArticle !== search) clauses.push(foldedLike('artist', contains(withoutArticle)));
-      and.push({ [Op.or]: clauses });
+      if (searchKey(search)) {
+        const clauses = [matchesSearchKey('title', search), matchesSearchKey('artist', search)];
+        // An artist can be typed with an article it isn't stored with (#36).
+        const withoutArticle = withoutLeadingArticle(search);
+        if (withoutArticle !== search) clauses.push(matchesSearchKey('artist', withoutArticle));
+        and.push({ [Op.or]: clauses });
+      } else {
+        // Only punctuation: no key to compare, so it looks for that text (not for everything).
+        const pattern = `%${search.replace(/[\\%_]/g, '\\$&')}%`;
+        and.push({ [Op.or]: [foldedLike('title', pattern), foldedLike('artist', pattern)] });
+      }
     }
     // Draft/publish scoping (19.6): browse shows PUBLISHED only. A curator may pass
     // ?includeDrafts=1 (the manage hub) to also see drafts — honoured only if the

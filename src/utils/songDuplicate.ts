@@ -5,17 +5,19 @@ import type { Song } from '../services/songService';
 // songs by one artist whose titles differ only by an accent can't coexist: a rare case,
 // accepted over a copy each time someone types without accents.
 //
-// Follows the database's f_unaccent, which the unique index uses: it drops Latin accents only
-// (kana and Indic vowel signs change the letter, so they stay), and spells out letters that
-// have no separate accent (œ → oe).
-const SPELLED_OUT: Record<string, string> = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i' };
+// Follows the database's f_unaccent, which the unique index uses, measured letter by letter:
+// it drops accents on Latin and Greek only (й, kana and Indic vowel signs change the letter,
+// so they stay), and spells out letters that have no separate accent (œ → oe). Rarer letters
+// differ, and the server's refusal decides for them.
+const SPELLED_OUT: Record<string, string> = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i', ð: 'd', þ: 'th' };
 
 export const foldText = (value: string | null | undefined): string =>
   (value ?? '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/([\p{Script=Latin}\p{Script=Greek}])[̀-ͯ]+/gu, '$1')
+    .normalize('NFC')
     .toLowerCase()
-    .replace(/[œæøßłđı]/g, letter => SPELLED_OUT[letter])
+    .replace(/[œæøßłđıðþ]/g, letter => SPELLED_OUT[letter])
     .replace(/\s+/g, ' ')
     .trim();
 
