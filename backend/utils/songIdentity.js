@@ -17,10 +17,12 @@ const sameArtist = (artist) => whereFn(
 
 const fold = (value) => String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
+// A value that is only the article keeps it, as in f_artist_key.
+const withoutLeadingArticle = (value) => String(value).replace(/^((the|le|la|les)\s+|l['’]\s*)(?=\S)/i, '');
+
 // The same rule in JS, for code comparing values it hasn't sent to the database (the Catalog
 // seed's file). The index decides if they differ on a rare character. The separator is NUL,
 // which can't occur in a Postgres text value: any printable one could collide two pairs.
-const identityKey = (title, artist) =>
-  `${fold(title)}\u0000${fold(artist).replace(/^((the|le|la|les)\s+|l['’]\s*)(?=\S)/, '')}`;
+const identityKey = (title, artist) => `${fold(title)}\u0000${withoutLeadingArticle(fold(artist))}`;
 
-module.exports = { sameTitle, sameArtist, identityKey };
+module.exports = { sameTitle, sameArtist, identityKey, withoutLeadingArticle };

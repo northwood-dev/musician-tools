@@ -4,7 +4,7 @@ import type { Song } from '../services/songService';
 // So "Rage  Against" === "Rage Against" and "Beyoncé" === "Beyonce" (#36). Two different
 // songs by one artist whose titles differ only by an accent can't coexist: a rare case,
 // accepted over a copy each time someone types without accents.
-const norm = (value: string | null | undefined): string =>
+export const norm = (value: string | null | undefined): string =>
   (value ?? '')
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
@@ -15,7 +15,7 @@ const norm = (value: string | null | undefined): string =>
 // A leading article doesn't make another artist: "The Beatles" === "Beatles" (#36). An artist
 // that is only the article keeps it. Mirrors the database's f_artist_key, which the unique
 // index uses: if they differ on a rare character, the server's 409 decides.
-const artistKey = (artist: string | null | undefined): string =>
+export const artistKey = (artist: string | null | undefined): string =>
   norm(artist).replace(/^(?:(?:the|le|la|les) |l['’] ?)(?=\S)/, '');
 
 /** What makes two songs the same song, as one comparable value. */

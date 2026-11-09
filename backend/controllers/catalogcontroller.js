@@ -10,7 +10,7 @@ const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
-const { sameTitle, sameArtist } = require('../utils/songIdentity');
+const { sameTitle, sameArtist, withoutLeadingArticle } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
 // columns ; language title-cased like the Song form ; durationSeconds factored out).
 const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
@@ -304,9 +304,12 @@ const getCatalogList = async (req, res, next) => {
       // Escape LIKE metacharacters so a user typing %/_/\ searches for them LITERALLY
       // (Postgres' default LIKE escape is backslash). Prevents "50%" from matching
       // everything or "a_c" from matching "abc".
-      const escaped = search.replace(/[\\%_]/g, '\\$&');
-      const pattern = `%${escaped}%`;
-      and.push({ [Op.or]: [foldedLike('title', pattern), foldedLike('artist', pattern)] });
+      const contains = (text) => `%${text.replace(/[\\%_]/g, '\\$&')}%`;
+      const clauses = [foldedLike('title', contains(search)), foldedLike('artist', contains(search))];
+      // An artist can be typed with an article it isn't stored with (#36).
+      const withoutArticle = withoutLeadingArticle(search);
+      if (withoutArticle !== search) clauses.push(foldedLike('artist', contains(withoutArticle)));
+      and.push({ [Op.or]: clauses });
     }
     // Draft/publish scoping (19.6): browse shows PUBLISHED only. A curator may pass
     // ?includeDrafts=1 (the manage hub) to also see drafts — honoured only if the

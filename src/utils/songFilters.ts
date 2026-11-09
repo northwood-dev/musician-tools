@@ -1,5 +1,6 @@
 import type { Playlist } from '../services/playlistService';
 import type { Song } from '../services/songService';
+import { artistKey, norm } from './songDuplicate';
 
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
@@ -100,13 +101,17 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     playlists,
   } = opts;
 
-  const query = searchQuery.toLowerCase();
+  // Accents don't count, and an artist can be typed with an article it isn't stored with (#36).
+  const query = norm(searchQuery);
+  const artistQuery = artistKey(searchQuery);
 
   return songs.filter(song => {
+    const artist = norm(song.artist);
     const passesSearch = (
-      song.title.toLowerCase().includes(query) ||
-      song.artist?.toLowerCase().includes(query) ||
-      song.album?.toLowerCase().includes(query)
+      norm(song.title).includes(query) ||
+      artist.includes(query) ||
+      artist.includes(artistQuery) ||
+      norm(song.album).includes(query)
     );
 
     const isNoInstrument = instrumentFilter === NO_INSTRUMENT;
