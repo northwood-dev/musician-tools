@@ -194,11 +194,13 @@ export const catalogService = {
   // Add a catalog entry to the user's Songlist (snapshot + provenance, story 19.4).
   // 201 -> the created Song. 409 (already in the songlist, Epic 17 guard) ->
   // SongConflictError carrying the existing Song (reused from songService).
-  async addToSonglist(uid: string): Promise<Song> {
+  // `instrument` (#34): the song's instrument; absent = a song with no instrument.
+  async addToSonglist(uid: string, instrument?: string): Promise<Song> {
     const response = await apiFetch(`${API_BASE}/catalog/${uid}/add-to-songlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
+      ...(instrument ? { body: JSON.stringify({ instrument }) } : {}),
     });
     if (response.status === 409) {
       const body = await response.json().catch(() => ({} as { song?: Song }));

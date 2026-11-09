@@ -13,6 +13,8 @@ import { useBulkAddToSonglist, describeAddRecap, isAddRecapNegative } from '../h
 import { BulkRecap } from '../components/BulkRecap';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
+import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
 
 const EMPTY_FACETS: CatalogFacets = { genre: [], key: [], mode: [], timeSignature: [] };
 const asArr = (s: string): string[] => (s ? s.split(',').filter(Boolean) : []);
@@ -55,6 +57,7 @@ export default function Catalog() {
   // hatch is mandatory: a song left ticked can scroll out of reach.
   const selection = useRowSelection();
   const bulkAdd = useBulkAddToSonglist(addToCache);
+  const addAs = useAddAsInstrument();
   const [confirmAddOpen, setConfirmAddOpen] = useState(false);
   // Entries found to be gone since the list was loaded (#32). Transient: the next load is
   // the truth again, so it replaces them.
@@ -174,6 +177,8 @@ export default function Catalog() {
     <div className="w-full max-w-5xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Catalog</h1>
 
+      <AddAsInstrumentSelect addAs={addAs} className="mb-4" />
+
       {/* Search is always above the list (DL-5). */}
       <input
         type="search"
@@ -282,6 +287,7 @@ export default function Catalog() {
                 ? <CatalogList
                     items={data.items}
                     existingFor={findExisting}
+                    addAs={addAs}
                     onAdded={addToCache}
                     selectedUids={selection.selected}
                     onToggle={userToggle}

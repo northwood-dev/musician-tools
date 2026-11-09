@@ -6,6 +6,8 @@ import CatalogAddButton from '../components/CatalogAddButton';
 import { DetailPageSkeleton } from '../components/ListSkeleton';
 import { useSonglistMatcher } from '../hooks/useSonglistMatcher';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
+import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
+import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
 
 // Read-only detail of a Catalog entry (story 19.3). Intrinsic fields only (DL-17) +
 // clickable streaming links. A deep-link to a removed/unknown entry shows a calm
@@ -27,6 +29,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 export default function CatalogEntry() {
   const { uid } = useParams();
   const { findExisting, addToCache } = useSonglistMatcher(); // "already in songlist" flag (19.4)
+  const addAs = useAddAsInstrument();
   const [entry, setEntry] = useState<CatalogSong | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -81,8 +84,9 @@ export default function CatalogEntry() {
       <p className="text-sm text-gray-500 dark:text-gray-400">{entry.artist || '—'}</p>
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{entry.title}</h1>
 
-      <div className="mb-6">
-        <CatalogAddButton entry={entry} existingSong={findExisting(entry)} onAdded={addToCache} />
+      <div className="mb-6 space-y-3">
+        <AddAsInstrumentSelect addAs={addAs} />
+        <CatalogAddButton entry={entry} existingSong={findExisting(entry)} addAs={addAs} onAdded={addToCache} />
       </div>
 
       <div className="card-base p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">

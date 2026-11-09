@@ -11,6 +11,8 @@ import { useRowSelection } from '../hooks/useRowSelection';
 import { useBulkAddToSonglist, describeAddRecap, isAddRecapNegative } from '../hooks/useBulkAddToSonglist';
 import { BulkRecap } from '../components/BulkRecap';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
+import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
+import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -25,6 +27,7 @@ export default function CatalogCollection() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState(false);
 
+  const addAs = useAddAsInstrument();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   // Persistent inline result banner (not a transient toast — the import recap must stay
@@ -137,7 +140,8 @@ export default function CatalogCollection() {
       )}
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{count} {count === 1 ? 'song' : 'songs'}</p>
 
-      <div className="mt-6 mb-3">
+      <div className="mt-6 mb-3 space-y-3">
+        <AddAsInstrumentSelect addAs={addAs} />
         <button
           type="button"
           className="btn-primary min-h-[44px]"

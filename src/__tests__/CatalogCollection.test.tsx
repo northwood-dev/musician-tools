@@ -39,6 +39,14 @@ beforeEach(() => {
   cat.importCollection.mockResolvedValue({ added: 18, skipped: 2, failed: 0, playlistUid: 'p1' });
 });
 
+test('#34: the "Add as" selector shows the choice remembered from another Catalog page', async () => {
+  localStorage.setItem('catalogAddAsInstrument', 'Bass');
+  renderDetail();
+  await screen.findByText('Rock 90s');
+  expect(screen.getByLabelText('Add as')).toHaveDisplayValue('Bass');
+  localStorage.clear();
+});
+
 test('renders the name, description, count and members', async () => {
   renderDetail();
   await screen.findByText('Rock 90s');

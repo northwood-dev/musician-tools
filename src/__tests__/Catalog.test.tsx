@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import Catalog from '../pages/Catalog';
 import { catalogService } from '../services/catalogService';
 import type { CatalogSong } from '../services/catalogService';
+import type { Song } from '../services/songService';
 
 jest.mock('../services/catalogService', () => {
   const actual = jest.requireActual('../services/catalogService');
@@ -17,6 +18,34 @@ beforeEach(() => {
   jest.clearAllMocks();
   svc.getFacets.mockResolvedValue({ genre: [], key: [], mode: [], timeSignature: [] });
   svc.listCollections.mockResolvedValue([]); // no rail by default; rail tests override
+  localStorage.setItem('catalogAddAsInstrument', '__none__'); // #34: a choice is already made
+});
+
+test('#34: the row Add button sends the instrument chosen at the top of the page, and the choice is kept', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
+  svc.addToSonglist.mockResolvedValue({ uid: 'song-1', title: 'Zombie' } as Song);
+  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  await screen.findByText('Zombie');
+
+  fireEvent.change(screen.getByLabelText('Add as'), { target: { value: 'Bass' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
+
+  await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Bass'));
+  expect(localStorage.getItem('catalogAddAsInstrument')).toBe('Bass');
+});
+
+test('#34: the row Add button with nothing chosen sends nothing, and does not open the row', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
+  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  await screen.findByText('Zombie');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
+
+  expect(svc.addToSonglist).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+  expect(screen.getByLabelText('Add as')).toHaveFocus();
 });
 
 test('renders the list with the "All songs" title (no query)', async () => {
