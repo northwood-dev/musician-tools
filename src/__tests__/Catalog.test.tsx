@@ -145,6 +145,80 @@ const addBoth = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Add to my songlist' }));
 };
 
+describe('#34: bulk add with the chosen instrument', () => {
+  const openBulkAdd = () => {
+    fireEvent.click(screen.getByLabelText('Select all'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+  };
+
+  beforeEach(() => {
+    svc.listCatalog.mockResolvedValue(resp(twoRows));
+    svc.addToSonglist.mockImplementation(async (uid: string) => asSong({ uid: `s-${uid}`, title: uid }));
+  });
+
+  test('every song is sent with the chosen instrument, and the confirmation says so', async () => {
+    localStorage.setItem('catalogAddAsInstrument', 'Bass');
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Added as Bass. Songs already in your songlist keep their instrument.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledTimes(2));
+    expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Bass');
+    expect(svc.addToSonglist).toHaveBeenCalledWith('b', 'Bass');
+  });
+
+  test('No instrument adds the songs without one, and the confirmation says so', async () => {
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Added with no instrument. Songs already in your songlist keep their instrument.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', undefined));
+  });
+
+  test('with nothing chosen the confirmation stays closed, nothing is sent, and the selector is pointed out', async () => {
+    localStorage.removeItem('catalogAddAsInstrument');
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(svc.addToSonglist).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+    expect(screen.getByLabelText('Add as')).toHaveFocus();
+  });
+
+  test('retrying failed songs uses the instrument chosen at that moment, and the confirmation states it', async () => {
+    localStorage.setItem('catalogAddAsInstrument', 'Bass');
+    svc.addToSonglist.mockRejectedValueOnce(new Error('offline'));
+    svc.addToSonglist.mockRejectedValueOnce(new Error('offline'));
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Add to my songlist' }));
+    await screen.findByText(/2 failed/);
+
+    svc.addToSonglist.mockClear();
+    fireEvent.change(screen.getByLabelText('Add as'), { target: { value: 'Guitar' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Added as Guitar.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Guitar'));
+    expect(svc.addToSonglist).toHaveBeenCalledWith('b', 'Guitar');
+  });
+});
+
 test('22.4: the rows gain a checkbox WITHOUT losing the row link or the per-row Add', async () => {
   svc.listCatalog.mockResolvedValue(resp(twoRows));
   renderCatalog();

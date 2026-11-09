@@ -12,7 +12,7 @@ import { useBulkAddToSonglist, describeAddRecap, isAddRecapNegative } from '../h
 import { BulkRecap } from '../components/BulkRecap';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
-import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
+import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -59,8 +59,10 @@ export default function CatalogCollection() {
     // `importing` too: the mutual exclusion must hold in BOTH handlers, not only in the
     // buttons — a dialog opened before the other action started stays live (lesson 22.3).
     if (importing) return;
+    const chosen = addAs.requireChoice();
+    if (!chosen) return;
     setResult(null); // the whole-collection banner is about another action
-    const res = await bulkAdd.run(Array.from(selection.selected));
+    const res = await bulkAdd.run(Array.from(selection.selected), chosen.instrument);
     if (!res) return;
     selection.removeMany(res.settledUids);
     setGoneUids(prev => new Set([...prev, ...res.goneUids]));
@@ -170,7 +172,7 @@ export default function CatalogCollection() {
         <button
           type="button"
           className="btn-primary text-sm px-3 py-1.5"
-          onClick={() => setConfirmAddOpen(true)}
+          onClick={() => { if (addAs.requireChoice()) setConfirmAddOpen(true); }}
           disabled={bulkAdd.running || importing}
         >
           Add selected to my songlist
@@ -255,7 +257,7 @@ export default function CatalogCollection() {
         title={`Add ${selection.size} ${selection.size === 1 ? 'song' : 'songs'} to my songlist`}
         // Said out loud: the button right above DOES create a mirror playlist. A subset
         // does not (epic 22, decision B) — the two must not look interchangeable.
-        message={`Add ${selection.size} selected ${selection.size === 1 ? 'song' : 'songs'} to your Songlist? No playlist is created — only "Add collection to my songlist" does that.`}
+        message={`Add ${selection.size} selected ${selection.size === 1 ? 'song' : 'songs'} to your Songlist? No playlist is created — only "Add collection to my songlist" does that. ${describeAddAsChoice(addAs.choice)}`}
         confirmText={bulkAdd.running ? 'Adding…' : 'Add to my songlist'}
         cancelText="Cancel"
         onConfirm={handleAddSelected}

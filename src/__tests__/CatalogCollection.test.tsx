@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogCollection from '../pages/CatalogCollection';
 import { catalogService, CatalogNotFoundError, CollectionNotFoundError } from '../services/catalogService';
+import type { Song } from '../services/songService';
 
 // Story 20.4 — user-facing Collection detail + whole-collection import.
 jest.mock('../services/catalogService', () => {
@@ -37,6 +38,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   cat.getCollection.mockResolvedValue(detail);
   cat.importCollection.mockResolvedValue({ added: 18, skipped: 2, failed: 0, playlistUid: 'p1' });
+  localStorage.setItem('catalogAddAsInstrument', '__none__'); // #34: a choice is already made
 });
 
 test('#34: the "Add as" selector shows the choice remembered from another Catalog page', async () => {
@@ -44,7 +46,36 @@ test('#34: the "Add as" selector shows the choice remembered from another Catalo
   renderDetail();
   await screen.findByText('Rock 90s');
   expect(screen.getByLabelText('Add as')).toHaveDisplayValue('Bass');
-  localStorage.clear();
+});
+
+test('#34: adding a selection sends the chosen instrument, and the confirmation says so', async () => {
+  localStorage.setItem('catalogAddAsInstrument', 'Bass');
+  cat.addToSonglist.mockResolvedValue({ uid: 'song-1', title: 'Zombie' } as Song);
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByLabelText('Select all'));
+  fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent('Added as Bass. Songs already in your songlist keep their instrument.');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+  await waitFor(() => expect(cat.addToSonglist).toHaveBeenCalledWith('s1', 'Bass'));
+  expect(cat.addToSonglist).toHaveBeenCalledWith('s2', 'Bass');
+});
+
+test('#34: adding a selection with nothing chosen keeps the confirmation closed and points to the selector', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByLabelText('Select all'));
+  fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(cat.addToSonglist).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+  expect(screen.getByLabelText('Add as')).toHaveFocus();
 });
 
 test('renders the name, description, count and members', async () => {

@@ -21,6 +21,12 @@ function readRememberedChoice(): string | null {
   }
 }
 
+/** What the bulk and collection confirmations say about the instrument. */
+export function describeAddAsChoice(choice: string | null): string {
+  const added = choice && choice !== NO_INSTRUMENT_CHOICE ? `Added as ${choice}.` : 'Added with no instrument.';
+  return `${added} Songs already in your songlist keep their instrument.`;
+}
+
 export interface AddAsInstrument {
   /** null until a choice is made. */
   choice: string | null;

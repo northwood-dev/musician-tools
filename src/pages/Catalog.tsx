@@ -14,7 +14,7 @@ import { BulkRecap } from '../components/BulkRecap';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
-import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
+import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 
 const EMPTY_FACETS: CatalogFacets = { genre: [], key: [], mode: [], timeSignature: [] };
 const asArr = (s: string): string[] => (s ? s.split(',').filter(Boolean) : []);
@@ -84,7 +84,9 @@ export default function Catalog() {
   }, [search, key, mode, timeSignature, genre]);
 
   const handleAddSelected = async () => {
-    const result = await bulkAdd.run(Array.from(selection.selected));
+    const chosen = addAs.requireChoice();
+    if (!chosen) return;
+    const result = await bulkAdd.run(Array.from(selection.selected), chosen.instrument);
     if (!result) return;
     selection.removeMany(result.settledUids);
     markGone(result.goneUids);
@@ -250,7 +252,7 @@ export default function Catalog() {
         <button
           type="button"
           className="btn-primary text-sm px-3 py-1.5"
-          onClick={() => setConfirmAddOpen(true)}
+          onClick={() => { if (addAs.requireChoice()) setConfirmAddOpen(true); }}
           disabled={bulkAdd.running}
         >
           Add selected to my songlist
@@ -310,7 +312,7 @@ export default function Catalog() {
         // Spelled out on purpose: the neighbouring "Add collection to my songlist"
         // button DOES create a mirror playlist (20.3). A subset does not (epic 22,
         // decision B), and the two must not look interchangeable.
-        message={`Add ${selection.size} selected ${selection.size === 1 ? 'song' : 'songs'} to your Songlist? No playlist is created — only the whole-collection shortcut does that.`}
+        message={`Add ${selection.size} selected ${selection.size === 1 ? 'song' : 'songs'} to your Songlist? No playlist is created — only the whole-collection shortcut does that. ${describeAddAsChoice(addAs.choice)}`}
         confirmText={bulkAdd.running ? 'Adding…' : 'Add to my songlist'}
         cancelText="Cancel"
         onConfirm={handleAddSelected}
