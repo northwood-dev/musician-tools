@@ -13,6 +13,7 @@ import MyHeatmapPage from './pages/MyHeatmapPage';
 import ProfilePage from './pages/ProfilePage';
 import CatalogAdmin from './pages/CatalogAdmin';
 import CatalogManage from './pages/CatalogManage';
+import CatalogArtistAliases from './pages/CatalogArtistAliases';
 import CatalogCollectionCompose from './pages/CatalogCollectionCompose';
 import CatalogCollection from './pages/CatalogCollection';
 import Catalog from './pages/Catalog';
@@ -64,6 +65,8 @@ export const routes: RouteObject[] = [
               { path: 'catalog/collections/:uid', element: <CatalogCollection /> },
               // Story 19.5 — Catalog curator management hub (list + edit + delete).
               { path: 'catalog/manage', element: <CatalogManage /> },
+              // #76: curator page for artist aliases. Static path, no clash with catalog/:uid.
+              { path: 'catalog/manage/aliases', element: <CatalogArtistAliases /> },
               // Story 20.2 — curator Collection composer (search + Add/Remove, rename,
               // delete). Deeper static+:uid path; no clash with catalog/:uid.
               { path: 'catalog/manage/collections/:uid', element: <CatalogCollectionCompose /> },

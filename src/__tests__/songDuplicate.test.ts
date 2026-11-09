@@ -88,6 +88,9 @@ describe('findDuplicateSong', () => {
     ['Mø', 'Mo'],
     ['Straße', 'Strasse'],
     ['Stanisław', 'Stanislaw'],
+    ['Björk Guðmundsdóttir', 'Bjork Gudmundsdottir'],
+    ['Þór', 'Thor'],
+    ['Ελληνικά', 'Ελληνικα'],
   ])('#36: folds %s like the database: %s', (stored, typed) => {
     const songs = [makeSong({ title: stored, artist: stored })];
     expect(findDuplicateSong(songs, { title: typed, artist: typed })).toBe(songs[0]);
@@ -97,6 +100,7 @@ describe('findDuplicateSong', () => {
     ['ガ', 'カ'],
     ['पि', 'प'],
     ['กิ', 'ก'],
+    ['Русский', 'Русскии'],
   ])('#36: keeps %s and %s apart, as the database does', (stored, typed) => {
     const songs = [makeSong({ title: stored, artist: 'Someone' })];
     expect(findDuplicateSong(songs, { title: typed, artist: 'Someone' })).toBeNull();

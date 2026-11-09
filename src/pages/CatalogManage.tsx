@@ -366,9 +366,12 @@ export default function CatalogManage() {
     <div className="w-full max-w-5xl mx-auto px-4 py-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Manage the Catalog</h1>
-        {tab === 'entries' && (
-          <Link to="/catalog/admin" className="btn-primary text-sm shrink-0">New entry</Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/catalog/manage/aliases" className="btn-secondary text-sm shrink-0">Artist aliases</Link>
+          {tab === 'entries' && (
+            <Link to="/catalog/admin" className="btn-primary text-sm shrink-0">New entry</Link>
+          )}
+        </div>
       </div>
 
       {/* Story 20.2 — Entries | Collections tabs. */}

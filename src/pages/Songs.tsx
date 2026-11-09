@@ -17,6 +17,7 @@ import EmptySonglistCollections from '../components/EmptySonglistCollections';
 import { StickyActionBar } from '../components/StickyActionBar';
 import CatalogSourceBanner from '../components/CatalogSourceBanner';
 import { findDuplicateSong, songIdentityKey } from '../utils/songDuplicate';
+import { artistAliasService, type ArtistAlias } from '../services/artistAliasService';
 import { formatLocalDate } from '../utils/heatmap';
 
 const initialSong: CreateSongDTO = {
@@ -422,6 +423,15 @@ function Songs() {
   // — no more location.state resetToList mechanism. Leaving the form flushes via the
   // unmount-flush effect + useBlocker; the URL is the source of truth.
 
+  // #76: search compares aliases in the browser. Without them, it just has no alias.
+  const [artistAliases, setArtistAliases] = useState<ArtistAlias[]>([]);
+  useEffect(() => {
+    let active = true;
+    artistAliasService.list()
+      .then(list => { if (active) setArtistAliases(list); })
+      .catch(() => { /* degrade: search without aliases */ });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     const loadSongs = async () => {
@@ -1691,6 +1701,7 @@ function Songs() {
 
   const filteredSongs = applySongFilters(sortedSongs, {
     searchQuery,
+    artistAliases,
     instrumentFilter,
     instrumentMatchMode,
     myInstrumentFilter,

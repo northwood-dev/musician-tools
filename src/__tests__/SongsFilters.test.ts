@@ -97,6 +97,108 @@ const makeOpts = (overrides: Partial<Parameters<typeof applySongFilters>[1]> = {
   ...overrides,
 });
 
+describe('#76: an artist alias typed in full also searches for its artist', () => {
+  const artistAliases = [
+    { alias: 'RHCP', artist: 'Red Hot Chili Peppers' },
+    { alias: 'Guns and Roses', artist: "Guns N' Roses" },
+    { alias: 'EWF', artist: 'Earth, Wind & Fire' },
+  ];
+  const found = (songs: Partial<Song>[], searchQuery: string, aliases = artistAliases) =>
+    applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery, artistAliases: aliases })).map(s => s.uid);
+
+  test.each([
+    ['RHCP', { artist: 'Red Hot Chili Peppers' }],
+    ['rhcp', { artist: 'Red Hot Chili Peppers feat. Someone' }],
+    ['r.h.c.p', { artist: 'Red Hot Chili Peppers' }],
+    ['guns and roses', { artist: "Guns N' Roses" }],
+    ['Guns & Roses', { artist: "Guns N' Roses" }],
+    ['ewf', { artist: 'Earth Wind & Fire' }], // the Catalog's spelling can change
+    ['ewf', { artist: 'Earth, Wind and Fire' }],
+  ])('"%s" finds %j', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test('normal results stay: a song whose title contains the alias still appears', () => {
+    const songs = [{ title: 'RHCP Blues', artist: 'Someone' }, { title: 'Otherside', artist: 'Red Hot Chili Peppers' }];
+    expect(found(songs, 'RHCP')).toEqual(['0', '1']);
+  });
+
+  test.each([['rh'], ['rhc'], ['rhcpp']])('a partial or longer text "%s" does not trigger the alias', (query) => {
+    expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], query)).toEqual([]);
+  });
+
+  test('an alias only applies to the artist, not to titles or albums', () => {
+    expect(found([{ title: 'Red Hot Chili Peppers', artist: 'Someone', album: 'Red Hot Chili Peppers' }], 'RHCP')).toEqual([]);
+  });
+
+  test('an alias to an artist with an article also finds the artist stored without it', () => {
+    const aliases = [{ alias: 'TBT', artist: 'The Beatles' }];
+    expect(found([{ artist: 'Beatles' }, { artist: 'The Beatles' }, { artist: 'Queen' }], 'tbt', aliases)).toEqual(['0', '1']);
+  });
+
+  test('without aliases, search still works', () => {
+    expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], 'chili', [])).toEqual(['0']);
+    expect(found([{ title: 'Otherside', artist: 'Red Hot Chili Peppers' }], 'RHCP', [])).toEqual([]);
+  });
+});
+
+describe('#76: search ignores punctuation and spaces, and & counts as and', () => {
+  const found = (songs: Partial<Song>[], searchQuery: string) =>
+    applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery })).map(s => s.uid);
+
+  test.each([
+    ['earth wind and fire', { artist: 'Earth, Wind & Fire' }],
+    ['Earth Wind & Fire', { artist: 'Earth, Wind & Fire' }],
+    ['earth, wind & fire', { artist: 'Earth Wind and Fire' }],
+    ['ben e king', { artist: 'Ben E. King' }],
+    ['acdc', { artist: 'AC/DC' }],
+    ['ac dc', { artist: 'AC/DC' }],
+    ['ac-dc', { artist: 'AC/DC' }],
+    ['dont stop', { title: "Don't Stop" }],
+    ['dont stop', { title: 'Don’t Stop' }],
+    ["don't", { album: 'Dont' }],
+    ['the earth wind and fire', { artist: 'Earth, Wind & Fire' }],
+    ['ガ', { artist: 'ガ!' }],
+  ])('"%s" finds %j', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test.each([
+    ['ガ', { artist: 'カ' }], // a letter is never reduced to another one
+    ['पि', { artist: 'प' }],
+    ['ben e king', { artist: 'Ben King' }],
+  ])('"%s" does not find %j', (query, song) => {
+    expect(found([song], query)).toEqual([]);
+  });
+
+  test('a search made only of punctuation looks for that text, and does not return everything', () => {
+    expect(found([{ title: 'Help!', artist: 'Someone' }, { title: 'Wow', artist: 'Someone' }], '!')).toEqual(['0']);
+  });
+
+  test.each([['the ...'], ['la -'], ['the /'], ["l'?!"]])('"%s" has nothing left after its article, and does not return everything', (query) => {
+    expect(found([{ title: 'Cry', artist: 'Mxyz', album: 'Pop' }], query)).toEqual([]);
+  });
+
+  // Expected values measured on the real f_unaccent and regexp_replace, in dev and in production.
+  test.each([
+    ['ab', { title: 'a\u00a0b' }], // a no-break space: production's \s removes it, dev's doesn't
+    ['ab', { title: 'a\u2010b' }], // a typographic hyphen
+    ['семен', { artist: 'Семён' }],
+    ['c', { title: '©' }],
+    ['r', { title: '®' }],
+  ])('"%s" finds %j, as the database does', (query, song) => {
+    expect(found([song], query)).toEqual(['0']);
+  });
+
+  test('й stays й, as the database does', () => {
+    expect(found([{ artist: 'Семён' }, { artist: 'Майк' }], 'маик')).toEqual([]);
+  });
+
+  test('an empty search still returns everything', () => {
+    expect(found([{ title: 'Help!' }, { title: 'Wow' }], '')).toEqual(['0', '1']);
+  });
+});
+
 describe('#36: search ignores accents and a leading article', () => {
   const found = (songs: Partial<Song>[], searchQuery: string) =>
     applySongFilters(songs.map((s, i) => ({ ...baseSong, uid: String(i), ...s })), makeOpts({ searchQuery })).map(s => s.uid);

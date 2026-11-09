@@ -1,12 +1,16 @@
 import type { Playlist } from '../services/playlistService';
 import type { Song } from '../services/songService';
+import type { ArtistAlias } from '../services/artistAliasService';
 import { artistKey, foldText } from './songDuplicate';
+import { searchKey } from './searchKey';
 
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
 
 export type SongFilterOptions = {
   searchQuery: string;
+  /** Typing an alias in full also searches for its artist (#76). */
+  artistAliases?: Pick<ArtistAlias, 'alias' | 'artist'>[];
   instrumentFilter: string;
   instrumentMatchMode: 'all' | 'any';
   myInstrumentFilter: string;
@@ -78,6 +82,7 @@ export function countActiveFilters(f: ActiveFilterState): number {
 export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[] {
   const {
     searchQuery,
+    artistAliases = [],
     instrumentFilter,
     instrumentMatchMode,
     myInstrumentFilter,
@@ -101,18 +106,31 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     playlists,
   } = opts;
 
-  // Accents don't count, and an artist can be typed with an article it isn't stored with (#36).
-  const query = foldText(searchQuery);
-  const artistQuery = artistKey(searchQuery);
+  // Accents, punctuation and spaces don't count (#36, #76), and an artist can be typed with an
+  // article it isn't stored with. A search made only of punctuation has no key: it looks for
+  // that text, rather than matching everything.
+  const query = searchKey(searchQuery);
+  const artistQuery = searchKey(artistKey(searchQuery));
+  const literalQuery = foldText(searchQuery);
+  const alias = query ? artistAliases.find(a => searchKey(a.alias) === query) : undefined;
+  const aliasArtist = alias ? searchKey(artistKey(alias.artist)) : '';
 
   return songs.filter(song => {
-    const artist = foldText(song.artist);
-    const passesSearch = (
-      foldText(song.title).includes(query) ||
-      artist.includes(query) ||
-      artist.includes(artistQuery) ||
-      foldText(song.album).includes(query)
-    );
+    const songArtist = searchKey(song.artist);
+    const passesSearch = query
+      ? (
+        searchKey(song.title).includes(query) ||
+        songArtist.includes(query) ||
+        // Nothing left once the article is gone ("the ...") must not match everything.
+        (artistQuery !== '' && songArtist.includes(artistQuery)) ||
+        (aliasArtist !== '' && songArtist.includes(aliasArtist)) ||
+        searchKey(song.album).includes(query)
+      )
+      : (
+        foldText(song.title).includes(literalQuery) ||
+        foldText(song.artist).includes(literalQuery) ||
+        foldText(song.album).includes(literalQuery)
+      );
 
     const isNoInstrument = instrumentFilter === NO_INSTRUMENT;
     const selected = instrumentFilter && !isNoInstrument ? [instrumentFilter] : [];
