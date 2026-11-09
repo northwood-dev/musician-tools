@@ -80,6 +80,28 @@ describe('findDuplicateSong', () => {
     expect(findDuplicateSong(songs, { title: 'Help!', artist: 'The The' })).toBe(songs[0]);
   });
 
+  // Expected values measured on the real f_unaccent, which the unique index uses.
+  it.each([
+    ['Cœur', 'Coeur'],
+    ['Ægir', 'Aegir'],
+    ['Sigur Rós', 'Sigur Ros'],
+    ['Mø', 'Mo'],
+    ['Straße', 'Strasse'],
+    ['Stanisław', 'Stanislaw'],
+  ])('#36: folds %s like the database: %s', (stored, typed) => {
+    const songs = [makeSong({ title: stored, artist: stored })];
+    expect(findDuplicateSong(songs, { title: typed, artist: typed })).toBe(songs[0]);
+  });
+
+  it.each([
+    ['ガ', 'カ'],
+    ['पि', 'प'],
+    ['กิ', 'ก'],
+  ])('#36: keeps %s and %s apart, as the database does', (stored, typed) => {
+    const songs = [makeSong({ title: stored, artist: 'Someone' })];
+    expect(findDuplicateSong(songs, { title: typed, artist: 'Someone' })).toBeNull();
+  });
+
   it('#36: a leading article in the title still counts', () => {
     const songs = [makeSong({ title: 'The Wall', artist: 'Pink Floyd' })];
     expect(findDuplicateSong(songs, { title: 'Wall', artist: 'Pink Floyd' })).toBeNull();

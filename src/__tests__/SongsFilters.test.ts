@@ -111,6 +111,7 @@ describe('#36: search ignores accents and a leading article', () => {
     ["L'Algerino", { artist: 'Algérino' }],
     ['L’Algerino', { artist: 'Algérino' }],
     ['Beatles', { artist: 'The Beatles' }],
+    ['Coeur', { title: 'Cœur de pirate' }],
   ])('"%s" finds %j', (query, song) => {
     expect(found([song], query)).toEqual(['0']);
   });

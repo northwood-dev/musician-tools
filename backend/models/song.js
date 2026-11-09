@@ -20,7 +20,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     // Per-user uniqueness on (user_uid, title, artist), ignoring case, accents and a leading
     // article on the artist, is enforced by a FUNCTIONAL unique index created in migration
-    // 20261109000000-songs-identity-ignores-accents-and-articles. It is not expressible via the
+    // 20261109000000-identity-ignores-accents-and-articles. It is not expressible via the
     // Sequelize `indexes` DSL, so it is intentionally NOT declared here — sync()
     // must not try to create or drop it. See the controller for the 23505 -> 409 mapping.
     title: {

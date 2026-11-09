@@ -227,8 +227,7 @@ function formatReport(report, { log = console.log } = {}) {
 // --- Attach (story 23.2) -----------------------------------------------------
 
 // The matching happens HERE, in SQL, and not by loading every Song into JS: the JS fold
-// (exactKey) and the index expression are two implementations of the same rule and can
-// drift apart — they already disagree on surrounding whitespace.
+// (exactKey) and this join must agree, and SQL is what touches the rows.
 //
 // #36: this join is deliberately STRICTER than the unique indexes, which also ignore accents
 // and a leading article. Attaching writes into personal Songs and creates nothing, so being
@@ -543,8 +542,8 @@ function buildAliasCandidatesSql(count) {
          (SELECT count(*) FROM "Songs" o
            WHERE o.user_uid = s.user_uid
              AND o.uid <> s.uid
-             AND lower(o.title) = lower(a.canon_title)
-             AND coalesce(lower(o.artist), '') = coalesce(lower(a.canon_artist), '')) AS collision_count,
+             AND lower(f_unaccent(o.title)) = lower(f_unaccent(a.canon_title))
+             AND f_artist_key(o.artist) = f_artist_key(a.canon_artist)) AS collision_count,
          (SELECT count(*) FROM "SessionItems" i WHERE i.song_uid = s.uid)             AS session_item_count
     FROM "Songs" s
     JOIN alias a
@@ -626,7 +625,7 @@ async function attachAliasSongs({ Song, candidates, apply = false, log = () => {
       continue;
     }
 
-    const claimKey = `${c.userUid} ${exactKey(c.canonTitle, c.canonArtist)}`;
+    const claimKey = `${c.userUid} ${identityKey(c.canonTitle, c.canonArtist)}`;
     const wouldCollide = c.collisionCount > 0 || claimed.has(claimKey);
     const collisionReason = claimed.has(claimKey)
       ? 'collision avec une autre renommée du même lot, pour le même utilisateur'
@@ -1715,7 +1714,7 @@ async function main(argv) {
 }
 
 module.exports = {
-  parseSeedCsv, seedCatalog, identityKey, formatReport, parseArgs, isLocalHost, SeedFileError, main,
+  parseSeedCsv, seedCatalog, exactKey, formatReport, parseArgs, isLocalHost, SeedFileError, main,
   // Story 23.2 — attach phase
   ATTACH_CANDIDATES_SQL, selectAttachCandidates, attachSongs, countGuardedTables, diffCounts,
   formatAttachReport, runAttach,

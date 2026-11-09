@@ -975,7 +975,7 @@ function Songs() {
   //     no create and no partial update (17.2 hardens 13.1). status 'conflict' + the
   //     SongForm banner tell the user nothing was written.
   //   • `lastPlayed` is server-managed -> never sent (HIGH from 13.1).
-  // Story 17.2: the folded (title|artist) key that last hit a server 409. Suppresses
+  // Story 17.2: the song identity key that last hit a server 409. Suppresses
   // re-firing a create on every keystroke when the 409 body carried no existing song
   // (so the client-side liveDuplicate guard couldn't pick it up). Cleared implicitly
   // by comparing against the current key — a differentiated title/artist no longer matches.

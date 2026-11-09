@@ -66,8 +66,8 @@ export class CatalogNotFoundError extends Error {
   }
 }
 
-// Thrown on a 409 from create/update (story 19.1's GLOBAL canonical unique index
-// on (lower(title), COALESCE(lower(artist),''))). Carries the existing entry so
+// Thrown on a 409 from create/update (the GLOBAL unique index on title and
+// artist, see utils/songDuplicate). Carries the existing entry so
 // callers can point at it. Mirror of SongConflictError, but the backend body key
 // is `entry` (not `song`). Detected by response.status — never by the body text.
 export class CatalogConflictError extends Error {

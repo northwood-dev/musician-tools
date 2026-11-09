@@ -32,8 +32,8 @@ export type Song = {
 export type CreateSongDTO = Omit<Song, 'uid' | 'createdAt' | 'updatedAt'>;
 export type UpdateSongDTO = Partial<CreateSongDTO>;
 
-// Thrown on a 409 from create/update (story 17.1's case-insensitive
-// (user_uid, lower(title), COALESCE(lower(artist),'')) unique index). Carries the
+// Thrown on a 409 from create/update (the per-user unique index on title and
+// artist, see utils/songDuplicate). Carries the
 // canonical existing song so callers can block the write and point at it. Mirror
 // of PlaylistConflictError. Detected by response.status — never by the body text.
 export class SongConflictError extends Error {

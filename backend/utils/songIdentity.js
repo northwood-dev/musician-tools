@@ -3,7 +3,7 @@
 const { fn, col, where: whereFn } = require('sequelize');
 
 // What makes two songs the same song on the server, as WHERE clauses: the SAME expressions as
-// the unique index (migration 20261109000000). Used to find the existing song once the index
+// the unique indexes (migration 20261109000000). Used to find the existing song once an index
 // has refused a copy. Case, accents and a leading article on the artist don't count (#36).
 const sameTitle = (title) => whereFn(
   fn('lower', fn('f_unaccent', col('title'))),
@@ -15,7 +15,14 @@ const sameArtist = (artist) => whereFn(
   fn('f_artist_key', artist ? String(artist) : '')
 );
 
-const fold = (value) => String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+// Follows f_unaccent: Latin accents only (kana and Indic vowel signs change the letter), and
+// letters with no separate accent are spelled out (œ → oe).
+const SPELLED_OUT = { œ: 'oe', æ: 'ae', ø: 'o', ß: 'ss', ł: 'l', đ: 'd', ı: 'i' };
+const fold = (value) => String(value || '')
+  .normalize('NFD')
+  .replace(/[̀-ͯ]/g, '')
+  .toLowerCase()
+  .replace(/[œæøßłđı]/g, (letter) => SPELLED_OUT[letter]);
 
 // A value that is only the article keeps it, as in f_artist_key.
 const withoutLeadingArticle = (value) => String(value).replace(/^((the|le|la|les)\s+|l['’]\s*)(?=\S)/i, '');

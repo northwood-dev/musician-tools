@@ -258,8 +258,7 @@ function clampInt(value, def, min, max) {
 }
 
 // Accent- AND case-insensitive substring match on a text column, reusing the
-// IMMUTABLE f_unaccent wrapper (topics migration 20260625, already in prod). This
-// is a DIFFERENT normalization from the canonical key (case-only, accents kept).
+// IMMUTABLE f_unaccent wrapper (topics migration 20260625, already in prod).
 function foldedLike(column, pattern) {
   return whereFn(
     fn('lower', fn('f_unaccent', col(column))),

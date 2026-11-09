@@ -135,7 +135,8 @@ describe('seedCatalog', () => {
 // Review 23.1 — the guards a data script needs, and that the first version lacked
 // ---------------------------------------------------------------------------
 
-const { parseArgs, formatReport, SeedFileError, identityKey } = require('../scripts/seed-catalog');
+const { parseArgs, formatReport, SeedFileError, exactKey } = require('../scripts/seed-catalog');
+const { identityKey } = require('../utils/songIdentity');
 
 describe('parseSeedCsv — refuse rather than guess', () => {
   test('a leading blank line does NOT turn the header into a Catalog entry', () => {
@@ -187,6 +188,7 @@ describe('#36: identityKey ignores case, accents and a leading article on the ar
     ['Oui', 'Les Rita Mitsouko', 'Oui', 'Rita Mitsouko'],
     ['Oui', 'L’Algérino', 'Oui', "l'Algerino"],
     ['Solo', 'The', 'Solo', 'The The'],
+    ['Cœur', 'Mø', 'Coeur', 'Mo'], // measured on the real f_unaccent
   ])('%s by %s is %s by %s', (t1, a1, t2, a2) => {
     expect(identityKey(t1, a1)).toBe(identityKey(t2, a2));
   });
@@ -194,6 +196,7 @@ describe('#36: identityKey ignores case, accents and a leading article on the ar
   test.each([
     ['Solo', 'The', 'Solo', 'Theatre'],
     ['The Wall', 'Pink Floyd', 'Wall', 'Pink Floyd'],
+    ['ガ', 'Someone', 'カ', 'Someone'], // measured on the real f_unaccent
   ])('%s by %s is not %s by %s', (t1, a1, t2, a2) => {
     expect(identityKey(t1, a1)).not.toBe(identityKey(t2, a2));
   });
@@ -703,9 +706,13 @@ describe('buildAliasCandidatesSql — le rapprochement ET la détection de colli
     expect(sql()).toMatch(/s\.source_catalog_uid IS NULL/);
   });
 
-  test('il joint la saisie sur le fold d’identité, accents conservés', () => {
+  test('il joint la saisie sur la casse seule, plus strict que les index (#36)', () => {
     expect(sql()).toMatch(/lower\(s\.title\)\s*=\s*lower\(a\.alias_title\)/);
-    expect(sql()).not.toMatch(/unaccent/i);
+  });
+
+  test('il compte les collisions avec la règle de l’index : c’est lui qui refusera le renommage (#36)', () => {
+    expect(sql()).toMatch(/lower\(f_unaccent\(o\.title\)\)\s*=\s*lower\(f_unaccent\(a\.canon_title\)\)/);
+    expect(sql()).toMatch(/f_artist_key\(o\.artist\)\s*=\s*f_artist_key\(a\.canon_artist\)/);
   });
 
   test('l’entrée canonique est jointe en LEFT JOIN : absente, la ligne remonte quand même pour être refusée', () => {
@@ -990,7 +997,7 @@ describe('attachAliasSongs — refus, réservation et traçabilité', () => {
   test('les alias effectivement rencontrés sont tracés, pour pouvoir nommer ceux qui n’ont rien trouvé', async () => {
     const Song = makeSong();
     const report = await attachAliasSongs({ Song, candidates: [aliasCandidate()], apply: false });
-    expect(report.matchedAliases.has(identityKey('Back in black', 'AC DC'))).toBe(true);
+    expect(report.matchedAliases.has(exactKey('Back in black', 'AC DC'))).toBe(true);
   });
 });
 
