@@ -39,7 +39,7 @@ module.exports = {
         ) duplicates;
       `, { transaction });
       if (groups > 0) {
-        throw new Error(`#36: ${groups} song(s) in the Songlist would be duplicates under the new rule. Nothing was changed: decide what to do with them, then deploy again.`);
+        throw new Error(`#36: ${groups} group(s) of songs in a Songlist would be duplicates under the new rule. Nothing was changed: decide what to do with them, then deploy again.`);
       }
 
       await sequelize.query('DROP INDEX IF EXISTS songs_user_uid_title_artist_ci;', { transaction });

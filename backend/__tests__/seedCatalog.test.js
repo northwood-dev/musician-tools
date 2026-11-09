@@ -112,25 +112,22 @@ describe('seedCatalog', () => {
     await seedCatalog({ CatalogSong, rows: [{ artist: 'AC/DC', title: 'Back in Black' }], apply: false });
     const [title, artist] = CatalogSong.findOne.mock.calls[0][0].where[Op.and];
 
-    // lower(title) = <lowercased title>
+    // lower(f_unaccent(title)) = lower(f_unaccent(<title>))
     expect(title.attribute.fn).toBe('lower');
-    expect(title.attribute.args[0].col).toBe('title');
-    expect(title.logic).toBe('back in black');
+    expect(title.attribute.args[0].fn).toBe('f_unaccent');
+    expect(title.attribute.args[0].args[0].col).toBe('title');
+    expect(title.logic.args[0].args[0]).toBe('Back in Black');
 
-    // coalesce(lower(artist), '') = <lowercased artist>
-    expect(artist.attribute.fn).toBe('coalesce');
-    expect(artist.attribute.args[0].fn).toBe('lower');
-    expect(artist.logic).toBe('ac/dc');
-
-    // NO f_unaccent anywhere: accents are part of the identity
-    // (« Hôtel California » ≠ « Hotel California »), unlike the LIKE search of the browse.
-    expect(JSON.stringify([title.attribute, artist.attribute])).not.toContain('f_unaccent');
+    // f_artist_key(artist) = f_artist_key(<artist>)
+    expect(artist.attribute.fn).toBe('f_artist_key');
+    expect(artist.logic.fn).toBe('f_artist_key');
+    expect(artist.logic.args[0]).toBe('AC/DC');
   });
 
   test('an entry without an artist folds to the empty string, like COALESCE does', async () => {
     await seedCatalog({ CatalogSong, rows: [{ artist: null, title: 'Untitled' }], apply: false });
     const [, artist] = CatalogSong.findOne.mock.calls[0][0].where[Op.and];
-    expect(artist.logic).toBe('');
+    expect(artist.logic.args[0]).toBe('');
   });
 });
 
@@ -180,6 +177,25 @@ describe('parseSeedCsv — refuse rather than guess', () => {
     const { rows, skipped } = parseSeedCsv('artist,title\nBeyoncé,Halo\nBeyoncé,Halo\n');
     expect(rows).toHaveLength(1);
     expect(skipped[0].reason).toBe('doublon interne au fichier');
+  });
+});
+
+describe('#36: identityKey ignores case, accents and a leading article on the artist', () => {
+  test.each([
+    ['Help!', 'The Beatles', 'HELP!', 'beatles'],
+    ['Déjà Vu', 'Beyoncé', 'Deja Vu', 'Beyonce'],
+    ['Oui', 'Les Rita Mitsouko', 'Oui', 'Rita Mitsouko'],
+    ['Oui', 'L’Algérino', 'Oui', "l'Algerino"],
+    ['Solo', 'The', 'Solo', 'The The'],
+  ])('%s by %s is %s by %s', (t1, a1, t2, a2) => {
+    expect(identityKey(t1, a1)).toBe(identityKey(t2, a2));
+  });
+
+  test.each([
+    ['Solo', 'The', 'Solo', 'Theatre'],
+    ['The Wall', 'Pink Floyd', 'Wall', 'Pink Floyd'],
+  ])('%s by %s is not %s by %s', (t1, a1, t2, a2) => {
+    expect(identityKey(t1, a1)).not.toBe(identityKey(t2, a2));
   });
 });
 

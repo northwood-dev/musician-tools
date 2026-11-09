@@ -36,16 +36,11 @@ const INTRINSIC_FIELDS = [
 ];
 
 // Look up the existing catalog entry that collides with (title, artist) on the
-// SAME folded key as the GLOBAL unique index — lower(title) + COALESCE(lower(artist), '').
+// SAME key as the GLOBAL unique index (utils/songIdentity).
 // No userUid (the Catalog is global). title/artist are already trimmed. excludeUid
 // skips the row being edited (update/rename).
 function findExistingByTitleArtist(title, artist, excludeUid) {
-  const foldedTitle = whereFn(fn('lower', col('title')), String(title == null ? '' : title).toLowerCase());
-  const foldedArtist = whereFn(
-    fn('coalesce', fn('lower', col('artist')), ''),
-    artist ? String(artist).toLowerCase() : ''
-  );
-  const and = [foldedTitle, foldedArtist];
+  const and = [sameTitle(title), sameArtist(artist)];
   if (excludeUid) and.push({ uid: { [Op.ne]: excludeUid } });
   return CatalogSong.findOne({ where: { [Op.and]: and } });
 }

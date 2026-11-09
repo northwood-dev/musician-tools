@@ -13,9 +13,9 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       allowNull: false
     },
-    // Story 19.1: GLOBAL canonical uniqueness on (lower(title), COALESCE(lower(artist), ''))
-    // is enforced by a FUNCTIONAL unique index created in migration
-    // 20260715000000-create-catalog-songs. It is not expressible via the Sequelize
+    // GLOBAL canonical uniqueness on (title, artist), ignoring case, accents and a leading
+    // article on the artist, is enforced by a FUNCTIONAL unique index created in migration
+    // 20261109000100-catalog-identity-ignores-accents-and-articles. It is not expressible via the Sequelize
     // `indexes` DSL, so it is intentionally NOT declared here — sync({alter:false})
     // must not try to create or drop it. Same discipline as Song (17.1) but WITHOUT
     // user_uid (the key is global). The controller maps 23505 -> a typed 409.

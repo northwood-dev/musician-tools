@@ -15,4 +15,12 @@ const sameArtist = (artist) => whereFn(
   fn('f_artist_key', artist ? String(artist) : '')
 );
 
-module.exports = { sameTitle, sameArtist };
+const fold = (value) => String(value || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+// The same rule in JS, for code comparing values it hasn't sent to the database (the Catalog
+// seed's file). The index decides if they differ on a rare character. The separator is NUL,
+// which can't occur in a Postgres text value: any printable one could collide two pairs.
+const identityKey = (title, artist) =>
+  `${fold(title)}\u0000${fold(artist).replace(/^((the|le|la|les)\s+|l['’]\s*)(?=\S)/, '')}`;
+
+module.exports = { sameTitle, sameArtist, identityKey };
