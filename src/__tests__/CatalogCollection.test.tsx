@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act, within } from '@testing-librar
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogCollection from '../pages/CatalogCollection';
 import { catalogService, CatalogNotFoundError, CollectionNotFoundError } from '../services/catalogService';
+import type { Song } from '../services/songService';
 
 // Story 20.4 — user-facing Collection detail + whole-collection import.
 jest.mock('../services/catalogService', () => {
@@ -37,6 +38,82 @@ beforeEach(() => {
   jest.clearAllMocks();
   cat.getCollection.mockResolvedValue(detail);
   cat.importCollection.mockResolvedValue({ added: 18, skipped: 2, failed: 0, playlistUid: 'p1' });
+  localStorage.setItem('catalogAddAsInstrument', '__none__'); // #34: a choice is already made
+});
+
+test('#34: the "Add as" selector shows the choice remembered from another Catalog page', async () => {
+  localStorage.setItem('catalogAddAsInstrument', 'Bass');
+  renderDetail();
+  await screen.findByText('Rock 90s');
+  expect(screen.getByLabelText('Add as')).toHaveDisplayValue('Bass');
+});
+
+test('#34: adding the collection sends the chosen instrument, and the confirmation says so', async () => {
+  localStorage.setItem('catalogAddAsInstrument', 'Bass');
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add collection to my songlist' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent('Added as Bass. Songs already in your songlist keep their instrument.');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+  await waitFor(() => expect(cat.importCollection).toHaveBeenCalledWith('col1', 'Bass'));
+});
+
+test('#34: adding the collection with No instrument sends none', async () => {
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add collection to my songlist' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent('Added with no instrument.');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+  await waitFor(() => expect(cat.importCollection).toHaveBeenCalledWith('col1', undefined));
+});
+
+test('#34: adding the collection with nothing chosen keeps the confirmation closed and points to the selector', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add collection to my songlist' }));
+
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(cat.importCollection).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+  expect(screen.getByLabelText('Add as')).toHaveFocus();
+});
+
+test('#34: adding a selection sends the chosen instrument, and the confirmation says so', async () => {
+  localStorage.setItem('catalogAddAsInstrument', 'Bass');
+  cat.addToSonglist.mockResolvedValue({ uid: 'song-1', title: 'Zombie' } as Song);
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByLabelText('Select all'));
+  fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent('Added as Bass. Songs already in your songlist keep their instrument.');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+  await waitFor(() => expect(cat.addToSonglist).toHaveBeenCalledWith('s1', 'Bass'));
+  expect(cat.addToSonglist).toHaveBeenCalledWith('s2', 'Bass');
+});
+
+test('#34: adding a selection with nothing chosen keeps the confirmation closed and points to the selector', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  renderDetail();
+  await screen.findByText('Rock 90s');
+
+  fireEvent.click(screen.getByLabelText('Select all'));
+  fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(cat.addToSonglist).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+  expect(screen.getByLabelText('Add as')).toHaveFocus();
 });
 
 test('renders the name, description, count and members', async () => {
@@ -60,7 +137,7 @@ test('import: confirm dialog then recap toast', async () => {
   // ConfirmDialog announces N + name
   expect(screen.getByText(/Add 2 songs to your Songlist\?/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Add to my songlist' }));
-  await waitFor(() => expect(cat.importCollection).toHaveBeenCalledWith('col1'));
+  await waitFor(() => expect(cat.importCollection).toHaveBeenCalledWith('col1', undefined));
   // Persistent inline result banner with the clarified copy.
   await screen.findByText('Added 18 songs · 2 already in your songlist');
 });

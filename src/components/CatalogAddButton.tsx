@@ -5,6 +5,7 @@ import type { CatalogSong } from '../services/catalogService';
 import { SongConflictError } from '../services/songService';
 import type { Song } from '../services/songService';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
+import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
 
 // "Add to my songlist" — 3 states (DL-8/DL-11), story 19.4:
 //   default  → btn-primary "Add to my songlist"
@@ -23,12 +24,14 @@ const ADDED = `${HIT} bg-green-500 text-white`;
 export default function CatalogAddButton({
   entry,
   existingSong,
+  addAs,
   onAdded,
   knownGone = false,
   onGone,
 }: {
   entry: CatalogSong;
   existingSong: Song | null;
+  addAs: Pick<AddAsInstrument, 'requireChoice'>;
   onAdded?: (song: Song) => void;
   // The page already knows this entry is gone (a bulk add found out). Its songlist link,
   // if any, still wins: the song itself is still there.
@@ -62,11 +65,13 @@ export default function CatalogAddButton({
 
   const handleAdd = async () => {
     if (savingRef.current) return;
+    const chosen = addAs.requireChoice();
+    if (!chosen) return;
     savingRef.current = true;
     setSaving(true);
     setFailed(false);
     try {
-      const song = await catalogService.addToSonglist(entry.uid);
+      const song = await catalogService.addToSonglist(entry.uid, chosen.instrument);
       if (!mountedRef.current) return;
       setFlashing(true);
       flashTimer.current = setTimeout(() => { if (mountedRef.current) setFlashing(false); }, 900);

@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import Catalog from '../pages/Catalog';
 import { catalogService } from '../services/catalogService';
 import type { CatalogSong } from '../services/catalogService';
+import type { Song } from '../services/songService';
 
 jest.mock('../services/catalogService', () => {
   const actual = jest.requireActual('../services/catalogService');
@@ -17,6 +18,34 @@ beforeEach(() => {
   jest.clearAllMocks();
   svc.getFacets.mockResolvedValue({ genre: [], key: [], mode: [], timeSignature: [] });
   svc.listCollections.mockResolvedValue([]); // no rail by default; rail tests override
+  localStorage.setItem('catalogAddAsInstrument', '__none__'); // #34: a choice is already made
+});
+
+test('#34: the row Add button sends the instrument chosen at the top of the page, and the choice is kept', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
+  svc.addToSonglist.mockResolvedValue({ uid: 'song-1', title: 'Zombie' } as Song);
+  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  await screen.findByText('Zombie');
+
+  fireEvent.change(screen.getByLabelText('Add as'), { target: { value: 'Bass' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
+
+  await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Bass'));
+  expect(localStorage.getItem('catalogAddAsInstrument')).toBe('Bass');
+});
+
+test('#34: the row Add button with nothing chosen sends nothing, and does not open the row', async () => {
+  localStorage.removeItem('catalogAddAsInstrument');
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
+  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  await screen.findByText('Zombie');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
+
+  expect(svc.addToSonglist).not.toHaveBeenCalled();
+  expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+  expect(screen.getByLabelText('Add as')).toHaveFocus();
 });
 
 test('renders the list with the "All songs" title (no query)', async () => {
@@ -115,6 +144,94 @@ const addBoth = async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Add to my songlist' }));
 };
+
+describe('#34: bulk add with the chosen instrument', () => {
+  const openBulkAdd = () => {
+    fireEvent.click(screen.getByLabelText('Select all'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+  };
+
+  beforeEach(() => {
+    svc.listCatalog.mockResolvedValue(resp(twoRows));
+    svc.addToSonglist.mockImplementation(async (uid: string) => asSong({ uid: `s-${uid}`, title: uid }));
+  });
+
+  test('every song is sent with the chosen instrument, and the confirmation says so', async () => {
+    localStorage.setItem('catalogAddAsInstrument', 'Bass');
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Added as Bass. Songs already in your songlist keep their instrument.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledTimes(2));
+    expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Bass');
+    expect(svc.addToSonglist).toHaveBeenCalledWith('b', 'Bass');
+  });
+
+  test('No instrument adds the songs without one, and the confirmation says so', async () => {
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Added with no instrument. Songs already in your songlist keep their instrument.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', undefined));
+  });
+
+  test('the selector is locked while a batch runs, so the confirmation keeps naming what is being sent', async () => {
+    localStorage.setItem('catalogAddAsInstrument', 'Bass');
+    let finish: (song: ReturnType<typeof asSong>) => void = () => {};
+    svc.addToSonglist.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Add as')).toBeDisabled());
+    await act(async () => { finish(asSong({ uid: 's', title: 's' })); });
+  });
+
+  test('with nothing chosen the confirmation stays closed, nothing is sent, and the selector is pointed out', async () => {
+    localStorage.removeItem('catalogAddAsInstrument');
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(svc.addToSonglist).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+    expect(screen.getByLabelText('Add as')).toHaveFocus();
+  });
+
+  test('retrying failed songs uses the instrument chosen at that moment, and the confirmation states it', async () => {
+    localStorage.setItem('catalogAddAsInstrument', 'Bass');
+    svc.addToSonglist.mockRejectedValueOnce(new Error('offline'));
+    svc.addToSonglist.mockRejectedValueOnce(new Error('offline'));
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Add to my songlist' }));
+    await screen.findByText(/2 failed/);
+
+    svc.addToSonglist.mockClear();
+    fireEvent.change(screen.getByLabelText('Add as'), { target: { value: 'Guitar' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add selected to my songlist' }));
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent('Added as Guitar.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Guitar'));
+    expect(svc.addToSonglist).toHaveBeenCalledWith('b', 'Guitar');
+  });
+});
 
 test('22.4: the rows gain a checkbox WITHOUT losing the row link or the per-row Add', async () => {
   svc.listCatalog.mockResolvedValue(resp(twoRows));

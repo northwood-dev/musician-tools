@@ -390,9 +390,10 @@ const getCatalogEntry = async (req, res, next) => {
 // The intrinsic columns copied 1:1 from a CatalogSong into a personal Song. The
 // JSON ones (language/genre/streamingLinks) are DEEP-CLONED so the shared entry
 // and the personal copy never share a reference. Personal/instrument fields are
-// left at their defaults (blank).
-function buildSongFromCatalog(catalog, userUid) {
+// left at their defaults (blank), except the instrument the user chose when adding (#34).
+function buildSongFromCatalog(catalog, userUid, instrument) {
   return {
+    ...(instrument ? { instrument: [instrument] } : {}),
     userUid,
     sourceCatalogUid: catalog.uid, // soft provenance pointer (no FK)
     sourceCatalogSyncedAt: catalog.updatedAt, // story 21.1: version stamp for drift detection
@@ -421,8 +422,22 @@ function findExistingUserSong(userUid, title, artist) {
   return Song.findOne({ where: { [Op.and]: [{ userUid }, foldedTitle, foldedArtist] } });
 }
 
+const MAX_INSTRUMENT_LENGTH = 255; // same bound as the played instrument (songcontroller)
+
+// The optional instrument of an add to the Songlist (#34). The list of instruments lives in
+// the frontend and isn't copied here: a second list would have to be kept in sync, and an
+// odd value only affects the sender's own songlist.
+function parseAddInstrument(body) {
+  const instrument = body?.instrument;
+  if (instrument === undefined) return { invalid: false, instrument: undefined };
+  const trimmed = typeof instrument === 'string' ? instrument.trim() : '';
+  const invalid = !trimmed || trimmed.length > MAX_INSTRUMENT_LENGTH || trimmed.includes(String.fromCharCode(0));
+  return { invalid, instrument: trimmed };
+}
+
 // POST /api/catalog/:uid/add-to-songlist — copy a Catalog entry into the user's
-// Songlist. Auth only (it writes the USER's own songlist, not the Catalog).
+// Songlist. Auth only (it writes the USER's own songlist, not the Catalog). Body:
+// optional { instrument }. A song already there is never updated (409).
 const addToSonglist = async (req, res, next) => {
   // Hoisted so the 409 catch reuses the already-fetched entry (no refetch) and can
   // look up the existing Song by its title/artist even under a concurrent delete.
@@ -435,13 +450,17 @@ const addToSonglist = async (req, res, next) => {
     if (!isUuid(req.params.uid)) {
       return next(createError(404, 'Catalog entry not found'));
     }
+    const { invalid, instrument } = parseAddInstrument(req.body);
+    if (invalid) {
+      return next(createError(400, 'Invalid instrument'));
+    }
     catalog = await CatalogSong.findByPk(req.params.uid);
     if (!catalog || catalog.publishedAt == null) {
       // Drafts are not public (19.6) → can't be copied, even by guessing the uid.
       return next(createError(404, 'Catalog entry not found'));
     }
 
-    const song = await Song.create(buildSongFromCatalog(catalog, userId));
+    const song = await Song.create(buildSongFromCatalog(catalog, userId, instrument));
     res.status(201).json(song);
   } catch (error) {
     // Per-user duplicate (Epic 17 index, 23505) → typed 409 the front reads as
@@ -698,6 +717,10 @@ const importCollectionToSonglist = async (req, res, next) => {
     if (!isUuid(req.params.uid)) {
       return next(createError(404, 'Collection not found'));
     }
+    const { invalid, instrument } = parseAddInstrument(req.body);
+    if (invalid) {
+      return next(createError(400, 'Invalid instrument'));
+    }
     // Published members only — a draft is not public (19.6) and 19.4 refuses to copy it.
     // Full attributes (default) are needed for buildSongFromCatalog.
     const collection = await CatalogCollection.findByPk(req.params.uid, {
@@ -720,7 +743,7 @@ const importCollectionToSonglist = async (req, res, next) => {
     // loop continues (the whole point of the story; do not "fix" by wrapping this).
     for (const entry of members) {
       try {
-        const song = await Song.create(buildSongFromCatalog(entry, userId));
+        const song = await Song.create(buildSongFromCatalog(entry, userId, instrument));
         songUidsToAttach.push(song.uid);
         added += 1;
       } catch (error) {

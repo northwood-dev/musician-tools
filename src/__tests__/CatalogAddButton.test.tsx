@@ -23,7 +23,9 @@ const SONG = { uid: 'song-1', title: 'Zombie' } as Song;
 const renderBtn = (existingSong: Song | null = null) =>
   render(
     <StrictMode>
-      <MemoryRouter><CatalogAddButton entry={ENTRY} existingSong={existingSong} /></MemoryRouter>
+      <MemoryRouter>
+        <CatalogAddButton entry={ENTRY} existingSong={existingSong} addAs={{ requireChoice: () => ({ instrument: 'Bass' }) }} />
+      </MemoryRouter>
     </StrictMode>,
   );
 
@@ -33,7 +35,7 @@ test('default → Add; clicking it adds and lands on "Already in your songlist"'
   cat.addToSonglist.mockResolvedValue(SONG);
   renderBtn();
   fireEvent.click(screen.getByRole('button', { name: /Add "Zombie" to my songlist/i }));
-  expect(cat.addToSonglist).toHaveBeenCalledWith('cat-1');
+  expect(cat.addToSonglist).toHaveBeenCalledWith('cat-1', 'Bass');
   const already = await screen.findByText(/Already in your songlist/i);
   expect(already.closest('a')).toHaveAttribute('href', '/songs/song-1');
 });

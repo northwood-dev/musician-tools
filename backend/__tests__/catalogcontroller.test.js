@@ -348,6 +348,52 @@ describe('catalogcontroller', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
+  test('addToSonglist with an instrument stores it as a list of one, and nothing else personal -> 201', async () => {
+    CatalogSong.findByPk.mockResolvedValue(CATALOG);
+    Song.create.mockImplementation(async (data) => ({ ...data, uid: 'song-uid' }));
+    const res = mockRes();
+    const next = mockNext();
+
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' }, body: { instrument: 'Bass' } }, res, next);
+
+    const arg = Song.create.mock.calls[0][0];
+    expect(arg.instrument).toEqual(['Bass']);
+    expect(arg.myInstrumentUid).toBeUndefined();
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['an empty string', ''],
+    ['only spaces', '   '],
+    ['a number', 3],
+    ['a list', ['Bass']],
+    ['null', null],
+    ['a value that is too long', 'x'.repeat(256)],
+    ['a NUL byte', `Bass${String.fromCharCode(0)}`],
+  ])('addToSonglist refuses %s as the instrument -> 400, nothing created', async (_label, instrument) => {
+    CatalogSong.findByPk.mockResolvedValue(CATALOG);
+    const next = mockNext();
+
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' }, body: { instrument } }, mockRes(), next);
+
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  test('addToSonglist with an instrument on a song already there -> 409, the existing song is not updated', async () => {
+    CatalogSong.findByPk.mockResolvedValue(CATALOG);
+    Song.create.mockRejectedValue({ name: 'SequelizeUniqueConstraintError' });
+    const update = jest.fn();
+    Song.findOne.mockResolvedValue({ uid: 'existing-song', title: 'Zombie', instrument: ['Guitar'], update });
+    const res = mockRes();
+
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' }, body: { instrument: 'Bass' } }, res, mockNext());
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(update).not.toHaveBeenCalled();
+  });
+
   test('addToSonglist on a per-user duplicate -> 409 duplicate_song with the existing song', async () => {
     CatalogSong.findByPk.mockResolvedValue(CATALOG);
     Song.create.mockRejectedValue({ name: 'SequelizeUniqueConstraintError' });

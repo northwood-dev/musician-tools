@@ -21,7 +21,7 @@ const cat = catalogService as jest.Mocked<typeof catalogService>;
 // lieu. Attrapé parce que les 8 items partaient quand même.
 function Batch({ uids }: { uids: string[] }) {
   const { run } = useBulkAddToSonglist();
-  return <button onClick={() => { run(uids); }}>lancer</button>;
+  return <button onClick={() => { run(uids, undefined); }}>lancer</button>;
 }
 
 function Page({ uids }: { uids: string[] }) {

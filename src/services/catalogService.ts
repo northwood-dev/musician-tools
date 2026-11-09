@@ -194,11 +194,13 @@ export const catalogService = {
   // Add a catalog entry to the user's Songlist (snapshot + provenance, story 19.4).
   // 201 -> the created Song. 409 (already in the songlist, Epic 17 guard) ->
   // SongConflictError carrying the existing Song (reused from songService).
-  async addToSonglist(uid: string): Promise<Song> {
+  // `instrument` (#34): the song's instrument; absent = a song with no instrument.
+  async addToSonglist(uid: string, instrument?: string): Promise<Song> {
     const response = await apiFetch(`${API_BASE}/catalog/${uid}/add-to-songlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
+      ...(instrument ? { body: JSON.stringify({ instrument }) } : {}),
     });
     if (response.status === 409) {
       const body = await response.json().catch(() => ({} as { song?: Song }));
@@ -403,12 +405,13 @@ export const catalogService = {
   // Import a whole Collection into the user's Songlist (story 20.3, any logged-in user):
   // copies every published member (best-effort) + creates/reuses a mirror Playlist named
   // after the Collection. Returns the {added,skipped,failed,playlistUid} recap. 404 -> gone.
-  async importCollection(uid: string, signal?: AbortSignal): Promise<ImportCollectionResult> {
+  async importCollection(uid: string, instrument?: string, signal?: AbortSignal): Promise<ImportCollectionResult> {
     const response = await apiFetch(`${API_BASE}/catalog/collections/${uid}/add-to-songlist`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       signal,
+      ...(instrument ? { body: JSON.stringify({ instrument }) } : {}),
     });
     if (response.status === 404) {
       throw new CollectionNotFoundError();

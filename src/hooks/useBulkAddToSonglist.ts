@@ -63,7 +63,7 @@ export function useBulkAddToSonglist(onSongKnown?: (song: Song) => void) {
     };
   }, []);
 
-  const run = async (uids: string[]): Promise<BulkAddResult | null> => {
+  const run = async (uids: string[], instrument: string | undefined): Promise<BulkAddResult | null> => {
     if (uids.length === 0 || runningRef.current) return null;
     runningRef.current = true;
     setRunning(true);
@@ -81,7 +81,7 @@ export function useBulkAddToSonglist(onSongKnown?: (song: Song) => void) {
       const results = await runBounded(
         uids,
         CONCURRENCY,
-        uid => catalogService.addToSonglist(uid),
+        uid => catalogService.addToSonglist(uid, instrument),
         controller.signal
       );
 

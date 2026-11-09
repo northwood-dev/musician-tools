@@ -40,6 +40,48 @@ describe('catalogcontroller — importCollectionToSonglist (story 20.3)', () => 
     PlaylistSong.findOrCreate.mockResolvedValue([{ uid: 'link' }, true]);
   });
 
+  test('#34: new songs get the chosen instrument; a song already there is not updated and still joins the playlist', async () => {
+    CatalogCollection.findByPk.mockResolvedValue(collectionWith([
+      { uid: 's1', title: 'A', artist: 'x' },
+      { uid: 's2', title: 'B', artist: 'y' },
+    ]));
+    Playlist.create.mockResolvedValue({ uid: 'p1', name: 'Rock 90s' });
+    const update = jest.fn();
+    Song.create
+      .mockResolvedValueOnce({ uid: 'song1' })
+      .mockRejectedValueOnce(uniqErr());
+    Song.findOne.mockResolvedValue({ uid: 'existing', instrument: ['Guitar'], update });
+    const res = mockRes();
+
+    await controller.importCollectionToSonglist(req({ body: { instrument: 'Bass' } }), res, mockNext());
+
+    expect(Song.create.mock.calls[0][0].instrument).toEqual(['Bass']);
+    expect(update).not.toHaveBeenCalled();
+    expect(PlaylistSong.findOrCreate).toHaveBeenCalledTimes(2);
+    expect(res.json).toHaveBeenCalledWith({ added: 1, skipped: 1, failed: 0, playlistUid: 'p1' });
+  });
+
+  test('#34: without an instrument, new songs have none', async () => {
+    CatalogCollection.findByPk.mockResolvedValue(collectionWith([{ uid: 's1', title: 'A', artist: 'x' }]));
+    Playlist.create.mockResolvedValue({ uid: 'p1', name: 'Rock 90s' });
+    Song.create.mockResolvedValueOnce({ uid: 'song1' });
+
+    await controller.importCollectionToSonglist(req(), mockRes(), mockNext());
+
+    expect(Song.create.mock.calls[0][0].instrument).toBeUndefined();
+  });
+
+  test('#34: an unusable instrument -> 400 before anything is created', async () => {
+    CatalogCollection.findByPk.mockResolvedValue(collectionWith([{ uid: 's1', title: 'A', artist: 'x' }]));
+    const next = mockNext();
+
+    await controller.importCollectionToSonglist(req({ body: { instrument: '  ' } }), mockRes(), next);
+
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(Playlist.create).not.toHaveBeenCalled();
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
   test('happy path: 2 fresh members -> playlist created, 2 added, 2 attached', async () => {
     CatalogCollection.findByPk.mockResolvedValue(collectionWith([
       { uid: 's1', title: 'A', artist: 'x' },

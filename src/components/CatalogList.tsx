@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { CatalogSong } from '../services/catalogService';
 import type { Song } from '../services/songService';
 import CatalogAddButton from './CatalogAddButton';
+import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
 import { RowSelectionCheckbox, SelectAllCheckbox } from './SelectionCheckbox';
 import { selectionCell } from '../utils/selectionCell';
 
@@ -16,6 +17,7 @@ import { selectionCell } from '../utils/selectionCell';
 export default function CatalogList({
   items,
   existingFor,
+  addAs,
   onAdded,
   selectedUids,
   onToggle,
@@ -27,6 +29,7 @@ export default function CatalogList({
 }: {
   items: CatalogSong[];
   existingFor?: (entry: CatalogSong) => Song | null;
+  addAs: Pick<AddAsInstrument, 'requireChoice'>;
   onAdded?: (song: Song) => void;
   selectedUids?: Set<string>;
   onToggle?: (uid: string) => void;
@@ -94,6 +97,7 @@ export default function CatalogList({
                 <CatalogAddButton
                   entry={entry}
                   existingSong={existingFor ? existingFor(entry) : null}
+                  addAs={addAs}
                   onAdded={onAdded}
                   knownGone={goneUids?.has(entry.uid)}
                   onGone={onGone}
