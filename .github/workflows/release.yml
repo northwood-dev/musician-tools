@@ -1,19 +1,18 @@
 name: Release
 
-# Starts on its own when a PR is merged into main, the bump given by the PR's highest
-# label: major, then enhancement (minor), then bug (patch). A merged PR with none of
-# them only gets the deploy of its merge. The Actions tab ("Run workflow", pick
-# patch/minor/major) stays as a fallback.
+# Starts on its own when a labelled PR is merged into main; the Actions tab ("Run
+# workflow", pick patch/minor/major) stays as a fallback. The labels and what to do
+# when a run fails are in docs/agents/workflow.md.
 #
 # Bumps the version in the root package.json and its lockfile, the only place it
-# lives (the footer reads it at build time), commits it to main, tags v<version>, publishes a GitHub release whose notes are
-# generated from the PRs merged since the previous tag (grouped by label, see
-# .github/release.yml), then redeploys so the footer shows the new version.
+# lives (the footer reads it at build time), commits it to main, tags v<version>,
+# publishes a GitHub release whose notes are generated from the PRs merged since the
+# previous tag (grouped by label, see .github/release.yml), then redeploys so the
+# footer shows the new version.
 #
 # The bump is pushed with GITHUB_TOKEN, which by design does NOT trigger
 # deploy.yml's push event, so the deploy is called as a job at the end. Release is
-# therefore green only if the deploy succeeded. If it fails, re-run the failed job
-# alone: that retries the deploy without creating another version.
+# therefore green only if the deploy succeeded.
 
 on:
   workflow_dispatch:

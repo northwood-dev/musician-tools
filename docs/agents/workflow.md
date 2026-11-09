@@ -32,10 +32,14 @@ The workflow bumps the version in the root package (the only place it lives), ta
 
 **Green** means `flyctl deploy` succeeded. It doesn't prove that the site serves the new version (#66), so check the footer.
 
-**Red:** re-run the failed job alone; that retries the deploy without creating another version. If a merge replaced the release's waiting deploy, Release is red although production gets the version: check that merge's deploy instead.
+**Not green:** look at which job stopped.
+
+- **Deploy failed:** re-run the failed job alone. That retries the deploy without creating another version.
+- **Deploy cancelled:** a merge replaced the release's waiting deploy, and production still gets the version. Check that merge's deploy instead.
+- **Release failed:** read its log before re-running, because a re-run bumps again. It is safe if the bump never reached `main`, for example when a merge landed just before the push. If the bump is already on `main`, re-running would skip a version: create the missing release by hand instead.
 
 **Fallback:** **Actions → Release → Run workflow**, picking patch / minor / major, if the automatic start doesn't fire or an unlabelled PR should still get a version.
 
 ## WhatsApp announcement
 
-Announce new features and new versions, never patches. On request, write the beta-tester message from everything shipped since the **last announced release**: the most recent GitHub release whose notes end with a `📣 Annoncé sur WhatsApp le DD/MM` line. Source the content from the merged PRs and their issues. Once northwood has the message, append that line to the newest release covered (`gh release edit`).
+Announce minor and major releases, never patch-only ones. On request, write the beta-tester message from everything shipped since the **last announced release**: the most recent GitHub release whose notes end with a `📣 Annoncé sur WhatsApp le DD/MM` line. Source the content from the merged PRs and their issues. Once northwood has the message, append that line to the newest release covered (`gh release edit`).
