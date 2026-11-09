@@ -1,8 +1,8 @@
 name: Release
 
 # Cut a release from the Actions tab ("Run workflow", pick patch/minor/major).
-# Bumps the version in package.json, backend/package.json and both lockfiles,
-# commits it to main, tags v<version>, publishes a GitHub release whose notes are
+# Bumps the version in the root package.json and its lockfile, the only place it
+# lives (the footer reads it at build time), commits it to main, tags v<version>, publishes a GitHub release whose notes are
 # generated from the PRs merged since the previous tag (grouped by label, see
 # .github/release.yml), then redeploys so the footer shows the new version.
 #
@@ -44,7 +44,6 @@ jobs:
         run: |
           npm version "${{ inputs.bump }}" --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
-          (cd backend && npm version "$VERSION" --no-git-tag-version --allow-same-version)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push the bump
