@@ -1,13 +1,18 @@
 name: Release
 
-# Cut a release from the Actions tab ("Run workflow", pick patch/minor/major).
-# Bumps the version in package.json, backend/package.json and both lockfiles,
-# commits it to main, tags v<version>, publishes a GitHub release whose notes are
-# generated from the PRs merged since the previous tag (grouped by label, see
-# .github/release.yml), then redeploys so the footer shows the new version.
+# Starts on its own when a labelled PR is merged into main; the Actions tab ("Run
+# workflow", pick patch/minor/major) stays as a fallback. The labels and what to do
+# when a run fails are in docs/agents/workflow.md.
+#
+# Bumps the version in the root package.json and its lockfile, the only place it
+# lives (the footer reads it at build time), commits it to main, tags v<version>,
+# publishes a GitHub release whose notes are generated from the PRs merged since the
+# previous tag (grouped by label, see .github/release.yml), then redeploys so the
+# footer shows the new version.
 #
 # The bump is pushed with GITHUB_TOKEN, which by design does NOT trigger
-# deploy.yml's push event, so the deploy is dispatched explicitly at the end.
+# deploy.yml's push event, so the deploy is called as a job at the end. Release is
+# therefore green only if the deploy succeeded.
 
 on:
   workflow_dispatch:
@@ -18,16 +23,26 @@ on:
         type: choice
         options: [patch, minor, major]
         default: patch
-
-concurrency: release
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 jobs:
   release:
     name: Release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true && (
+        contains(github.event.pull_request.labels.*.name, 'major') ||
+        contains(github.event.pull_request.labels.*.name, 'enhancement') ||
+        contains(github.event.pull_request.labels.*.name, 'bug')
+      ))
     runs-on: ubuntu-latest
+    # On the job, not the workflow: every closed PR starts this workflow, and one that
+    # releases nothing must not replace a release waiting in line.
+    concurrency: release
     permissions:
       contents: write
-      actions: write
 
     steps:
       - uses: actions/checkout@v7
@@ -40,10 +55,17 @@ jobs:
 
       - name: Bump version
         id: bump
+        env:
+          # The job's condition guarantees a label here when there is no manual choice,
+          # so the last fallback only ever means the bug label.
+          BUMP: >-
+            ${{ inputs.bump
+              || (contains(github.event.pull_request.labels.*.name, 'major') && 'major')
+              || (contains(github.event.pull_request.labels.*.name, 'enhancement') && 'minor')
+              || 'patch' }}
         run: |
-          npm version "${{ inputs.bump }}" --no-git-tag-version
+          npm version "$BUMP" --no-git-tag-version
           VERSION=$(node -p "require('./package.json').version")
-          (cd backend && npm version "$VERSION" --no-git-tag-version --allow-same-version)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push the bump
@@ -61,7 +83,11 @@ jobs:
           gh release create "v$VERSION" --target main \
             --title "🎵 Musician Tools v$VERSION" --generate-notes
 
-      - name: Deploy the bumped version
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref main
+  deploy:
+    name: Deploy the bumped version
+    needs: release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
