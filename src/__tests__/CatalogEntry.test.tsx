@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogEntry from '../pages/CatalogEntry';
+import CatalogCollection from '../pages/CatalogCollection';
 import { catalogService, CatalogNotFoundError } from '../services/catalogService';
 import type { Song } from '../services/songService';
 
@@ -81,6 +82,22 @@ describe('Add as instrument', () => {
     renderAt('a');
     await addButton();
     expect(screen.getByLabelText('Add as')).toHaveDisplayValue(shown);
+  });
+
+  test('a choice made on this page is the choice on the Collection page', async () => {
+    svc.getCollection.mockResolvedValue({ uid: 'col1', name: 'Rock 90s', description: null, songs: [] });
+    const first = renderAt('a');
+    await addButton();
+    choose('Bass');
+    first.unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/catalog/collections/col1']}>
+        <Routes><Route path="/catalog/collections/:uid" element={<CatalogCollection />} /></Routes>
+      </MemoryRouter>
+    );
+    await screen.findByText('Rock 90s');
+    expect(screen.getByLabelText('Add as')).toHaveDisplayValue('Bass');
   });
 
   test('a remembered value no longer in the list counts as nothing remembered', async () => {

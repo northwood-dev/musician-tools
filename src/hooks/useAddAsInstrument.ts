@@ -6,7 +6,12 @@ import { instrumentTypeOptions } from '../constants/instrumentTypes';
 // (the song's own `instrument` field is the only one).
 const STORAGE_KEY = 'catalogAddAsInstrument';
 
+// Not the Songlist filter's NO_INSTRUMENT, despite the same label: that one finds songs
+// without an instrument, this one adds them without one.
 export const NO_INSTRUMENT_CHOICE = '__none__';
+
+const instrumentOf = (choice: string | null) =>
+  choice && choice !== NO_INSTRUMENT_CHOICE ? choice : undefined;
 
 function isKnownChoice(value: string | null): value is string {
   return value === NO_INSTRUMENT_CHOICE || (value !== null && instrumentTypeOptions.includes(value));
@@ -23,7 +28,8 @@ function readRememberedChoice(): string | null {
 
 /** What the bulk and collection confirmations say about the instrument. */
 export function describeAddAsChoice(choice: string | null): string {
-  const added = choice && choice !== NO_INSTRUMENT_CHOICE ? `Added as ${choice}.` : 'Added with no instrument.';
+  const instrument = instrumentOf(choice);
+  const added = instrument ? `Added as ${instrument}.` : 'Added with no instrument.';
   return `${added} Songs already in your songlist keep their instrument.`;
 }
 
@@ -62,7 +68,7 @@ export function useAddAsInstrument(): AddAsInstrument {
       selectRef.current?.focus();
       return null;
     }
-    return { instrument: choice === NO_INSTRUMENT_CHOICE ? undefined : choice };
+    return { instrument: instrumentOf(choice) };
   };
 
   return { choice, choose, needsChoice, requireChoice, selectRef };

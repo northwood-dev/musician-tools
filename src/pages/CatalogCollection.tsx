@@ -145,7 +145,7 @@ export default function CatalogCollection() {
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{count} {count === 1 ? 'song' : 'songs'}</p>
 
       <div className="mt-6 mb-3 space-y-3">
-        <AddAsInstrumentSelect addAs={addAs} />
+        <AddAsInstrumentSelect addAs={addAs} disabled={bulkAdd.running || importing} />
         <button
           type="button"
           className="btn-primary min-h-[44px]"

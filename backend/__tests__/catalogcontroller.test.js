@@ -369,7 +369,7 @@ describe('catalogcontroller', () => {
     ['a number', 3],
     ['a list', ['Bass']],
     ['null', null],
-    ['a value that is too long', 'x'.repeat(101)],
+    ['a value that is too long', 'x'.repeat(256)],
     ['a NUL byte', `Bass${String.fromCharCode(0)}`],
   ])('addToSonglist refuses %s as the instrument -> 400, nothing created', async (_label, instrument) => {
     CatalogSong.findByPk.mockResolvedValue(CATALOG);

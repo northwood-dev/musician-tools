@@ -422,19 +422,17 @@ function findExistingUserSong(userUid, title, artist) {
   return Song.findOne({ where: { [Op.and]: [{ userUid }, foldedTitle, foldedArtist] } });
 }
 
-const MAX_INSTRUMENT_LENGTH = 100;
+const MAX_INSTRUMENT_LENGTH = 255; // same bound as the played instrument (songcontroller)
 
 // The optional instrument of an add to the Songlist (#34). The list of instruments lives in
 // the frontend and isn't copied here: a second list would have to be kept in sync, and an
-// odd value only affects the sender's own songlist. Throws a 400 on an unusable value.
+// odd value only affects the sender's own songlist.
 function parseAddInstrument(body) {
   const instrument = body?.instrument;
-  if (instrument === undefined) return undefined;
+  if (instrument === undefined) return { invalid: false, instrument: undefined };
   const trimmed = typeof instrument === 'string' ? instrument.trim() : '';
-  if (!trimmed || trimmed.length > MAX_INSTRUMENT_LENGTH || trimmed.includes(String.fromCharCode(0))) {
-    throw createError(400, 'Invalid instrument');
-  }
-  return trimmed;
+  const invalid = !trimmed || trimmed.length > MAX_INSTRUMENT_LENGTH || trimmed.includes(String.fromCharCode(0));
+  return { invalid, instrument: trimmed };
 }
 
 // POST /api/catalog/:uid/add-to-songlist — copy a Catalog entry into the user's
@@ -452,11 +450,9 @@ const addToSonglist = async (req, res, next) => {
     if (!isUuid(req.params.uid)) {
       return next(createError(404, 'Catalog entry not found'));
     }
-    let instrument;
-    try {
-      instrument = parseAddInstrument(req.body);
-    } catch (invalid) {
-      return next(invalid);
+    const { invalid, instrument } = parseAddInstrument(req.body);
+    if (invalid) {
+      return next(createError(400, 'Invalid instrument'));
     }
     catalog = await CatalogSong.findByPk(req.params.uid);
     if (!catalog || catalog.publishedAt == null) {
@@ -721,11 +717,9 @@ const importCollectionToSonglist = async (req, res, next) => {
     if (!isUuid(req.params.uid)) {
       return next(createError(404, 'Collection not found'));
     }
-    let instrument;
-    try {
-      instrument = parseAddInstrument(req.body);
-    } catch (invalid) {
-      return next(invalid);
+    const { invalid, instrument } = parseAddInstrument(req.body);
+    if (invalid) {
+      return next(createError(400, 'Invalid instrument'));
     }
     // Published members only — a draft is not public (19.6) and 19.4 refuses to copy it.
     // Full attributes (default) are needed for buildSongFromCatalog.

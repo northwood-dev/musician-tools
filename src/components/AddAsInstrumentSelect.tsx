@@ -4,7 +4,12 @@ import { NO_INSTRUMENT_CHOICE } from '../hooks/useAddAsInstrument';
 import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
 
 // "Add as": the instrument every add on a Catalog page uses (#34).
-export default function AddAsInstrumentSelect({ addAs, className = '' }: { addAs: AddAsInstrument; className?: string }) {
+export default function AddAsInstrumentSelect({ addAs, disabled = false, className = '' }: {
+  addAs: AddAsInstrument;
+  // Locked while a batch runs: its open confirmation must keep naming what is being sent.
+  disabled?: boolean;
+  className?: string;
+}) {
   const id = useId();
   const messageId = `${id}-message`;
 
@@ -17,6 +22,7 @@ export default function AddAsInstrumentSelect({ addAs, className = '' }: { addAs
           ref={addAs.selectRef}
           className="input-base text-sm"
           value={addAs.choice ?? ''}
+          disabled={disabled}
           aria-describedby={addAs.needsChoice ? messageId : undefined}
           onChange={e => addAs.choose(e.target.value)}
         >

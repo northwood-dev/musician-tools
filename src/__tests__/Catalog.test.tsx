@@ -183,6 +183,20 @@ describe('#34: bulk add with the chosen instrument', () => {
     await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', undefined));
   });
 
+  test('the selector is locked while a batch runs, so the confirmation keeps naming what is being sent', async () => {
+    localStorage.setItem('catalogAddAsInstrument', 'Bass');
+    let finish: (song: ReturnType<typeof asSong>) => void = () => {};
+    svc.addToSonglist.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+    renderCatalog();
+    await screen.findByText('Zombie');
+
+    openBulkAdd();
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Add to my songlist' }));
+
+    await waitFor(() => expect(screen.getByLabelText('Add as')).toBeDisabled());
+    await act(async () => { finish(asSong({ uid: 's', title: 's' })); });
+  });
+
   test('with nothing chosen the confirmation stays closed, nothing is sent, and the selector is pointed out', async () => {
     localStorage.removeItem('catalogAddAsInstrument');
     renderCatalog();

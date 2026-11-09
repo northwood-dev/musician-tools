@@ -179,7 +179,7 @@ export default function Catalog() {
     <div className="w-full max-w-5xl mx-auto px-4 py-6">
       <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Catalog</h1>
 
-      <AddAsInstrumentSelect addAs={addAs} className="mb-4" />
+      <AddAsInstrumentSelect addAs={addAs} disabled={bulkAdd.running} className="mb-4" />
 
       {/* Search is always above the list (DL-5). */}
       <input
