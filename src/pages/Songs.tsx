@@ -226,16 +226,31 @@ function Songs() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   // #56: an empty list can mean "none yet", "still loading" or "failed to load".
   const [playlistsLoad, setPlaylistsLoad] = useState<'loading' | 'failed' | 'loaded'>('loading');
-  // Also behind the picker's Retry (#56).
+  // The one way the page loads its playlists: on mount, back on the list, after a bulk add, and
+  // behind the picker's Retry (#56). Only the newest request's answer counts.
+  const playlistsRequestRef = useRef(0);
+  // Playlists the server returned to this page (create, add, remove) since the newest load
+  // started: newer than that load's answer, so they win over it.
+  const upsertedSinceLoadRef = useRef(new Map<string, Playlist>());
   const loadPlaylists = async () => {
-    setPlaylistsLoad('loading');
+    const request = ++playlistsRequestRef.current;
+    upsertedSinceLoadRef.current = new Map();
+    // A reload never takes back a list already loaded: the page keeps it up to date with every
+    // answer, so loading and failed only describe a page that has no list yet.
+    setPlaylistsLoad(status => (status === 'loaded' ? status : 'loading'));
     try {
       const list = await playlistService.getAllPlaylists();
-      setPlaylists(list);
+      if (request !== playlistsRequestRef.current) return;
+      const newer = upsertedSinceLoadRef.current;
+      setPlaylists([
+        ...[...newer.values()].filter(p => !list.some(l => l.uid === p.uid)),
+        ...list.map(l => newer.get(l.uid) ?? l),
+      ]);
       setPlaylistsLoad('loaded');
     } catch (err) {
+      if (request !== playlistsRequestRef.current) return;
       console.error('Error loading playlists:', err);
-      setPlaylistsLoad('failed');
+      setPlaylistsLoad(status => (status === 'loaded' ? status : 'failed'));
     }
   };
   const [playlistFilter, setPlaylistFilter] = useState<string>(() => {
@@ -658,9 +673,7 @@ function Songs() {
           const data = await songService.getAllSongs();
           setSongs(data);
 
-          // Reload playlists
-          const playlists = await playlistService.getAllPlaylists();
-          setPlaylists(playlists);
+          void loadPlaylists();
 
           // Reload song plays
           const playsMap = new Map<string, SongPlay[]>();
@@ -868,7 +881,14 @@ function Songs() {
     if (seededPlaylistsForEditRef.current === editingUid) return;
     if (playlistsLoad === 'loaded') {
       const songPlaylists = playlists.filter(pl => pl.songUids?.includes(editingUid));
-      setSelectedPlaylistUids(new Set(songPlaylists.map(pl => pl.uid)));
+      const selected = new Set(songPlaylists.map(pl => pl.uid));
+      // A click still being saved (the song was closed and reopened meanwhile) wins (#60).
+      membershipRef.current.forEach((m, key) => {
+        if (!key.startsWith(`${editingUid}:`)) return;
+        const playlistUid = key.slice(editingUid.length + 1);
+        if (m.want) selected.add(playlistUid); else selected.delete(playlistUid);
+      });
+      setSelectedPlaylistUids(selected);
       seededPlaylistsForEditRef.current = editingUid;
     } else if (clearedPlaylistsForEditRef.current !== editingUid) {
       // Not loaded yet: start this song empty once, keeping what is created meanwhile.
@@ -882,6 +902,7 @@ function Songs() {
 
   // The server's answer replaces what the page holds, so membership never drifts from it.
   const upsertPlaylist = (playlist: Playlist) => {
+    upsertedSinceLoadRef.current.set(playlist.uid, playlist);
     setPlaylists(prev => (prev.some(p => p.uid === playlist.uid)
       ? prev.map(p => (p.uid === playlist.uid ? playlist : p))
       : [playlist, ...prev]));
@@ -891,7 +912,7 @@ function Songs() {
   // flight (an entry in membershipRef means one is); when it answers, one more is sent only if
   // the user clicked meanwhile and their last choice differs from what the server saved. The
   // selection shows the last choice; the playlist list holds the server's.
-  const membershipRef = useRef(new Map<string, { want: boolean; saved: boolean; slowTimer?: number }>());
+  const membershipRef = useRef(new Map<string, { want: boolean; saved: boolean; slow?: boolean; slowTimer?: number }>());
   // #92: the open song's playlists whose saving has taken more than 300 ms show a spinner.
   // A chip stays while its playlist is being saved: unselected meanwhile, it is being removed.
   const [savingPlaylistUids, setSavingPlaylistUids] = useState<Set<string>>(new Set());
@@ -915,10 +936,9 @@ function Songs() {
   // requests still in flight whenever a song opens.
   useEffect(() => {
     const prefix = `${editingUid}:`;
-    setSavingPlaylistUids(new Set(
-      [...membershipRef.current.keys()].filter(key => key.startsWith(prefix)).map(key => key.slice(prefix.length)),
-    ));
-    setSlowPlaylistUids(new Set());
+    const inFlight = [...membershipRef.current.entries()].filter(([key]) => key.startsWith(prefix));
+    setSavingPlaylistUids(new Set(inFlight.map(([key]) => key.slice(prefix.length))));
+    setSlowPlaylistUids(new Set(inFlight.filter(([, m]) => m.slow).map(([key]) => key.slice(prefix.length))));
   }, [editingUid]);
   const endMembership = (songUid: string, playlistUid: string) => {
     const key = `${songUid}:${playlistUid}`;
@@ -984,7 +1004,11 @@ function Songs() {
     membershipRef.current.set(key, {
       want: !wasIn,
       saved: wasIn,
-      slowTimer: window.setTimeout(() => markSlow(songUid, playlistUid, true), 300),
+      slowTimer: window.setTimeout(() => {
+        const entry = membershipRef.current.get(key);
+        if (entry) entry.slow = true; // remembered for when the song is reopened
+        markSlow(songUid, playlistUid, true);
+      }, 300),
     });
     markIn(setSavingPlaylistUids, songUid, playlistUid, true);
     void syncMembership(songUid, playlistUid);
@@ -1441,8 +1465,7 @@ function Songs() {
       );
 
       // Refresh playlists locally so counts reflect the change
-      const refreshed = await playlistService.getAllPlaylists();
-      setPlaylists(refreshed);
+      await loadPlaylists();
 
       closeBulkPlaylistPicker();
       setToastMessage('Added to playlist');
@@ -2271,7 +2294,7 @@ function Songs() {
                           <button
                             key={playlist.uid}
                             type="button"
-                            className={`inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 ${removing ? 'opacity-50 line-through' : ''}`}
+                            className={`inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 ${removing ? 'opacity-50' : ''}`}
                             onClick={() => handleTogglePlaylist(playlist.uid)}
                             title={playlist.name}
                             aria-label={removing ? `${playlist.name}, being removed — click to keep` : undefined}

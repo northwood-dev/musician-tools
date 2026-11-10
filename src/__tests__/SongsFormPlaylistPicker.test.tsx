@@ -37,6 +37,7 @@ jest.mock('../services/playlistService', () => ({
 }));
 
 import { playlistService, type Playlist } from '../services/playlistService';
+import { songService } from '../services/songService';
 
 const mockedPlaylists = playlistService as jest.Mocked<typeof playlistService>;
 
@@ -371,6 +372,31 @@ describe('#60: the last click on a playlist wins', () => {
     expect(inFlight('p2')).toBe(0);
     expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledTimes(1);
   }, 3000);
+
+  test('opening another song mid-request leaves its picker untouched, and the last click is still saved', async () => {
+    (songService.getAllSongs as jest.Mock).mockResolvedValueOnce([
+      { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], durationSeconds: null },
+      { uid: 'song-b', title: 'Beta', artist: 'B', instrument: ['Guitar'], durationSeconds: null },
+    ]).mockResolvedValue([
+      { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], durationSeconds: null },
+      { uid: 'song-b', title: 'Beta', artist: 'B', instrument: ['Guitar'], durationSeconds: null },
+    ]);
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    await pick('Gig set');
+    fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    await settle();
+    fireEvent.click(await screen.findByText('Beta'));
+    await screen.findByPlaceholderText('Search, select or create a playlist');
+    await settle();
+
+    await act(async () => { answer('add', 'p2').resolve({ ...gigSet, songUids: ['song-a'] }); });
+
+    expect(screen.queryByTitle('Gig set')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('Warmups')).not.toBeInTheDocument();
+    expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledWith('p2', 'song-a');
+    expect(inFlight('p2')).toBe(0);
+  });
 });
 
 describe('#92: a playlist chip shows when it is being saved', () => {
@@ -462,5 +488,88 @@ describe('#92: a playlist chip shows when it is being saved', () => {
     await settle();
 
     expect(screen.queryByTitle('Warmups')).not.toBeInTheDocument();
+  });
+
+  const reopenAlpha = async () => {
+    fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    await settle();
+    fireEvent.click(await screen.findByText('Alpha'));
+    await screen.findByPlaceholderText('Search, select or create a playlist');
+    await settle();
+  };
+
+  test('reopening the song mid-request shows the last click, not the server state', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(screen.getByTitle('Warmups'));
+    await reopenAlpha();
+
+    expect(screen.getByRole('button', { name: 'Warmups, being removed — click to keep' })).toBeInTheDocument();
+  });
+
+  test('reopening the song during a slow request brings its spinner back', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+    jest.useFakeTimers();
+
+    fireEvent.click(screen.getByTitle('Warmups'));
+    await wait(300);
+    jest.useRealTimers();
+    await reopenAlpha();
+
+    expect(screen.getByTitle('Warmups')).toHaveAttribute('aria-busy', 'true');
+  });
+});
+
+describe('#91 review: the playlist list loads through one path, newest request wins', () => {
+  // Every getAllPlaylists call waits until the test answers it.
+  let loads: { resolve: (l: Playlist[]) => void; reject: (e: Error) => void }[];
+  beforeEach(() => {
+    loads = [];
+    mockedPlaylists.getAllPlaylists.mockImplementation(
+      () => new Promise<Playlist[]>((resolve, reject) => { loads.push({ resolve, reject }); }),
+    );
+  });
+
+  test('an older failed load answering last does not undo a newer successful one', async () => {
+    renderSongs();
+    fireEvent.click(await screen.findByText('Alpha'));
+    await screen.findByPlaceholderText('Search, select or create a playlist');
+    await settle();
+    expect(loads.length).toBeGreaterThan(1); // the page loads the list more than once on mount
+
+    const [first, ...newer] = loads;
+    await act(async () => { newer.forEach(l => l.resolve([warmups, gigSet])); });
+    await act(async () => { first.reject(new Error('network')); });
+
+    expect(await screen.findByTitle('Warmups')).toBeInTheDocument();
+
+    // The page reloads the list on the way back; the next song opened is still ticked.
+    fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    await settle();
+    await act(async () => { loads.slice(1 + newer.length).forEach(l => l.resolve([warmups, gigSet])); });
+    fireEvent.click(await screen.findByText('Alpha'));
+    await screen.findByPlaceholderText('Search, select or create a playlist');
+    await settle();
+
+    expect(await screen.findByTitle('Warmups')).toBeInTheDocument();
+  });
+
+  test('a playlist created while the list loads survives the answer of that older load', async () => {
+    renderSongs();
+    fireEvent.click(await screen.findByText('Alpha'));
+    const field = await screen.findByPlaceholderText('Search, select or create a playlist');
+    await settle();
+
+    const jazz: Playlist = { uid: 'p-jazz', name: 'Jazz', songUids: ['song-a'] };
+    mockedPlaylists.createPlaylist.mockResolvedValueOnce(jazz);
+    fireEvent.focus(field);
+    fireEvent.change(field, { target: { value: 'Jazz' } });
+    fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
+    expect(await screen.findByTitle('Jazz')).toBeInTheDocument();
+
+    await act(async () => { loads.forEach(l => l.resolve([warmups, gigSet])); });
+
+    expect(screen.getByTitle('Jazz')).toBeInTheDocument();
+    expect(screen.getByTitle('Warmups')).toBeInTheDocument();
   });
 });
