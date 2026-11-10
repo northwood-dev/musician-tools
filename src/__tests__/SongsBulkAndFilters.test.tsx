@@ -46,10 +46,17 @@ beforeEach(() => {
 const selectSong = async (label: string) => {
   fireEvent.click(await screen.findByRole('checkbox', { name: new RegExp(label) }));
 };
+// The Song's instrument filter: its select is the one holding the No instrument option.
+const filterOnInstrument = async (value: string) => {
+  const option = await screen.findByRole('option', { name: 'No instrument' });
+  fireEvent.change(option.closest('select')!, { target: { value } });
+};
 const filterOnNoInstrument = async () => {
   const option = await screen.findByRole('option', { name: 'No instrument' });
-  fireEvent.change(option.closest('select')!, { target: { value: (option as HTMLOptionElement).value } });
+  await filterOnInstrument((option as HTMLOptionElement).value);
 };
+const search = (text: string) =>
+  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album...'), { target: { value: text } });
 const setInstrument = async (instrument: string) => {
   fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
   fireEvent.change(await screen.findByRole('combobox', { name: 'Instrument to add' }), { target: { value: instrument } });
@@ -198,11 +205,6 @@ describe('#71 review: Set instrument panel', () => {
 });
 
 describe('#98: Songlist labels once filters are used', () => {
-  const filterOnInstrument = async (value: string) => {
-    const option = await screen.findByRole('option', { name: 'No instrument' });
-    fireEvent.change(option.closest('select')!, { target: { value } });
-  };
-
   test('no "Mark as played" button under No instrument', async () => {
     renderSongs();
     await filterOnNoInstrument();
@@ -235,9 +237,6 @@ describe('#98: Songlist labels once filters are used', () => {
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
     expect(screen.getByText('Beta')).toBeInTheDocument();
   });
-
-  const search = (text: string) =>
-    fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album...'), { target: { value: text } });
 
   test('with no song at all, the empty songlist screen shows, not a filters message', async () => {
     mockedSongs.getAllSongs.mockResolvedValue([] as never);

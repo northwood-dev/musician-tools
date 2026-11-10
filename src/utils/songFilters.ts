@@ -6,6 +6,10 @@ import { songSearchMatcher } from './songSearch';
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
 
+/** An instrument filter naming a real instrument: not empty, not the No instrument value (#98). */
+export const isRealInstrument = (instrumentFilter: string): boolean =>
+  instrumentFilter !== '' && instrumentFilter !== NO_INSTRUMENT;
+
 export type SongFilterOptions = {
   searchQuery: string;
   /** Typing an alias in full also searches for its artist (#76). */
