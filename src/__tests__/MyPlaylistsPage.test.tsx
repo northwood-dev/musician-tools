@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import MyPlaylistsPage from '../pages/MyPlaylistsPage';
 import { playlistService } from '../services/playlistService';
 import { songService } from '../services/songService';
+import { artistAliasService } from '../services/artistAliasService';
 
 jest.mock('../services/playlistService', () => ({
   playlistService: {
@@ -18,16 +19,24 @@ jest.mock('../services/songService', () => ({
   },
 }));
 
+jest.mock('../services/artistAliasService', () => ({
+  artistAliasService: {
+    list: jest.fn(),
+  },
+}));
+
 // useAuth only keeps the auth context alive here; a no-op stub is enough
 jest.mock('../contexts/AuthContext', () => ({ useAuth: () => ({}) }));
 
 const mockedPlaylist = playlistService as jest.Mocked<typeof playlistService>;
 const mockedSong = songService as jest.Mocked<typeof songService>;
+const mockedAlias = artistAliasService as jest.Mocked<typeof artistAliasService>;
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockedPlaylist.getAllPlaylists.mockResolvedValue([]);
   mockedSong.getAllSongs.mockResolvedValue([]);
+  mockedAlias.list.mockResolvedValue([]);
 });
 
 test('a playlist song renders as "Artist - Title"', async () => {
@@ -87,4 +96,51 @@ test('Story 5.6 (review): when the song catalog fails to load, playlist songs ar
 
   // The reference is still rendered (as its UID, unresolved) rather than vanishing
   expect(await screen.findByText('known-uid')).toBeInTheDocument();
+});
+
+describe('#84: the song search of the playlist form finds a song as the Songlist does', () => {
+  const openFormAndSearch = async (query: string) => {
+    render(<MyPlaylistsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /create playlist/i }));
+    fireEvent.change(screen.getByPlaceholderText('Search songs...'), { target: { value: query } });
+  };
+
+  test('"acdc" finds AC/DC, and only it', async () => {
+    mockedSong.getAllSongs.mockResolvedValue([
+      { uid: 's1', title: 'Back in Black', artist: 'AC/DC' } as never,
+      { uid: 's2', title: 'Wonderwall', artist: 'Oasis' } as never,
+    ]);
+
+    await openFormAndSearch('acdc');
+
+    expect(await screen.findByText('AC/DC - Back in Black')).toBeInTheDocument();
+    expect(screen.queryByText('Oasis - Wonderwall')).not.toBeInTheDocument();
+  });
+
+  test('an artist alias typed in full ("rhcp") finds its artist', async () => {
+    mockedAlias.list.mockResolvedValue([{ uid: 'a1', alias: 'RHCP', artist: 'Red Hot Chili Peppers' }]);
+    mockedSong.getAllSongs.mockResolvedValue([
+      { uid: 's1', title: 'Otherside', artist: 'Red Hot Chili Peppers' } as never,
+      { uid: 's2', title: 'Wonderwall', artist: 'Oasis' } as never,
+    ]);
+
+    await openFormAndSearch('rhcp');
+
+    expect(await screen.findByText('Red Hot Chili Peppers - Otherside')).toBeInTheDocument();
+    expect(screen.queryByText('Oasis - Wonderwall')).not.toBeInTheDocument();
+  });
+
+  test('when the aliases fail to load, search still works and no error shows', async () => {
+    mockedAlias.list.mockRejectedValue(new Error('network'));
+    mockedSong.getAllSongs.mockResolvedValue([
+      { uid: 's1', title: 'Back in Black', artist: 'AC/DC' } as never,
+      { uid: 's2', title: 'Wonderwall', artist: 'Oasis' } as never,
+    ]);
+
+    await openFormAndSearch('acdc');
+
+    expect(await screen.findByText('AC/DC - Back in Black')).toBeInTheDocument();
+    expect(screen.queryByText('Oasis - Wonderwall')).not.toBeInTheDocument();
+    expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
+  });
 });
