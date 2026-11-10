@@ -1521,4 +1521,22 @@ describe('#84: the entry picker finds a song or topic as the Songlist does', () 
     const recentTopics = within(screen.getByRole('listbox', { name: 'Entry 1 suggestions' })).getByRole('group', { name: 'Recent' });
     expect(within(recentTopics).getAllByRole('option').map(o => o.textContent)).toEqual(['Rock & Roll']);
   });
+
+  test('a topic named in Cyrillic is found when typed exactly ("Чайковский")', async () => {
+    mockedTopicService.getAll.mockResolvedValue([{ uid: TOPIC_UID, name: 'Чайковский' }]);
+
+    const listbox = await searchEntry('Чайковский');
+
+    const topicsGroup = await within(listbox).findByRole('group', { name: 'Topics' });
+    expect(within(topicsGroup).getByRole('option', { name: 'Чайковский' })).toBeInTheDocument();
+  });
+
+  test('an existing topic typed with other accents and case offers no "Create topic"', async () => {
+    mockedTopicService.getAll.mockResolvedValue([{ uid: TOPIC_UID, name: 'Étude' }]);
+
+    const listbox = await searchEntry('ETUDE');
+
+    expect(await within(listbox).findByRole('option', { name: 'Étude' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('group', { name: 'Create' })).not.toBeInTheDocument();
+  });
 });

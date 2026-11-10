@@ -3,6 +3,18 @@ import type { Song } from '../services/songService';
 import { artistKey, foldText } from './songDuplicate';
 import { searchKey } from './searchKey';
 
+/**
+ * The same rule for a plain name, such as a topic: punctuation, spaces and accents don't count,
+ * and "&" counts as "and". A search made only of punctuation looks for that text.
+ */
+export function textSearchMatcher(searchQuery: string): (text: string) => boolean {
+  const query = searchKey(searchQuery);
+  const literalQuery = foldText(searchQuery);
+  return query
+    ? text => searchKey(text).includes(query)
+    : text => foldText(text).includes(literalQuery);
+}
+
 type SearchableSong = Pick<Song, 'title' | 'artist' | 'album'>;
 
 /**
@@ -31,6 +43,15 @@ export function songSearchMatcher(
       foldText(song.album).includes(literalQuery);
   }
 
+  // "the doors light my fire" finds "Light My Fire" by Doors. The match must start in the artist:
+  // the article is optional for the artist only, so "The Wall" doesn't find "Wall".
+  const spansArtistWithoutArticle = (song: SearchableSong): boolean => {
+    if (artistQuery === '') return false;
+    const artist = searchKey(artistKey(song.artist));
+    const at = `${artist}${searchKey(song.title)}`.indexOf(artistQuery);
+    return at !== -1 && at < artist.length;
+  };
+
   return song => {
     const songArtist = searchKey(song.artist);
     return (
@@ -40,7 +61,8 @@ export function songSearchMatcher(
       (artistQuery !== '' && songArtist.includes(artistQuery)) ||
       (aliasArtist !== '' && songArtist.includes(aliasArtist)) ||
       searchKey(song.album).includes(query) ||
-      searchKey(`${song.artist ?? ''}${song.title ?? ''}`).includes(query)
+      searchKey(`${song.artist ?? ''}${song.title ?? ''}`).includes(query) ||
+      spansArtistWithoutArticle(song)
     );
   };
 }

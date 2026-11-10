@@ -360,4 +360,11 @@ describe('#84: a search can span the artist and the title', () => {
   test.each(['beatles help', 'beatles - help', 'The Beatles Help!'])('"%s" finds "Help!" by The Beatles only', query => {
     expect(found(songs, query)).toEqual(['0']);
   });
+
+  test.each([
+    ['the doors light my fire', 'Doors'],
+    ['doors light my fire', 'The Doors'],
+  ])('the article stays optional: "%s" finds "Light My Fire" by %s', (query, artist) => {
+    expect(found([{ title: 'Light My Fire', artist }, { title: 'Riders on the Storm', artist }], query)).toEqual(['0']);
+  });
 });

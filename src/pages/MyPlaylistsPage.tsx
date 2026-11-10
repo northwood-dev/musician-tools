@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useArtistAliases } from '../hooks/useArtistAliases';
 // ...existing code...
 import { songSearchMatcher } from '../utils/songSearch';
 import { playlistService, type Playlist, type CreatePlaylistDTO } from '../services/playlistService';
 import { songService, type Song } from '../services/songService';
-import { artistAliasService, type ArtistAlias } from '../services/artistAliasService';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 
@@ -35,16 +35,7 @@ function MyPlaylistsPage() {
   const [songSearch, setSongSearch] = useState<string>('');
   useAuth(); // keep auth context alive; no direct usage here
 
-  // #84: search compares aliases in the browser, as in the Songlist. Without them, it just has
-  // no alias.
-  const [artistAliases, setArtistAliases] = useState<ArtistAlias[]>([]);
-  useEffect(() => {
-    let active = true;
-    artistAliasService.list()
-      .then(list => { if (active) setArtistAliases(list); })
-      .catch(() => { /* degrade: search without aliases */ });
-    return () => { active = false; };
-  }, []);
+  const artistAliases = useArtistAliases();
 
   useEffect(() => {
     const loadPlaylists = async () => {

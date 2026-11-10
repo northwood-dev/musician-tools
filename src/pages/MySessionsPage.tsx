@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { songSearchMatcher } from '../utils/songSearch';
-import { searchKey } from '../utils/searchKey';
-import { artistAliasService, type ArtistAlias } from '../services/artistAliasService';
+import { useArtistAliases } from '../hooks/useArtistAliases';
+import type { ArtistAlias } from '../services/artistAliasService';
+import { songSearchMatcher, textSearchMatcher } from '../utils/songSearch';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { practiceSessionService, SessionMergeRequiredError, type SessionWriteResult, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
 import { SessionDayGroup } from '../components/SessionHistoryCard';
@@ -87,11 +87,8 @@ function EntryRefPicker({
   const query = searching ? foldForSearch(searchText.trim()) : '';
   // #84: songs are found as in the Songlist.
   const matchesSong = songSearchMatcher(searching ? searchText : '', artistAliases);
-  // Topics ignore punctuation and "&" too. A search made only of punctuation has no key: it
-  // looks for that text, rather than matching everything (as songSearchMatcher does).
-  const topicQuery = searchKey(query);
-  const matchesTopicName = (name: string) =>
-    topicQuery ? searchKey(name).includes(topicQuery) : foldForSearch(name).includes(query);
+  // Topics follow the same rule, applied to their name.
+  const matchesTopicName = textSearchMatcher(searching ? searchText : '');
   // A recent ref is always a song or topic still loaded (deleted ones are left out), so it follows
   // the same rule as its group.
   const matchesRecent = (recent: { ref: string; label: string }) => {
@@ -240,16 +237,7 @@ function MySessionsPage() {
   const toastTimerRef = useRef<number | null>(null);
   const [entries, setEntries] = useState<EntryDraft[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
-  // #84: search compares aliases in the browser, as in the Songlist. Without them, it just has
-  // no alias.
-  const [artistAliases, setArtistAliases] = useState<ArtistAlias[]>([]);
-  useEffect(() => {
-    let active = true;
-    artistAliasService.list()
-      .then(list => { if (active) setArtistAliases(list); })
-      .catch(() => { /* degrade: search without aliases */ });
-    return () => { active = false; };
-  }, []);
+  const artistAliases = useArtistAliases();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [sessions, setSessions] = useState<PracticeSession[] | null>(null);
   const [sessionsFailed, setSessionsFailed] = useState(false);
