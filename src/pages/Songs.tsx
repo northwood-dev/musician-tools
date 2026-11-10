@@ -891,7 +891,42 @@ function Songs() {
   // flight (an entry in membershipRef means one is); when it answers, one more is sent only if
   // the user clicked meanwhile and their last choice differs from what the server saved. The
   // selection shows the last choice; the playlist list holds the server's.
-  const membershipRef = useRef(new Map<string, { want: boolean; saved: boolean }>());
+  const membershipRef = useRef(new Map<string, { want: boolean; saved: boolean; slowTimer?: number }>());
+  // #92: the open song's playlists whose saving has taken more than 300 ms show a spinner.
+  // A chip stays while its playlist is being saved: unselected meanwhile, it is being removed.
+  const [savingPlaylistUids, setSavingPlaylistUids] = useState<Set<string>>(new Set());
+  const [slowPlaylistUids, setSlowPlaylistUids] = useState<Set<string>>(new Set());
+  const markIn = (
+    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    songUid: string,
+    playlistUid: string,
+    on: boolean,
+  ) => {
+    if (editingUidRef.current !== songUid) return; // the open song's chips only
+    setter(prev => {
+      const next = new Set(prev);
+      if (on) next.add(playlistUid); else next.delete(playlistUid);
+      return next;
+    });
+  };
+  const markSlow = (songUid: string, playlistUid: string, slow: boolean) =>
+    markIn(setSlowPlaylistUids, songUid, playlistUid, slow);
+  // Answers landing while a song is closed don't touch its chips, so they are rebuilt from the
+  // requests still in flight whenever a song opens.
+  useEffect(() => {
+    const prefix = `${editingUid}:`;
+    setSavingPlaylistUids(new Set(
+      [...membershipRef.current.keys()].filter(key => key.startsWith(prefix)).map(key => key.slice(prefix.length)),
+    ));
+    setSlowPlaylistUids(new Set());
+  }, [editingUid]);
+  const endMembership = (songUid: string, playlistUid: string) => {
+    const key = `${songUid}:${playlistUid}`;
+    window.clearTimeout(membershipRef.current.get(key)?.slowTimer);
+    membershipRef.current.delete(key);
+    markSlow(songUid, playlistUid, false);
+    markIn(setSavingPlaylistUids, songUid, playlistUid, false);
+  };
 
   const syncMembership = async (songUid: string, playlistUid: string) => {
     const key = `${songUid}:${playlistUid}`;
@@ -918,11 +953,11 @@ function Songs() {
         await syncMembership(songUid, playlistUid);
         return;
       }
-      membershipRef.current.delete(key);
+      endMembership(songUid, playlistUid);
       setSelected(membership.saved);
     } catch (err) {
       console.error(err);
-      membershipRef.current.delete(key); // clicks made meanwhile go with the failed request
+      endMembership(songUid, playlistUid); // clicks made meanwhile go with the failed request
       setSelected(membership.saved); // back to what the server has
       setToastMessage('Could not update playlist');
       setTimeout(() => setToastMessage(null), 2500);
@@ -946,7 +981,12 @@ function Songs() {
       membership.want = !wasIn; // the request in flight will pick it up
       return;
     }
-    membershipRef.current.set(key, { want: !wasIn, saved: wasIn });
+    membershipRef.current.set(key, {
+      want: !wasIn,
+      saved: wasIn,
+      slowTimer: window.setTimeout(() => markSlow(songUid, playlistUid, true), 300),
+    });
+    markIn(setSavingPlaylistUids, songUid, playlistUid, true);
     void syncMembership(songUid, playlistUid);
   };
 
@@ -2223,20 +2263,28 @@ function Songs() {
                           </div>
                       )}
                     </div>
-                    {selectedPlaylistUids.size > 0 && (
+                    {(selectedPlaylistUids.size > 0 || savingPlaylistUids.size > 0) && (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {playlists.filter(p => selectedPlaylistUids.has(p.uid)).map(playlist => (
+                        {playlists.filter(p => selectedPlaylistUids.has(p.uid) || savingPlaylistUids.has(p.uid)).map(playlist => {
+                          const removing = !selectedPlaylistUids.has(playlist.uid);
+                          return (
                           <button
                             key={playlist.uid}
                             type="button"
-                            className="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600"
+                            className={`inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 ${removing ? 'opacity-50 line-through' : ''}`}
                             onClick={() => handleTogglePlaylist(playlist.uid)}
                             title={playlist.name}
+                            aria-label={removing ? `${playlist.name}, being removed — click to keep` : undefined}
+                            aria-busy={slowPlaylistUids.has(playlist.uid) || undefined}
                           >
                             <span className="truncate">{playlist.name}</span>
+                            {slowPlaylistUids.has(playlist.uid) && (
+                              <span aria-hidden="true" className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                            )}
                             <span>✕</span>
                           </button>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

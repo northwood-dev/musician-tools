@@ -211,7 +211,7 @@ describe('#56: the picker tells loading, failed and loaded apart', () => {
     fireEvent.click(await screen.findByText('Create playlist "Jazz"'));
     mockedPlaylists.removeSongFromPlaylist.mockReturnValue(new Promise(() => {}));
     fireEvent.click(await screen.findByTitle('Jazz')); // untick: the server hasn't answered yet
-    expect(chip('Jazz')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Jazz, being removed — click to keep' })).toBeInTheDocument();
 
     mockedPlaylists.createPlaylist.mockResolvedValueOnce({ uid: 'p-rock', name: 'Rock', songUids: ['song-a'] });
     fireEvent.focus(field);
@@ -219,7 +219,7 @@ describe('#56: the picker tells loading, failed and loaded apart', () => {
     fireEvent.click(await screen.findByText('Create playlist "Rock"'));
 
     expect(await screen.findByTitle('Rock')).toBeInTheDocument();
-    expect(chip('Jazz')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Jazz, being removed — click to keep' })).toBeInTheDocument();
   });
 
   test('after a failed load, creating a playlist then a successful Retry still ticks the song\'s other playlists', async () => {
@@ -275,11 +275,12 @@ describe('#60: the last click on a playlist wins', () => {
     await pick('Gig set');
     fireEvent.click(await screen.findByTitle('Gig set'));
 
-    expect(chip('Gig set')).not.toBeInTheDocument();
+    const beingRemoved = { name: 'Gig set, being removed — click to keep' };
+    expect(screen.getByRole('button', beingRemoved)).toBeInTheDocument();
     expect(inFlight('p2')).toBe(1); // the remove waits for the add
 
     await act(async () => { answer('add', 'p2').resolve({ ...gigSet, songUids: ['song-a'] }); });
-    expect(chip('Gig set')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', beingRemoved)).toBeInTheDocument();
     expect(inFlight('p2')).toBe(1); // now the remove
 
     await act(async () => { answer('remove', 'p2').resolve({ ...gigSet, songUids: [] }); });
@@ -370,4 +371,96 @@ describe('#60: the last click on a playlist wins', () => {
     expect(inFlight('p2')).toBe(0);
     expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledTimes(1);
   }, 3000);
+});
+
+describe('#92: a playlist chip shows when it is being saved', () => {
+  let pending: { playlistUid: string; resolve: (p: Playlist) => void; reject: (e: Error) => void }[];
+  const answer = (playlistUid: string) => {
+    const found = pending.find(p => p.playlistUid === playlistUid)!;
+    pending = pending.filter(p => p !== found);
+    return found;
+  };
+
+  beforeEach(() => {
+    pending = [];
+    const track = (playlistUid: string) =>
+      new Promise<Playlist>((resolve, reject) => { pending.push({ playlistUid, resolve, reject }); });
+    mockedPlaylists.addSongToPlaylist.mockImplementation(track);
+    mockedPlaylists.removeSongFromPlaylist.mockImplementation(track);
+  });
+  afterEach(() => { jest.useRealTimers(); });
+
+  const pick = async (name: string) => {
+    fireEvent.focus(screen.getByPlaceholderText('Search, select or create a playlist'));
+    fireEvent.click(within(await screen.findByRole('listbox')).getByText(name));
+  };
+  const wait = (ms: number) => act(async () => { jest.advanceTimersByTime(ms); });
+
+  test('a spinner shows only once the request has taken 300 ms, and goes when it answers', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+    jest.useFakeTimers();
+    await pick('Gig set');
+
+    const chipEl = screen.getByTitle('Gig set');
+    await wait(299);
+    expect(chipEl).not.toHaveAttribute('aria-busy', 'true');
+    await wait(1);
+    expect(screen.getByTitle('Gig set')).toHaveAttribute('aria-busy', 'true');
+
+    await act(async () => { answer('p2').resolve({ ...gigSet, songUids: ['song-a'] }); });
+    expect(screen.getByTitle('Gig set')).not.toHaveAttribute('aria-busy', 'true');
+  });
+
+  test('a playlist being removed stays shown as such until the server confirms', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(screen.getByTitle('Warmups'));
+
+    expect(screen.getByRole('button', { name: 'Warmups, being removed — click to keep' })).toBeInTheDocument();
+
+    await act(async () => { answer('p1').resolve({ ...warmups, songUids: [] }); });
+    expect(screen.queryByTitle('Warmups')).not.toBeInTheDocument();
+  });
+
+  test('clicking a chip being removed keeps the playlist, and the server ends with the song in it', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(screen.getByTitle('Warmups'));
+    fireEvent.click(screen.getByRole('button', { name: 'Warmups, being removed — click to keep' }));
+    expect(screen.queryByRole('button', { name: /being removed/ })).not.toBeInTheDocument();
+    expect(screen.getByTitle('Warmups')).toBeInTheDocument();
+
+    await act(async () => { answer('p1').resolve({ ...warmups, songUids: [] }); });
+    expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledWith('p1', 'song-a');
+    await act(async () => { answer('p1').resolve(warmups); });
+
+    expect(screen.getByTitle('Warmups')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /being removed/ })).not.toBeInTheDocument();
+  });
+
+  test('a failed removal brings the chip back to normal and says so', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(screen.getByTitle('Warmups'));
+    await act(async () => { answer('p1').reject(new Error('network')); });
+
+    expect(screen.getByTitle('Warmups')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /being removed/ })).not.toBeInTheDocument();
+    expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
+  });
+
+  test('a removal confirmed while the song was closed leaves no stale chip when it is reopened', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(screen.getByTitle('Warmups'));
+    fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    await settle();
+    await act(async () => { answer('p1').resolve({ ...warmups, songUids: [] }); });
+
+    fireEvent.click(await screen.findByText('Alpha'));
+    await screen.findByPlaceholderText('Search, select or create a playlist');
+    await settle();
+
+    expect(screen.queryByTitle('Warmups')).not.toBeInTheDocument();
+  });
 });
