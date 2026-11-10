@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { songSearchMatcher } from '../utils/songSearch';
+import { searchKey } from '../utils/searchKey';
+import { artistAliasService, type ArtistAlias } from '../services/artistAliasService';
 import { useScrollAriaSelectedIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { practiceSessionService, SessionMergeRequiredError, type SessionWriteResult, type CreatePracticeSessionDTO, type CreateSessionItemDTO, type UpdateSessionItemDTO, type UpdatePracticeSessionDTO, type PracticeSession } from '../services/practiceSessionService';
 import { SessionDayGroup } from '../components/SessionHistoryCard';
@@ -37,6 +40,7 @@ function EntryRefPicker({
   value,
   orphanLabel,
   songs,
+  artistAliases,
   topics,
   recentRefs,
   loading,
@@ -47,6 +51,7 @@ function EntryRefPicker({
   value: string; // '' | 'song:<uid>' | 'topic:<uid>'
   orphanLabel?: string; // FR4 snapshot when the referenced entity was deleted
   songs: Song[];
+  artistAliases: ArtistAlias[];
   topics: Topic[];
   recentRefs: { ref: string; label: string }[];
   loading: boolean;
@@ -80,8 +85,19 @@ function EntryRefPicker({
   // selected label — so the field always reflects the actual ref at rest.
   const display = searching ? searchText : labelForRef(value);
   const query = searching ? foldForSearch(searchText.trim()) : '';
-  const filterOptions = (options: { value: string; label: string }[]) =>
-    query ? options.filter(o => foldForSearch(o.label).includes(query)) : options;
+  // #84: songs are found as in the Songlist.
+  const matchesSong = songSearchMatcher(searching ? searchText : '', artistAliases);
+  // Topics ignore punctuation and "&" too. A search made only of punctuation has no key: it
+  // looks for that text, rather than matching everything (as songSearchMatcher does).
+  const topicQuery = searchKey(query);
+  const matchesTopicName = (name: string) =>
+    topicQuery ? searchKey(name).includes(topicQuery) : foldForSearch(name).includes(query);
+  // A recent ref is always a song or topic still loaded (deleted ones are left out), so it follows
+  // the same rule as its group.
+  const matchesRecent = (recent: { ref: string; label: string }) => {
+    const song = recent.ref.startsWith('song:') ? songs.find(s => `song:${s.uid}` === recent.ref) : undefined;
+    return song ? matchesSong(song) : matchesTopicName(recent.label);
+  };
 
   // Story 8.2: `topics` arrives already pinned (system "Free practice" first,
   // user topics keep their order) — sorted once in the parent, not per row.
@@ -99,9 +115,9 @@ function EntryRefPicker({
   // is keyboard-navigable like the rest.
   let counter = 0;
   const groups = [
-    { label: 'Recent', options: filterOptions(recentRefs.map(r => ({ value: r.ref, label: r.label }))) },
-    { label: 'Songs', options: filterOptions(songs.map(s => ({ value: `song:${s.uid}`, label: formatSongLabel(s) }))) },
-    { label: 'Topics', options: filterOptions(topics.map(t => ({ value: `topic:${t.uid}`, label: t.name }))) },
+    { label: 'Recent', options: recentRefs.filter(matchesRecent).map(r => ({ value: r.ref, label: r.label })) },
+    { label: 'Songs', options: songs.filter(matchesSong).map(s => ({ value: `song:${s.uid}`, label: formatSongLabel(s) })) },
+    { label: 'Topics', options: topics.filter(t => matchesTopicName(t.name)).map(t => ({ value: `topic:${t.uid}`, label: t.name })) },
     { label: 'Create', options: showCreate ? [{ value: `create:${rawCreateText}`, label: `Create topic "${rawCreateText}"` }] : [] },
   ]
     .filter(group => group.options.length > 0)
@@ -224,6 +240,16 @@ function MySessionsPage() {
   const toastTimerRef = useRef<number | null>(null);
   const [entries, setEntries] = useState<EntryDraft[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
+  // #84: search compares aliases in the browser, as in the Songlist. Without them, it just has
+  // no alias.
+  const [artistAliases, setArtistAliases] = useState<ArtistAlias[]>([]);
+  useEffect(() => {
+    let active = true;
+    artistAliasService.list()
+      .then(list => { if (active) setArtistAliases(list); })
+      .catch(() => { /* degrade: search without aliases */ });
+    return () => { active = false; };
+  }, []);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [sessions, setSessions] = useState<PracticeSession[] | null>(null);
   const [sessionsFailed, setSessionsFailed] = useState(false);
@@ -823,6 +849,7 @@ function MySessionsPage() {
                     // fallback label; a fresh empty row has none
                     orphanLabel={entry.uid && entry.label ? entry.label : undefined}
                     songs={songs}
+                    artistAliases={artistAliases}
                     topics={pinnedTopics}
                     recentRefs={recentRefs}
                     loading={loading}
