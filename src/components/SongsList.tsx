@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { NO_INSTRUMENT } from '../utils/songFilters';
 import type { Song } from '../services/songService';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from './PlaylistsLoadMessage';
 import type { ReactNode } from 'react';
@@ -336,7 +337,8 @@ export default function SongsList(props: SongsListProps) {
                 </div>
               )}
             </div>
-            {props.instrumentFilter && (
+            {/* #98: a real instrument only, as with no filter: a play with no instrument feeds no session. */}
+            {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
               <button
                 type="button"
                 className="btn-primary text-sm px-3 py-1.5"
@@ -359,7 +361,15 @@ export default function SongsList(props: SongsListProps) {
             <div className="card-base p-6 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
           ) : props.filteredSongs.length === 0 ? (
             <div className="card-base p-6 text-center text-gray-600 dark:text-gray-400">
-              {props.searchQuery ? 'No songs match your search.' : 'No songs saved.'}
+              {/* #98: say why the list is empty, and give filters a way out (the sidebar may be collapsed). */}
+              {props.songs.length === 0 ? 'No songs saved.' : props.activeFilterCount > 0 ? (
+                <>
+                  No songs match your filters.{' '}
+                  <button type="button" className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 underline" onClick={props.clearAllFilters}>
+                    Clear filters
+                  </button>
+                </>
+              ) : props.searchQuery ? 'No songs match your search.' : 'No songs saved.'}
             </div>
           ) : (
             <div className="card-base overflow-hidden">
