@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { useArtistAliases } from '../hooks/useArtistAliases';
 // ...existing code...
+import { songSearchMatcher } from '../utils/songSearch';
 import { playlistService, type Playlist, type CreatePlaylistDTO } from '../services/playlistService';
 import { songService, type Song } from '../services/songService';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +34,8 @@ function MyPlaylistsPage() {
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
   const [songSearch, setSongSearch] = useState<string>('');
   useAuth(); // keep auth context alive; no direct usage here
+
+  const artistAliases = useArtistAliases();
 
   useEffect(() => {
     const loadPlaylists = async () => {
@@ -319,11 +323,7 @@ function MyPlaylistsPage() {
                     <p className="p-3 text-sm text-gray-600 dark:text-gray-400">No songs available. Create songs first.</p>
                   ) : (
                     <div className="space-y-2 p-3">
-                      {songs.filter(song => {
-                        const searchLower = songSearch.toLowerCase();
-                        const songDisplay = formatSongLabel(song).toLowerCase();
-                        return songDisplay.includes(searchLower);
-                      }).sort((a, b) => {
+                      {songs.filter(songSearchMatcher(songSearch, artistAliases)).sort((a, b) => {
                         const aDisplay = formatSongLabel(a).toLowerCase();
                         const bDisplay = formatSongLabel(b).toLowerCase();
                         return aDisplay.localeCompare(bDisplay);

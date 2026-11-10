@@ -41,12 +41,20 @@ jest.mock('../services/topicService', () => {
   };
 });
 
+jest.mock('../services/artistAliasService', () => ({
+  artistAliasService: {
+    list: jest.fn(),
+  },
+}));
+
 import { songService } from '../services/songService';
+import { artistAliasService } from '../services/artistAliasService';
 import { topicService, TopicConflictError } from '../services/topicService';
 
 const mockedService = practiceSessionService as jest.Mocked<typeof practiceSessionService>;
 const mockedSongService = songService as jest.Mocked<typeof songService>;
 const mockedTopicService = topicService as jest.Mocked<typeof topicService>;
+const mockedAliasService = artistAliasService as jest.Mocked<typeof artistAliasService>;
 
 const SONG_UID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const TOPIC_UID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -66,6 +74,7 @@ beforeEach(() => {
     { uid: TOPIC_UID, name: 'Pentatonic scale' },
   ]);
   mockedService.getAll.mockResolvedValue([]);
+  mockedAliasService.list.mockResolvedValue([]);
 });
 
 // The combobox shows suggestions on focus; picking means clicking the option in
@@ -1424,4 +1433,110 @@ test('logging with no entry and no system topic available degrades to an empty s
     );
   });
   expect(await screen.findByText('Session logged')).toBeInTheDocument();
+});
+
+describe('#84: the entry picker finds a song or topic as the Songlist does', () => {
+  // Types in a fresh entry's picker and returns its open listbox.
+  async function searchEntry(text: string) {
+    render(<MemoryRouter><MySessionsPage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Add entry' }));
+    const input = await screen.findByLabelText('Entry 1');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: text } });
+    return screen.findByRole('listbox', { name: 'Entry 1 suggestions' });
+  }
+
+  const twoSongs = [
+    { uid: 's1', title: 'Back in Black', artist: 'AC/DC' },
+    { uid: 's2', title: 'Wonderwall', artist: 'Oasis' },
+  ];
+
+  test('"acdc" finds AC/DC, and only it', async () => {
+    mockedSongService.getAllSongs.mockResolvedValue(twoSongs as never);
+
+    const listbox = await searchEntry('acdc');
+
+    expect(await within(listbox).findByRole('option', { name: 'AC/DC - Back in Black' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('option', { name: 'Oasis - Wonderwall' })).not.toBeInTheDocument();
+  });
+
+  test('an artist alias typed in full ("rhcp") finds its artist', async () => {
+    mockedAliasService.list.mockResolvedValue([{ uid: 'a1', alias: 'RHCP', artist: 'Red Hot Chili Peppers' }]);
+    mockedSongService.getAllSongs.mockResolvedValue([
+      { uid: 's1', title: 'Otherside', artist: 'Red Hot Chili Peppers' },
+      { uid: 's2', title: 'Wonderwall', artist: 'Oasis' },
+    ] as never);
+
+    const listbox = await searchEntry('rhcp');
+
+    expect(await within(listbox).findByRole('option', { name: 'Red Hot Chili Peppers - Otherside' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('option', { name: 'Oasis - Wonderwall' })).not.toBeInTheDocument();
+  });
+
+  test('when the aliases fail to load, search still works and no error shows', async () => {
+    mockedAliasService.list.mockRejectedValue(new Error('network'));
+    mockedSongService.getAllSongs.mockResolvedValue(twoSongs as never);
+
+    const listbox = await searchEntry('acdc');
+
+    expect(await within(listbox).findByRole('option', { name: 'AC/DC - Back in Black' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByText(/error|failed|couldn/i)).not.toBeInTheDocument();
+  });
+
+  test('"rock and roll" finds the topic "Rock & Roll", and "Create topic" is still offered', async () => {
+    mockedTopicService.getAll.mockResolvedValue([
+      { uid: TOPIC_UID, name: 'Rock & Roll' },
+      { uid: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Pentatonic scale' },
+    ]);
+
+    const listbox = await searchEntry('rock and roll');
+
+    const topicsGroup = await within(listbox).findByRole('group', { name: 'Topics' });
+    expect(within(topicsGroup).getByRole('option', { name: 'Rock & Roll' })).toBeInTheDocument();
+    expect(within(topicsGroup).queryByRole('option', { name: 'Pentatonic scale' })).not.toBeInTheDocument();
+    // Same topic only ignores case and accents, as the database does (not punctuation).
+    expect(within(listbox).getByRole('option', { name: 'Create topic "rock and roll"' })).toBeInTheDocument();
+  });
+
+  test('the Recent group follows the same rules as Songs and Topics', async () => {
+    mockedSongService.getAllSongs.mockResolvedValue(twoSongs as never);
+    mockedTopicService.getAll.mockResolvedValue([{ uid: TOPIC_UID, name: 'Rock & Roll' }]);
+    mockedService.getAll.mockResolvedValue([
+      {
+        uid: 'p1', date: todayLocalDate(), instrumentType: 'Bass', createdAt: '2026-06-07T09:00:00Z',
+        items: [
+          { uid: 'i1', sessionUid: 'p1', songUid: 's1', label: 'AC/DC - Back in Black', minutes: 10 },
+          { uid: 'i2', sessionUid: 'p1', songUid: 's2', label: 'Oasis - Wonderwall', minutes: 10 },
+          { uid: 'i3', sessionUid: 'p1', topicUid: TOPIC_UID, label: 'Rock & Roll', minutes: 10 },
+        ],
+      },
+    ] as never);
+
+    const songsListbox = await searchEntry('acdc');
+    const recentSongs = await within(songsListbox).findByRole('group', { name: 'Recent' });
+    expect(within(recentSongs).getAllByRole('option').map(o => o.textContent)).toEqual(['AC/DC - Back in Black']);
+
+    fireEvent.change(screen.getByLabelText('Entry 1'), { target: { value: 'rock and roll' } });
+    const recentTopics = within(screen.getByRole('listbox', { name: 'Entry 1 suggestions' })).getByRole('group', { name: 'Recent' });
+    expect(within(recentTopics).getAllByRole('option').map(o => o.textContent)).toEqual(['Rock & Roll']);
+  });
+
+  test('a topic named in Cyrillic is found when typed exactly ("Чайковский")', async () => {
+    mockedTopicService.getAll.mockResolvedValue([{ uid: TOPIC_UID, name: 'Чайковский' }]);
+
+    const listbox = await searchEntry('Чайковский');
+
+    const topicsGroup = await within(listbox).findByRole('group', { name: 'Topics' });
+    expect(within(topicsGroup).getByRole('option', { name: 'Чайковский' })).toBeInTheDocument();
+  });
+
+  test('an existing topic typed with other accents and case offers no "Create topic"', async () => {
+    mockedTopicService.getAll.mockResolvedValue([{ uid: TOPIC_UID, name: 'Étude' }]);
+
+    const listbox = await searchEntry('ETUDE');
+
+    expect(await within(listbox).findByRole('option', { name: 'Étude' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('group', { name: 'Create' })).not.toBeInTheDocument();
+  });
 });
