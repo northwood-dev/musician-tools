@@ -11,7 +11,7 @@ router.use(bodyParser.json());
 router.get('/', authsess, songController.getAllSongs);
 router.get('/lookup', authsess, songController.lookupSongMetadata);
 // #71: one instrument on several of the user's songs, all or none.
-router.post('/bulk/instrument', authsess, songController.setInstrumentOnSongs);
+router.post('/bulk/instrument', authsess, songController.addInstrumentToSongs);
 router.get('/:uid', authsess, songController.getSong);
 // Story 21.1 — refresh a Catalog copy to the current Catalog version (writes the user's
 // own Song → authsess only ; CSRF app-wide covers it).

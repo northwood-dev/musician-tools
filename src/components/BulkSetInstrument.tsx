@@ -1,48 +1,53 @@
 import { useState } from 'react';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
-import { songService, type Song } from '../services/songService';
+import { songService, type AddInstrumentResult } from '../services/songService';
 
-export type SetInstrumentResult = { instrument: string; added: number; alreadyHad: number; songs: Song[] };
+export type InstrumentAdded = AddInstrumentResult & { instrument: string };
 
 /**
  * #71: the Songlist's bulk "Set instrument" action. Adds one instrument type to the selected
- * songs (never replaces their instruments); the page decides what to do with the result.
+ * songs (never replaces their instruments). Unlike "Add to playlist", it calls the service
+ * itself to keep the page small; the page opens and closes it (one bulk panel at a time) and
+ * decides what to do with the result.
  */
 export function BulkSetInstrument({
+  open,
+  onOpenChange,
   selectedSongUids,
   disabled,
-  onApplied,
+  onAdded,
   onFailed,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   selectedSongUids: string[];
   disabled: boolean;
-  onApplied: (result: SetInstrumentResult) => void;
+  onAdded: (result: InstrumentAdded) => void;
   /** Nothing was changed (all or none): the panel stays open to try again. */
-  onFailed: () => void;
+  onFailed: (error: unknown) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [instrument, setInstrument] = useState('');
-  const [running, setRunning] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const close = () => {
-    setOpen(false);
+    onOpenChange(false);
     setInstrument('');
   };
 
-  const add = async () => {
-    let result;
-    setRunning(true);
+  const submit = async () => {
+    let result: AddInstrumentResult;
+    setSubmitting(true);
     try {
-      result = await songService.setInstrumentOnSongs(selectedSongUids, instrument);
+      result = await songService.addInstrumentToSongs(selectedSongUids, instrument);
     } catch (err) {
       console.error(err);
-      onFailed();
+      onFailed(err);
       return;
     } finally {
-      setRunning(false);
+      setSubmitting(false);
     }
     close();
-    onApplied({ instrument, ...result });
+    onAdded({ instrument, ...result });
   };
 
   return (
@@ -50,29 +55,55 @@ export function BulkSetInstrument({
       <button
         type="button"
         className="btn-primary text-sm px-3 py-1.5"
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={() => (open ? close() : onOpenChange(true))}
         disabled={disabled}
       >
         Set instrument
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
-          <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">Add an instrument to the selected songs</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-gray-700 dark:text-gray-200">Add an instrument</p>
+            <button
+              type="button"
+              aria-label="Close"
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
+              onClick={close}
+              disabled={submitting}
+            >
+              ✕
+            </button>
+          </div>
           <select
             aria-label="Instrument to add"
-            className="w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 text-sm dark:bg-gray-700 dark:text-gray-100"
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 text-sm dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50"
             value={instrument}
             onChange={e => setInstrument(e.target.value)}
+            disabled={submitting}
           >
             <option value="">Choose an instrument</option>
             {instrumentTypeOptions.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Their other instruments stay.</p>
-          <div className="mt-3 flex justify-end gap-2">
-            <button type="button" className="btn-secondary text-sm px-3 py-1.5" onClick={close}>Cancel</button>
-            <button type="button" className="btn-primary text-sm px-3 py-1.5" onClick={() => { void add(); }} disabled={instrument === '' || running}>Add</button>
+          <p className="mt-2 mb-3 text-xs text-gray-500 dark:text-gray-400">Their other instruments stay.</p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+              onClick={close}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="text-sm px-3 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+              onClick={() => { void submit(); }}
+              disabled={instrument === '' || submitting}
+            >
+              Add
+            </button>
           </div>
         </div>
       )}

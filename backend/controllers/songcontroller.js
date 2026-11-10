@@ -318,11 +318,16 @@ const updateSong = async (req, res, next) => {
   }
 };
 
-// DELETE song
+// A song's instruments as a list: older rows hold a single text, imported ones none.
+const instrumentsOf = (song) => {
+  if (Array.isArray(song.instrument)) return song.instrument;
+  return song.instrument ? [song.instrument] : [];
+};
+
 // #71: adds one instrument type to several of the user's songs, all or none. Each song keeps its
 // other instruments (and their tuning, difficulty and links); one already having it is counted,
 // not changed. The rows are locked for the transaction, so a concurrent edit can't lose an add.
-const setInstrumentOnSongs = async (req, res, next) => {
+const addInstrumentToSongs = async (req, res, next) => {
   try {
     const userId = req.session.user;
     if (!userId) {
@@ -341,6 +346,8 @@ const setInstrumentOnSongs = async (req, res, next) => {
       return next(createError(404, 'Song not found'));
     }
 
+    const type = instrument.trim();
+
     const result = await sequelize.transaction(async (transaction) => {
       const songs = await Song.findAll({ where: { uid: songUids, userUid: userId }, transaction, lock: true });
       // Someone else's song and an unknown one get the same 404 (no existence oracle, as getSong).
@@ -350,11 +357,11 @@ const setInstrumentOnSongs = async (req, res, next) => {
       let added = 0;
       let alreadyHad = 0;
       for (const song of songs) {
-        const instruments = Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []);
-        if (instruments.includes(instrument)) {
+        const instruments = instrumentsOf(song);
+        if (instruments.includes(type)) {
           alreadyHad += 1;
         } else {
-          await song.update({ instrument: [...instruments, instrument] }, { transaction });
+          await song.update({ instrument: [...instruments, type] }, { transaction });
           added += 1;
         }
       }
@@ -363,11 +370,12 @@ const setInstrumentOnSongs = async (req, res, next) => {
     res.json(result);
   } catch (error) {
     if (error.status) return next(error);
-    logger.error('Error setting an instrument on songs:', error);
-    next(createError(500, 'Error setting an instrument on songs'));
+    logger.error('Error adding an instrument to songs:', error);
+    next(createError(500, 'Error adding an instrument to songs'));
   }
 };
 
+// DELETE song
 const deleteSong = async (req, res, next) => {
   try {
     const userId = req.session.user;
@@ -590,7 +598,7 @@ module.exports = {
   createSong,
   updateSong,
   deleteSong,
-  setInstrumentOnSongs,
+  addInstrumentToSongs,
   markSongPlayed,
   getSongPlays,
   lookupSongMetadata,

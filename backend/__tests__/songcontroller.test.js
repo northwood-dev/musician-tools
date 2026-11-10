@@ -875,7 +875,7 @@ describe('refreshSongFromCatalog (story 21.1)', () => {
   });
 });
 
-describe('setInstrumentOnSongs (#71: one instrument on several songs)', () => {
+describe('addInstrumentToSongs (#71: one instrument on several songs)', () => {
   const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   // A song row the user owns: update() changes it in place, as Sequelize does.
@@ -888,7 +888,7 @@ describe('setInstrumentOnSongs (#71: one instrument on several songs)', () => {
   const call = (body) => {
     const res = mockRes();
     const next = mockNext();
-    return controller.setInstrumentOnSongs({ session: { user: 'user-1' }, body }, res, next).then(() => ({ res, next }));
+    return controller.addInstrumentToSongs({ session: { user: 'user-1' }, body }, res, next).then(() => ({ res, next }));
   };
 
   test('adds the instrument to songs lacking it, keeps their others, and counts the songs that had it', async () => {
@@ -974,5 +974,37 @@ describe('setInstrumentOnSongs (#71: one instrument on several songs)', () => {
     expect(Song.findAll).not.toHaveBeenCalled();
     expect(sequelize.transaction).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
+  });
+
+  test('the instrument is stored without surrounding spaces, so " Bass" on a song with Bass is no duplicate', async () => {
+    const hasBass = row(A, ['Bass']);
+    const none = row(B, null);
+    Song.findAll.mockResolvedValue([hasBass, none]);
+
+    const { res } = await call({ songUids: [A, B], instrument: ' Bass ' });
+
+    expect(hasBass.update).not.toHaveBeenCalled();
+    expect(none.update).toHaveBeenCalledWith({ instrument: ['Bass'] }, expect.anything());
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ added: 1, alreadyHad: 1 }));
+  });
+
+  test('the same song listed twice is counted once, not refused', async () => {
+    const song = row(A, []);
+    Song.findAll.mockResolvedValue([song]);
+
+    const { res, next } = await call({ songUids: [A, A], instrument: 'Bass' });
+
+    expect(next).not.toHaveBeenCalled();
+    expect(song.update).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ added: 1, alreadyHad: 0 }));
+  });
+
+  test('an instrument stored as a single text (older format) is kept and extended', async () => {
+    const older = row(A, 'Guitar');
+    Song.findAll.mockResolvedValue([older]);
+
+    await call({ songUids: [A], instrument: 'Bass' });
+
+    expect(older.update).toHaveBeenCalledWith({ instrument: ['Guitar', 'Bass'] }, expect.anything());
   });
 });

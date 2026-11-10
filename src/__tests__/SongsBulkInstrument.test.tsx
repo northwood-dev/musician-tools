@@ -2,13 +2,14 @@ import { screen, fireEvent } from '@testing-library/react';
 import { renderSongs } from '../test/renderSongs';
 
 jest.mock('../services/songService', () => ({
+  SongsGoneError: class extends Error {},
   songService: {
     getAllSongs: jest.fn(),
     getSong: jest.fn().mockResolvedValue({}),
     updateSong: jest.fn().mockResolvedValue({}),
     createSong: jest.fn().mockResolvedValue({}),
     deleteSong: jest.fn().mockResolvedValue(undefined),
-    setInstrumentOnSongs: jest.fn(),
+    addInstrumentToSongs: jest.fn(),
   },
 }));
 
@@ -28,7 +29,7 @@ jest.mock('../services/playlistService', () => ({
   playlistService: { getAllPlaylists: jest.fn().mockResolvedValue([]), addSongToPlaylist: jest.fn() },
 }));
 
-import { songService } from '../services/songService';
+import { songService, SongsGoneError } from '../services/songService';
 
 const mockedSongs = songService as jest.Mocked<typeof songService>;
 
@@ -57,7 +58,7 @@ const setInstrument = async (instrument: string) => {
 
 describe('#71: Set instrument adds an instrument to the selected songs', () => {
   test('catching up imported songs: filter, select, add Bass; they leave the No instrument view', async () => {
-    mockedSongs.setInstrumentOnSongs.mockResolvedValue({
+    mockedSongs.addInstrumentToSongs.mockResolvedValue({
       added: 2,
       alreadyHad: 0,
       songs: [{ ...alpha, instrument: ['Bass'] }, { ...beta, instrument: ['Bass'] }],
@@ -69,7 +70,7 @@ describe('#71: Set instrument adds an instrument to the selected songs', () => {
 
     await setInstrument('Bass');
 
-    expect(mockedSongs.setInstrumentOnSongs).toHaveBeenCalledWith(['song-a', 'song-b'], 'Bass');
+    expect(mockedSongs.addInstrumentToSongs).toHaveBeenCalledWith(['song-a', 'song-b'], 'Bass');
     expect(await screen.findByText('Bass added to 2 songs.')).toBeInTheDocument();
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
@@ -77,7 +78,7 @@ describe('#71: Set instrument adds an instrument to the selected songs', () => {
   });
 
   test('the message counts the songs that already had it', async () => {
-    mockedSongs.setInstrumentOnSongs.mockResolvedValue({
+    mockedSongs.addInstrumentToSongs.mockResolvedValue({
       added: 1,
       alreadyHad: 1,
       songs: [{ ...alpha, instrument: ['Bass'] }, { ...beta, instrument: ['Guitar', 'Bass'] }],
@@ -99,7 +100,7 @@ describe('#71: Set instrument adds an instrument to the selected songs', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
 
     expect(screen.queryByRole('combobox', { name: 'Instrument to add' })).not.toBeInTheDocument();
-    expect(mockedSongs.setInstrumentOnSongs).not.toHaveBeenCalled();
+    expect(mockedSongs.addInstrumentToSongs).not.toHaveBeenCalled();
     expect(screen.getByText(/1 song\(s\) selected/)).toBeInTheDocument();
   });
 });
@@ -117,7 +118,7 @@ describe('#96: Set instrument refuses empty input and fails cleanly', () => {
   });
 
   test('a failure says so, keeps the panel open and the selection, and changes no row', async () => {
-    mockedSongs.setInstrumentOnSongs.mockRejectedValue(new Error('network'));
+    mockedSongs.addInstrumentToSongs.mockRejectedValue(new Error('network'));
     renderSongs();
     await filterOnNoInstrument();
     await selectSong('Alpha');
@@ -131,7 +132,7 @@ describe('#96: Set instrument refuses empty input and fails cleanly', () => {
   });
 
   test('Add is disabled while the request runs', async () => {
-    mockedSongs.setInstrumentOnSongs.mockReturnValue(new Promise(() => {}));
+    mockedSongs.addInstrumentToSongs.mockReturnValue(new Promise(() => {}));
     renderSongs();
     await selectSong('Alpha');
 
@@ -139,6 +140,59 @@ describe('#96: Set instrument refuses empty input and fails cleanly', () => {
 
     expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(mockedSongs.setInstrumentOnSongs).toHaveBeenCalledTimes(1);
+    expect(mockedSongs.addInstrumentToSongs).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('#71 review: Set instrument panel', () => {
+  test('while the request runs, Cancel, ✕ and the instrument list are disabled', async () => {
+    mockedSongs.addInstrumentToSongs.mockReturnValue(new Promise(() => {}));
+    renderSongs();
+    await selectSong('Alpha');
+
+    await setInstrument('Bass');
+
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toBeDisabled();
+  });
+
+  test('opening one bulk panel closes the other', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add to playlist' }));
+    expect(await screen.findByText('Select playlists')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
+    expect(screen.queryByText('Select playlists')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add to playlist' }));
+    expect(screen.queryByRole('combobox', { name: 'Instrument to add' })).not.toBeInTheDocument();
+  });
+
+  test('songs gone meanwhile (deleted in another tab) get their own message', async () => {
+    mockedSongs.addInstrumentToSongs.mockRejectedValue(new SongsGoneError());
+    renderSongs();
+    await selectSong('Alpha');
+
+    await setInstrument('Bass');
+
+    expect(await screen.findByText('Some selected songs no longer exist. Reload the songlist.')).toBeInTheDocument();
+  });
+
+  test('when every selected song already had it, the message says so', async () => {
+    mockedSongs.addInstrumentToSongs.mockResolvedValue({
+      added: 0,
+      alreadyHad: 2,
+      songs: [{ ...alpha, instrument: ['Bass'] }, { ...beta, instrument: ['Bass'] }],
+    } as never);
+    renderSongs();
+    await selectSong('Alpha');
+    await selectSong('Beta');
+
+    await setInstrument('Bass');
+
+    expect(await screen.findByText('Every selected song already had Bass.')).toBeInTheDocument();
   });
 });

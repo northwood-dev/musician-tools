@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BulkSetInstrument, type SetInstrumentResult } from '../components/BulkSetInstrument';
+import { BulkSetInstrument, type InstrumentAdded } from '../components/BulkSetInstrument';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from '../components/PlaylistsLoadMessage';
 import { usePlaylistMembership, withMember } from '../hooks/usePlaylistMembership';
 import { useArtistAliases } from '../hooks/useArtistAliases';
 import { useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
 import SongsList from '../components/SongsList';
-import { songService, SongConflictError, type CreateSongDTO, type UpdateSongDTO, type Song } from '../services/songService';
+import { songService, SongConflictError, type CreateSongDTO, type UpdateSongDTO, type Song, SongsGoneError } from '../services/songService';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
@@ -108,9 +108,18 @@ function Songs() {
     setBulkPlaylistOpen(false);
     setBulkPlaylistSelection(new Set());
   };
+  // #71: one bulk panel open at a time.
+  const [bulkInstrumentOpen, setBulkInstrumentOpen] = useState(false);
   const toggleBulkPlaylistPicker = () => {
     if (bulkPlaylistOpen) closeBulkPlaylistPicker();
-    else setBulkPlaylistOpen(true);
+    else {
+      setBulkInstrumentOpen(false);
+      setBulkPlaylistOpen(true);
+    }
+  };
+  const setBulkInstrumentPanel = (open: boolean) => {
+    if (open) closeBulkPlaylistPicker();
+    setBulkInstrumentOpen(open);
   };
   // The selection is restored from the browser, so it can name songs that no longer exist
   // (deleted elsewhere, another account). They would keep it from ever being empty (#33).
@@ -128,6 +137,11 @@ function Songs() {
     if (selectedSongs.size === 0) closeBulkPlaylistPicker();
   }, [selectedSongs.size]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // A message that goes away by itself after 2.5 s.
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   // Story 17.2: popup shown when leaving a song whose title was emptied AND it has
   // value (other fields / practice / playlist). A "fresh" titleless draft is deleted
@@ -885,8 +899,7 @@ function Songs() {
     setSelectedPlaylistUids,
     onSaved: upsertPlaylist,
     onFailed: () => {
-      setToastMessage('Could not update playlist');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Could not update playlist');
     },
   });
 
@@ -950,8 +963,7 @@ function Songs() {
     } catch (err) {
       console.error(err);
       upsertPlaylist(existing); // listed, so the user can retry by choosing it
-      setToastMessage('Could not update playlist');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Could not update playlist');
     }
   };
 
@@ -972,8 +984,7 @@ function Songs() {
         await addSongToExistingPlaylist(err.existingPlaylist, songUid);
         return;
       }
-      setToastMessage('Could not create playlist');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Could not create playlist');
     } finally {
       creatingPlaylistRef.current = false;
     }
@@ -1192,8 +1203,7 @@ function Songs() {
     // A genuine save FAILURE toasts. A `false` from an in-flight create/save (savingRef
     // held) isn't a failure — that op is still resolving on its own.
     if (!ok && !savingRef.current) {
-      setToastMessage('Some changes could not be saved');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Some changes could not be saved');
     }
     navigate('/songs');
   };
@@ -1352,14 +1362,17 @@ function Songs() {
   };
 
   // #71: the songs come back from the server with their new instruments.
-  const handleInstrumentSet = ({ instrument, added, alreadyHad, songs: updated }: SetInstrumentResult) => {
+  const handleInstrumentAdded = ({ instrument, added, alreadyHad, songs: updated }: InstrumentAdded) => {
     const byUid = new Map(updated.map(song => [song.uid, song]));
     setSongs(prev => prev.map(song => byUid.get(song.uid) ?? song));
     // Songs that left a filtered view must not stay selected out of sight.
     songSelection.clear();
+    if (added === 0) {
+      showToast(`Every selected song already had ${instrument}.`);
+      return;
+    }
     const message = `${instrument} added to ${added} song${added === 1 ? '' : 's'}.`;
-    setToastMessage(alreadyHad > 0 ? `${message} ${alreadyHad} already had it.` : message);
-    setTimeout(() => setToastMessage(null), 2500);
+    showToast(alreadyHad > 0 ? `${message} ${alreadyHad} already had it.` : message);
   };
 
   const handleApplySelectedToPlaylists = async () => {
@@ -1385,8 +1398,7 @@ function Songs() {
       await loadPlaylists();
 
       closeBulkPlaylistPicker();
-      setToastMessage('Added to playlist');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Added to playlist');
     } catch (err) {
       setError('Error while adding to playlists');
       console.error(err);
@@ -1632,8 +1644,7 @@ function Songs() {
 
   const handleLookupMetadata = async () => {
     if (!form.title?.trim() || !form.artist?.trim()) {
-      setToastMessage('Add a title and artist to auto-fill.');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Add a title and artist to auto-fill.');
       return;
     }
 
@@ -1663,8 +1674,7 @@ function Songs() {
 
       if (!meta || (!hasUsefulData && meta.source === 'none')) {
         console.log('>>> Frontend: No metadata found, but adding streaming links');
-        setToastMessage('No metadata found online.');
-        setTimeout(() => setToastMessage(null), 2500);
+        showToast('No metadata found online.');
         
         // Still add streaming links even if no metadata
         setForm(prev => ({
@@ -1697,8 +1707,7 @@ function Songs() {
       }));
     } catch (err) {
       console.error('>>> Frontend: Error during lookup:', err);
-      setToastMessage('Auto-fill unavailable at the moment.');
-      setTimeout(() => setToastMessage(null), 2500);
+      showToast('Auto-fill unavailable at the moment.');
     } finally {
       setMetadataLoading(false);
     }
@@ -2013,13 +2022,14 @@ function Songs() {
           playlistsLoadStatus={playlistsLoadStatus}
           bulkSetInstrument={(
             <BulkSetInstrument
+              open={bulkInstrumentOpen}
+              onOpenChange={setBulkInstrumentPanel}
               selectedSongUids={Array.from(selectedSongs)}
               disabled={loading}
-              onApplied={handleInstrumentSet}
-              onFailed={() => {
-                setToastMessage('Could not set the instrument');
-                setTimeout(() => setToastMessage(null), 2500);
-              }}
+              onAdded={handleInstrumentAdded}
+              onFailed={error => showToast(error instanceof SongsGoneError
+                ? 'Some selected songs no longer exist. Reload the songlist.'
+                : 'Could not set the instrument')}
             />
           )}
           onRetryPlaylists={() => { void loadPlaylists(); }}
