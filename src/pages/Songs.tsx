@@ -224,6 +224,20 @@ function Songs() {
   });
   const [songPlays, setSongPlays] = useState<Map<string, SongPlay[]>>(new Map());
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  // #56: an empty list can mean "none yet", "still loading" or "failed to load".
+  const [playlistsLoad, setPlaylistsLoad] = useState<'loading' | 'failed' | 'loaded'>('loading');
+  // Also behind the picker's Retry (#56).
+  const loadPlaylists = async () => {
+    setPlaylistsLoad('loading');
+    try {
+      const list = await playlistService.getAllPlaylists();
+      setPlaylists(list);
+      setPlaylistsLoad('loaded');
+    } catch (err) {
+      console.error('Error loading playlists:', err);
+      setPlaylistsLoad('failed');
+    }
+  };
   const [playlistFilter, setPlaylistFilter] = useState<string>(() => {
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('songsPlaylistFilter') : null;
     return saved ? saved : '';
@@ -283,6 +297,7 @@ function Songs() {
   // later `playlists` change (e.g. creating a playlist on the fly) does NOT reset
   // the user's unsaved toggles. See the editing-data effect.
   const seededPlaylistsForEditRef = useRef<string | null>(null);
+  const clearedPlaylistsForEditRef = useRef<string | null>(null);
   // Same filtered list the dropdown renders, so the keyboard highlight matches.
   // Trim the query so a trailing space can't desync this from the create-detection.
   const filteredPlaylists = playlists.filter(
@@ -452,14 +467,6 @@ function Songs() {
         console.error(err);
       } finally {
         setLoading(false);
-      }
-    };
-    const loadPlaylists = async () => {
-      try {
-        const list = await playlistService.getAllPlaylists();
-        setPlaylists(list);
-      } catch (err) {
-        console.error('Error loading playlists:', err);
       }
     };
     loadSongs();
@@ -848,22 +855,27 @@ function Songs() {
       setEditingSongPlays([]);
       setSelectedPlaylistUids(new Set());
       seededPlaylistsForEditRef.current = null;
+      clearedPlaylistsForEditRef.current = null;
       return;
     }
 
     // Seed the playlist selection from persisted membership ONCE per edit session.
     // Re-seeding on every `playlists` change would clobber unsaved toggles and the
     // just-created / 409-selected playlist (story 10.2 set `playlists` mid-edit).
-    // Lock only once playlists are actually loaded, so the initial-load race still
-    // seeds correctly.
-    if (seededPlaylistsForEditRef.current !== editingUid) {
+    // #56: seed once the list is loaded, empty or not, and not before: a playlist created
+    // while it loads or after it failed must not lock the seed, or a later Retry would
+    // leave the song's other playlists unticked.
+    if (seededPlaylistsForEditRef.current === editingUid) return;
+    if (playlistsLoad === 'loaded') {
       const songPlaylists = playlists.filter(pl => pl.songUids?.includes(editingUid));
       setSelectedPlaylistUids(new Set(songPlaylists.map(pl => pl.uid)));
-      if (playlists.length > 0) {
-        seededPlaylistsForEditRef.current = editingUid;
-      }
+      seededPlaylistsForEditRef.current = editingUid;
+    } else if (clearedPlaylistsForEditRef.current !== editingUid) {
+      // Not loaded yet: start this song empty once, keeping what is created meanwhile.
+      setSelectedPlaylistUids(new Set());
+      clearedPlaylistsForEditRef.current = editingUid;
     }
-  }, [editingUid, playlists]);
+  }, [editingUid, playlists, playlistsLoad]);
 
 
 
@@ -2164,7 +2176,16 @@ function Songs() {
                               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                                 {/* Reached only when what matches is already selected (those are hidden
                                     from the list): a name matching nothing offers Create instead. */}
-                                {playlists.length === 0 ? 'Type a name to create your first playlist' : 'Already selected'}
+                                {playlistsLoad === 'loading' && 'Loading playlists…'}
+                                {playlistsLoad === 'failed' && (
+                                  <>
+                                    Couldn't load your playlists{' '}
+                                    <button type="button" className="text-brand-600 dark:text-brand-400 underline" onClick={() => { void loadPlaylists(); }}>
+                                      Retry
+                                    </button>
+                                  </>
+                                )}
+                                {playlistsLoad === 'loaded' && (playlists.length === 0 ? 'Type a name to create your first playlist' : 'Already selected')}
                               </div>
                             )}
                           </div>
