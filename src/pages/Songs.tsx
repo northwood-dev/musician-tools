@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePlaylistMembership, withMember } from '../hooks/usePlaylistMembership';
 import { useArtistAliases } from '../hooks/useArtistAliases';
 import { useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { SongForm } from '../components/SongForm';
@@ -41,6 +42,9 @@ const initialSong: CreateSongDTO = {
   lastPlayed: undefined,
 };
 
+
+// #56: an empty list can mean "none yet", "still loading" or "failed to load".
+type PlaylistsLoadStatus = 'loading' | 'failed' | 'loaded';
 function Songs() {
   const normalizeCapoValue = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
@@ -224,8 +228,7 @@ function Songs() {
   });
   const [songPlays, setSongPlays] = useState<Map<string, SongPlay[]>>(new Map());
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  // #56: an empty list can mean "none yet", "still loading" or "failed to load".
-  const [playlistsLoad, setPlaylistsLoad] = useState<'loading' | 'failed' | 'loaded'>('loading');
+  const [playlistsLoadStatus, setPlaylistsLoadStatus] = useState<PlaylistsLoadStatus>('loading');
   // The one way the page loads its playlists: on mount, back on the list, after a bulk add, and
   // behind the picker's Retry (#56). Only the newest request's answer counts.
   const playlistsRequestRef = useRef(0);
@@ -237,7 +240,7 @@ function Songs() {
     upsertedSinceLoadRef.current = new Map();
     // A reload never takes back a list already loaded: the page keeps it up to date with every
     // answer, so loading and failed only describe a page that has no list yet.
-    setPlaylistsLoad(status => (status === 'loaded' ? status : 'loading'));
+    setPlaylistsLoadStatus(status => (status === 'loaded' ? status : 'loading'));
     try {
       const list = await playlistService.getAllPlaylists();
       if (request !== playlistsRequestRef.current) return;
@@ -246,11 +249,11 @@ function Songs() {
         ...[...newer.values()].filter(p => !list.some(l => l.uid === p.uid)),
         ...list.map(l => newer.get(l.uid) ?? l),
       ]);
-      setPlaylistsLoad('loaded');
+      setPlaylistsLoadStatus('loaded');
     } catch (err) {
       if (request !== playlistsRequestRef.current) return;
       console.error('Error loading playlists:', err);
-      setPlaylistsLoad(status => (status === 'loaded' ? status : 'failed'));
+      setPlaylistsLoadStatus(status => (status === 'loaded' ? status : 'failed'));
     }
   };
   const [playlistFilter, setPlaylistFilter] = useState<string>(() => {
@@ -862,6 +865,32 @@ function Songs() {
     })();
   }, [editingUid]);
 
+  // The server's answer replaces what the page holds, so membership never drifts from it.
+  const upsertPlaylist = (playlist: Playlist) => {
+    upsertedSinceLoadRef.current.set(playlist.uid, playlist);
+    setPlaylists(prev => (prev.some(p => p.uid === playlist.uid)
+      ? prev.map(p => (p.uid === playlist.uid ? playlist : p))
+      : [playlist, ...prev]));
+  };
+
+  // #60 / #92: ticks are saved as they are clicked, the last click winning.
+  const {
+    togglePlaylist: handleTogglePlaylist,
+    savingPlaylistUids,
+    slowPlaylistUids,
+    withClicksBeingSaved,
+  } = usePlaylistMembership({
+    openSongUid: editingUid,
+    openSongUidRef: editingUidRef,
+    selectedPlaylistUids,
+    setSelectedPlaylistUids,
+    onSaved: upsertPlaylist,
+    onFailed: () => {
+      setToastMessage('Could not update playlist');
+      setTimeout(() => setToastMessage(null), 2500);
+    },
+  });
+
   // Seed the playlists of the song being edited
   useEffect(() => {
     if (!editingUid) {
@@ -879,151 +908,29 @@ function Songs() {
     // while it loads or after it failed must not lock the seed, or a later Retry would
     // leave the song's other playlists unticked.
     if (seededPlaylistsForEditRef.current === editingUid) return;
-    if (playlistsLoad === 'loaded') {
+    if (playlistsLoadStatus === 'loaded') {
       const songPlaylists = playlists.filter(pl => pl.songUids?.includes(editingUid));
-      const selected = new Set(songPlaylists.map(pl => pl.uid));
       // A click still being saved (the song was closed and reopened meanwhile) wins (#60).
-      membershipRef.current.forEach((m, key) => {
-        if (!key.startsWith(`${editingUid}:`)) return;
-        const playlistUid = key.slice(editingUid.length + 1);
-        if (m.want) selected.add(playlistUid); else selected.delete(playlistUid);
-      });
-      setSelectedPlaylistUids(selected);
+      setSelectedPlaylistUids(withClicksBeingSaved(editingUid, new Set(songPlaylists.map(pl => pl.uid))));
       seededPlaylistsForEditRef.current = editingUid;
     } else if (clearedPlaylistsForEditRef.current !== editingUid) {
       // Not loaded yet: start this song empty once, keeping what is created meanwhile.
       setSelectedPlaylistUids(new Set());
       clearedPlaylistsForEditRef.current = editingUid;
     }
-  }, [editingUid, playlists, playlistsLoad]);
+  }, [editingUid, playlists, playlistsLoadStatus, withClicksBeingSaved]);
 
 
 
 
-  // The server's answer replaces what the page holds, so membership never drifts from it.
-  const upsertPlaylist = (playlist: Playlist) => {
-    upsertedSinceLoadRef.current.set(playlist.uid, playlist);
-    setPlaylists(prev => (prev.some(p => p.uid === playlist.uid)
-      ? prev.map(p => (p.uid === playlist.uid ? playlist : p))
-      : [playlist, ...prev]));
-  };
 
-  // #60: the last click on a playlist wins. Per song and playlist, at most one request is in
-  // flight (an entry in membershipRef means one is); when it answers, one more is sent only if
-  // the user clicked meanwhile and their last choice differs from what the server saved. The
-  // selection shows the last choice; the playlist list holds the server's.
-  const membershipRef = useRef(new Map<string, { want: boolean; saved: boolean; slow?: boolean; slowTimer?: number }>());
-  // #92: the open song's playlists whose saving has taken more than 300 ms show a spinner.
-  // A chip stays while its playlist is being saved: unselected meanwhile, it is being removed.
-  const [savingPlaylistUids, setSavingPlaylistUids] = useState<Set<string>>(new Set());
-  const [slowPlaylistUids, setSlowPlaylistUids] = useState<Set<string>>(new Set());
-  const markIn = (
-    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
-    songUid: string,
-    playlistUid: string,
-    on: boolean,
-  ) => {
-    if (editingUidRef.current !== songUid) return; // the open song's chips only
-    setter(prev => {
-      const next = new Set(prev);
-      if (on) next.add(playlistUid); else next.delete(playlistUid);
-      return next;
-    });
-  };
-  const markSlow = (songUid: string, playlistUid: string, slow: boolean) =>
-    markIn(setSlowPlaylistUids, songUid, playlistUid, slow);
-  // Answers landing while a song is closed don't touch its chips, so they are rebuilt from the
-  // requests still in flight whenever a song opens.
-  useEffect(() => {
-    const prefix = `${editingUid}:`;
-    const inFlight = [...membershipRef.current.entries()].filter(([key]) => key.startsWith(prefix));
-    setSavingPlaylistUids(new Set(inFlight.map(([key]) => key.slice(prefix.length))));
-    setSlowPlaylistUids(new Set(inFlight.filter(([, m]) => m.slow).map(([key]) => key.slice(prefix.length))));
-  }, [editingUid]);
-  const endMembership = (songUid: string, playlistUid: string) => {
-    const key = `${songUid}:${playlistUid}`;
-    window.clearTimeout(membershipRef.current.get(key)?.slowTimer);
-    membershipRef.current.delete(key);
-    markSlow(songUid, playlistUid, false);
-    markIn(setSavingPlaylistUids, songUid, playlistUid, false);
-  };
-
-  const syncMembership = async (songUid: string, playlistUid: string) => {
-    const key = `${songUid}:${playlistUid}`;
-    const membership = membershipRef.current.get(key);
-    if (!membership) return;
-    const setSelected = (selected: boolean) => {
-      if (editingUidRef.current !== songUid) return; // the answer is about a song no longer open
-      setSelectedPlaylistUids(prev => {
-        const aligned = new Set(prev);
-        if (selected) aligned.add(playlistUid); else aligned.delete(playlistUid);
-        return aligned;
-      });
-    };
-    const sent = membership.want;
-    try {
-      const updated = sent
-        ? await playlistService.addSongToPlaylist(playlistUid, songUid)
-        : await playlistService.removeSongFromPlaylist(playlistUid, songUid);
-      upsertPlaylist(updated);
-      membership.saved = !!updated.songUids?.includes(songUid);
-      // Only a click made meanwhile sends another request: an answer that doesn't reflect the
-      // request is shown as is, never retried in a loop.
-      if (membership.want !== sent && membership.want !== membership.saved) {
-        await syncMembership(songUid, playlistUid);
-        return;
-      }
-      endMembership(songUid, playlistUid);
-      setSelected(membership.saved);
-    } catch (err) {
-      console.error(err);
-      endMembership(songUid, playlistUid); // clicks made meanwhile go with the failed request
-      setSelected(membership.saved); // back to what the server has
-      setToastMessage('Could not update playlist');
-      setTimeout(() => setToastMessage(null), 2500);
-    }
-  };
-
-  const handleTogglePlaylist = (playlistUid: string) => {
-    // Story 13.1: no more Save button — membership is persisted immediately on toggle.
-    // The picker only exists on an open song, so there is always a song uid here.
-    const songUid = editingUid;
-    if (songUid === null) return;
-    const wasIn = selectedPlaylistUids.has(playlistUid);
-    setSelectedPlaylistUids(prev => {
-      const next = new Set(prev);
-      if (wasIn) next.delete(playlistUid); else next.add(playlistUid);
-      return next;
-    });
-    const key = `${songUid}:${playlistUid}`;
-    const membership = membershipRef.current.get(key);
-    if (membership) {
-      membership.want = !wasIn; // the request in flight will pick it up
-      return;
-    }
-    membershipRef.current.set(key, {
-      want: !wasIn,
-      saved: wasIn,
-      slowTimer: window.setTimeout(() => {
-        const entry = membershipRef.current.get(key);
-        if (entry) entry.slow = true; // remembered for when the song is reopened
-        markSlow(songUid, playlistUid, true);
-      }, 300),
-    });
-    markIn(setSavingPlaylistUids, songUid, playlistUid, true);
-    void syncMembership(songUid, playlistUid);
-  };
 
   // Select a playlist (existing or just-created) into the edited song and reset
   // the picker's search — shared by the create flow and its 409 fallback.
   const selectPlaylistIntoSong = (playlist: Playlist, songUid: string) => {
     upsertPlaylist(playlist);
     if (editingUidRef.current !== songUid) return; // the answer is about a song no longer open
-    setSelectedPlaylistUids(prev => {
-      const next = new Set(prev);
-      next.add(playlist.uid);
-      return next;
-    });
+    setSelectedPlaylistUids(prev => withMember(prev, playlist.uid, true));
     setPlaylistSearchQuery('');
     setPlaylistSearchOpen(false);
     setSelectedPlaylistIndex(-1);
@@ -2271,8 +2178,8 @@ function Songs() {
                               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                                 {/* Reached only when what matches is already selected (those are hidden
                                     from the list): a name matching nothing offers Create instead. */}
-                                {playlistsLoad === 'loading' && 'Loading playlists…'}
-                                {playlistsLoad === 'failed' && (
+                                {playlistsLoadStatus === 'loading' && 'Loading playlists…'}
+                                {playlistsLoadStatus === 'failed' && (
                                   <>
                                     Couldn't load your playlists{' '}
                                     <button type="button" className="text-brand-600 dark:text-brand-400 underline" onClick={() => { void loadPlaylists(); }}>
@@ -2280,7 +2187,7 @@ function Songs() {
                                     </button>
                                   </>
                                 )}
-                                {playlistsLoad === 'loaded' && (playlists.length === 0 ? 'Type a name to create your first playlist' : 'Already selected')}
+                                {playlistsLoadStatus === 'loaded' && (playlists.length === 0 ? 'Type a name to create your first playlist' : 'Already selected')}
                               </div>
                             )}
                           </div>
