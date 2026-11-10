@@ -1,4 +1,4 @@
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { renderSongs } from '../test/renderSongs';
 
 jest.mock('../services/songService', () => ({
@@ -46,10 +46,17 @@ beforeEach(() => {
 const selectSong = async (label: string) => {
   fireEvent.click(await screen.findByRole('checkbox', { name: new RegExp(label) }));
 };
+// The Song's instrument filter: its select is the one holding the No instrument option.
+const filterOnInstrument = async (value: string) => {
+  const option = await screen.findByRole('option', { name: 'No instrument' });
+  fireEvent.change(option.closest('select')!, { target: { value } });
+};
 const filterOnNoInstrument = async () => {
   const option = await screen.findByRole('option', { name: 'No instrument' });
-  fireEvent.change(option.closest('select')!, { target: { value: (option as HTMLOptionElement).value } });
+  await filterOnInstrument((option as HTMLOptionElement).value);
 };
+const search = (text: string) =>
+  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album...'), { target: { value: text } });
 const setInstrument = async (instrument: string) => {
   fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
   fireEvent.change(await screen.findByRole('combobox', { name: 'Instrument to add' }), { target: { value: instrument } });
@@ -194,5 +201,71 @@ describe('#71 review: Set instrument panel', () => {
     await setInstrument('Bass');
 
     expect(await screen.findByText('Every selected song already had Bass.')).toBeInTheDocument();
+  });
+});
+
+describe('#98: Songlist labels once filters are used', () => {
+  test('no "Mark as played" button under No instrument', async () => {
+    renderSongs();
+    await filterOnNoInstrument();
+    await selectSong('Alpha');
+
+    expect(screen.queryByRole('button', { name: /Mark as played/ })).not.toBeInTheDocument();
+  });
+
+  test('"Mark as played on Guitar" stays under a real instrument', async () => {
+    mockedSongs.getAllSongs.mockResolvedValue([{ ...alpha, instrument: ['Guitar'] }, beta] as never);
+    renderSongs();
+    await filterOnInstrument('Guitar');
+    await selectSong('Alpha');
+
+    expect(screen.getByRole('button', { name: 'Mark as played on Guitar' })).toBeInTheDocument();
+  });
+
+  test('filters leaving no song say so, and Clear filters brings the songs back', async () => {
+    renderSongs();
+    await screen.findByText('Alpha');
+    await filterOnInstrument('Guitar');
+
+    expect(await screen.findByText('No songs match your filters.')).toBeInTheDocument();
+    expect(screen.queryByText('No songs saved.')).not.toBeInTheDocument();
+
+    // The sidebar has its own per-section Clear filters: use the one under the message.
+    const empty = screen.getByText('No songs match your filters.').closest('div')!;
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear filters' }));
+
+    expect(await screen.findByText('Alpha')).toBeInTheDocument();
+    expect(screen.getByText('Beta')).toBeInTheDocument();
+  });
+
+  test('with no song at all, the empty songlist screen shows, not a filters message', async () => {
+    mockedSongs.getAllSongs.mockResolvedValue([] as never);
+    renderSongs();
+
+    expect(await screen.findByText('Your songlist is empty')).toBeInTheDocument();
+    expect(screen.queryByText('No songs match your filters.')).not.toBeInTheDocument();
+  });
+
+  test('a search alone giving nothing still says so', async () => {
+    renderSongs();
+    await screen.findByText('Alpha');
+
+    search('zzz');
+
+    expect(await screen.findByText('No songs match your search.')).toBeInTheDocument();
+  });
+
+  test('a search and filters giving nothing point to the filters; Clear filters keeps the search', async () => {
+    renderSongs();
+    await screen.findByText('Alpha');
+    search('alpha');
+    await filterOnInstrument('Guitar');
+
+    const empty = (await screen.findByText('No songs match your filters.')).closest('div')!;
+    fireEvent.click(within(empty).getByRole('button', { name: 'Clear filters' }));
+
+    expect(await screen.findByText('Alpha')).toBeInTheDocument();
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Search by title, artist, or album...')).toHaveValue('alpha');
   });
 });

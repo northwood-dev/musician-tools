@@ -12,7 +12,7 @@ import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
-import { applySongFilters, countActiveFilters, NO_INSTRUMENT } from '../utils/songFilters';
+import { applySongFilters, countActiveFilters, isRealInstrument } from '../utils/songFilters';
 import { handleComboKeyDown, useScrollHighlightIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { useAutosave } from '../hooks/useAutosave';
 import { useRowSelection } from '../hooks/useRowSelection';
@@ -1315,7 +1315,7 @@ function Songs() {
       setError(null);
       const playedOn = formatLocalDate(new Date());
       // The "No instrument" sentinel is a filter, never a real instrument — don't persist it.
-      const instrumentTypeForPlay = instrumentFilter && instrumentFilter !== NO_INSTRUMENT ? instrumentFilter : undefined;
+      const instrumentTypeForPlay = isRealInstrument(instrumentFilter) ? instrumentFilter : undefined;
 
       // Serialize, do NOT Promise.all: concurrent marks for the same day +
       // instrument each find no session and each create one → duplicate day
@@ -1785,7 +1785,7 @@ function Songs() {
 
     // When filtering by a real instrument type, find the last play for that type.
     // The "No instrument" sentinel is not a type, so fall through to all-instruments.
-    if (instrumentFilter && instrumentFilter !== NO_INSTRUMENT) {
+    if (isRealInstrument(instrumentFilter)) {
       const instrumentPlays = plays.filter(p => p.instrumentType === instrumentFilter);
       return instrumentPlays.length > 0 ? instrumentPlays[0].playedAt : undefined;
     }
@@ -1856,7 +1856,7 @@ function Songs() {
   const availableTechniqueFilters = instrumentFilter ? instrumentTechniquesMap[instrumentFilter] || [] : [];
   const availableTuningFilters = instrumentFilter ? instrumentTuningsMap[instrumentFilter] || [] : [];
   const tuningFilterOptions = availableTuningFilters.filter(opt => opt.value);
-  const showTuningFilters = !!(instrumentFilter && instrumentFilter !== 'Drums' && instrumentFilter !== NO_INSTRUMENT);
+  const showTuningFilters = isRealInstrument(instrumentFilter) && instrumentFilter !== 'Drums';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-950 text-gray-900 dark:text-gray-100">
