@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Song } from '../services/songService';
+import type { PlaylistsLoadStatus } from '../services/playlistService';
 import type { ReactNode } from 'react';
 import SongsSidebar from './SongsSidebar';
 import FiltersDisclosureButton from './FiltersDisclosureButton';
@@ -59,6 +60,8 @@ export interface SongsListProps {
   
   // Data
   playlists: Array<{ uid: string; name: string; songUids?: string[] }>;
+  playlistsLoadStatus: PlaylistsLoadStatus;
+  onRetryPlaylists: () => void;
   myInstruments: Array<{ uid: string; type?: string; name: string }>;
   instrumentTypeOptions: string[];
   tuningFilterOptions: Array<{ value: string; label: string }>;
@@ -262,7 +265,7 @@ export default function SongsList(props: SongsListProps) {
                 type="button"
                 className="btn-primary text-sm px-3 py-1.5"
                 onClick={props.toggleBulkPlaylistPicker}
-                disabled={props.loading || props.playlists.length === 0}
+                disabled={props.loading}
               >
                 Add to playlist
               </button>
@@ -279,9 +282,18 @@ export default function SongsList(props: SongsListProps) {
                       ✕
                     </button>
                   </div>
-                  {props.playlists.length === 0 ? (
+                  {props.playlistsLoadStatus === 'loading' && props.playlists.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading playlists…</p>
+                  ) : props.playlistsLoadStatus === 'failed' && props.playlists.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No playlists found.{' '}
+                      Couldn't load your playlists{' '}
+                      <button type="button" className="text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300 underline" onClick={props.onRetryPlaylists}>
+                        Retry
+                      </button>
+                    </p>
+                  ) : props.playlists.length === 0 ? (
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      No playlists yet.{' '}
                       <Link to="/my-playlists" className="text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300">Create one</Link>
                     </p>
                   ) : (

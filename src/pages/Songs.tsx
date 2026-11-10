@@ -7,7 +7,7 @@ import SongsList from '../components/SongsList';
 import { songService, SongConflictError, type CreateSongDTO, type UpdateSongDTO, type Song } from '../services/songService';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
-import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
+import { playlistService, PlaylistConflictError, type Playlist, type PlaylistsLoadStatus } from '../services/playlistService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
 import { applySongFilters, countActiveFilters, NO_INSTRUMENT } from '../utils/songFilters';
@@ -42,9 +42,6 @@ const initialSong: CreateSongDTO = {
   lastPlayed: undefined,
 };
 
-
-// #56: an empty list can mean "none yet", "still loading" or "failed to load".
-type PlaylistsLoadStatus = 'loading' | 'failed' | 'loaded';
 function Songs() {
   const normalizeCapoValue = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
@@ -2000,6 +1997,8 @@ function Songs() {
           toggleBulkPlaylistPicker={toggleBulkPlaylistPicker}
           closeBulkPlaylistPicker={closeBulkPlaylistPicker}
           playlists={playlists}
+          playlistsLoadStatus={playlistsLoadStatus}
+          onRetryPlaylists={() => { void loadPlaylists(); }}
           myInstruments={myInstruments}
           instrumentTypeOptions={instrumentTypeOptions}
           tuningFilterOptions={tuningFilterOptions}
