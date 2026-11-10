@@ -1,8 +1,7 @@
 import type { Playlist } from '../services/playlistService';
 import type { Song } from '../services/songService';
 import type { ArtistAlias } from '../services/artistAliasService';
-import { artistKey, foldText } from './songDuplicate';
-import { searchKey } from './searchKey';
+import { songSearchMatcher } from './songSearch';
 
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
@@ -106,31 +105,10 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     playlists,
   } = opts;
 
-  // Accents, punctuation and spaces don't count (#36, #76), and an artist can be typed with an
-  // article it isn't stored with. A search made only of punctuation has no key: it looks for
-  // that text, rather than matching everything.
-  const query = searchKey(searchQuery);
-  const artistQuery = searchKey(artistKey(searchQuery));
-  const literalQuery = foldText(searchQuery);
-  const alias = query ? artistAliases.find(a => searchKey(a.alias) === query) : undefined;
-  const aliasArtist = alias ? searchKey(artistKey(alias.artist)) : '';
+  const matchesSearch = songSearchMatcher(searchQuery, artistAliases);
 
   return songs.filter(song => {
-    const songArtist = searchKey(song.artist);
-    const passesSearch = query
-      ? (
-        searchKey(song.title).includes(query) ||
-        songArtist.includes(query) ||
-        // Nothing left once the article is gone ("the ...") must not match everything.
-        (artistQuery !== '' && songArtist.includes(artistQuery)) ||
-        (aliasArtist !== '' && songArtist.includes(aliasArtist)) ||
-        searchKey(song.album).includes(query)
-      )
-      : (
-        foldText(song.title).includes(literalQuery) ||
-        foldText(song.artist).includes(literalQuery) ||
-        foldText(song.album).includes(literalQuery)
-      );
+    const passesSearch = matchesSearch(song);
 
     const isNoInstrument = instrumentFilter === NO_INSTRUMENT;
     const selected = instrumentFilter && !isNoInstrument ? [instrumentFilter] : [];
