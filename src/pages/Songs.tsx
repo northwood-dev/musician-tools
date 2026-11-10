@@ -2016,6 +2016,10 @@ function Songs() {
               selectedSongUids={Array.from(selectedSongs)}
               disabled={loading}
               onApplied={handleInstrumentSet}
+              onFailed={() => {
+                setToastMessage('Could not set the instrument');
+                setTimeout(() => setToastMessage(null), 2500);
+              }}
             />
           )}
           onRetryPlaylists={() => { void loadPlaylists(); }}

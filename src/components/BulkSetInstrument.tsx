@@ -12,13 +12,17 @@ export function BulkSetInstrument({
   selectedSongUids,
   disabled,
   onApplied,
+  onFailed,
 }: {
   selectedSongUids: string[];
   disabled: boolean;
   onApplied: (result: SetInstrumentResult) => void;
+  /** Nothing was changed (all or none): the panel stays open to try again. */
+  onFailed: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [instrument, setInstrument] = useState('');
+  const [running, setRunning] = useState(false);
 
   const close = () => {
     setOpen(false);
@@ -26,7 +30,17 @@ export function BulkSetInstrument({
   };
 
   const add = async () => {
-    const result = await songService.setInstrumentOnSongs(selectedSongUids, instrument);
+    let result;
+    setRunning(true);
+    try {
+      result = await songService.setInstrumentOnSongs(selectedSongUids, instrument);
+    } catch (err) {
+      console.error(err);
+      onFailed();
+      return;
+    } finally {
+      setRunning(false);
+    }
     close();
     onApplied({ instrument, ...result });
   };
@@ -58,7 +72,7 @@ export function BulkSetInstrument({
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Their other instruments stay.</p>
           <div className="mt-3 flex justify-end gap-2">
             <button type="button" className="btn-secondary text-sm px-3 py-1.5" onClick={close}>Cancel</button>
-            <button type="button" className="btn-primary text-sm px-3 py-1.5" onClick={() => { void add(); }}>Add</button>
+            <button type="button" className="btn-primary text-sm px-3 py-1.5" onClick={() => { void add(); }} disabled={instrument === '' || running}>Add</button>
           </div>
         </div>
       )}

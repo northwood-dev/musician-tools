@@ -329,6 +329,14 @@ const setInstrumentOnSongs = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
     const { songUids, instrument } = req.body || {};
+    if (!Array.isArray(songUids) || songUids.length === 0) {
+      return next(createError(400, 'songUids must be a non-empty list'));
+    }
+    // Any non-empty text, as editing a song accepts: the interface offers the instrument type
+    // list, and the server keeps no copy of it (#71, no second source of truth).
+    if (typeof instrument !== 'string' || instrument.trim() === '') {
+      return next(createError(400, 'instrument must be a non-empty text'));
+    }
     if (!songUids.every(isUuid)) {
       return next(createError(404, 'Song not found'));
     }

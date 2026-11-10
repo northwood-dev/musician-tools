@@ -943,4 +943,36 @@ describe('setInstrumentOnSongs (#71: one instrument on several songs)', () => {
     expect(Song.findAll).toHaveBeenCalledWith(expect.objectContaining({ transaction: { id: 'tx' }, lock: true }));
     expect(res.json).toHaveBeenCalledWith({ added: 1, alreadyHad: 0, songs: [{ uid: A, instrument: ['Bass'] }] });
   });
+
+  test.each([
+    ['missing', undefined],
+    ['not a list', A],
+    ['empty', []],
+  ])('a song list %s is a 400, nothing queried or written', async (_case, songUids) => {
+    Song.findAll.mockClear();
+    sequelize.transaction.mockClear();
+
+    const { res, next } = await call({ songUids, instrument: 'Bass' });
+
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(Song.findAll).not.toHaveBeenCalled();
+    expect(sequelize.transaction).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['missing', undefined],
+    ['not a text', 42],
+    ['blank', '   '],
+  ])('an instrument %s is a 400, nothing queried or written', async (_case, instrument) => {
+    Song.findAll.mockClear();
+    sequelize.transaction.mockClear();
+
+    const { res, next } = await call({ songUids: [A], instrument });
+
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(Song.findAll).not.toHaveBeenCalled();
+    expect(sequelize.transaction).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+  });
 });

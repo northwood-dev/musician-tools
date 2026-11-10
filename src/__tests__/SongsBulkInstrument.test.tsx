@@ -103,3 +103,42 @@ describe('#71: Set instrument adds an instrument to the selected songs', () => {
     expect(screen.getByText(/1 song\(s\) selected/)).toBeInTheDocument();
   });
 });
+
+describe('#96: Set instrument refuses empty input and fails cleanly', () => {
+  test('Add is disabled until an instrument is chosen', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
+
+    expect(await screen.findByRole('button', { name: 'Add' })).toBeDisabled();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Instrument to add' }), { target: { value: 'Bass' } });
+    expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+  });
+
+  test('a failure says so, keeps the panel open and the selection, and changes no row', async () => {
+    mockedSongs.setInstrumentOnSongs.mockRejectedValue(new Error('network'));
+    renderSongs();
+    await filterOnNoInstrument();
+    await selectSong('Alpha');
+
+    await setInstrument('Bass');
+
+    expect(await screen.findByText('Could not set the instrument')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toHaveValue('Bass');
+    expect(screen.getByText(/1 song\(s\) selected/)).toBeInTheDocument();
+    expect(screen.getByText('Alpha')).toBeInTheDocument(); // still without an instrument
+  });
+
+  test('Add is disabled while the request runs', async () => {
+    mockedSongs.setInstrumentOnSongs.mockReturnValue(new Promise(() => {}));
+    renderSongs();
+    await selectSong('Alpha');
+
+    await setInstrument('Bass');
+
+    expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(mockedSongs.setInstrumentOnSongs).toHaveBeenCalledTimes(1);
+  });
+});
