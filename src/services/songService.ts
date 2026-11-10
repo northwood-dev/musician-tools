@@ -57,6 +57,17 @@ export class RefreshFromCatalogError extends Error {
   }
 }
 
+// #71: what adding an instrument to several songs did.
+export type AddInstrumentResult = { added: number; alreadyHad: number; songs: Song[] };
+
+// #71: some of the songs are gone (deleted meanwhile, e.g. in another tab): nothing was changed.
+export class SongsGoneError extends Error {
+  constructor() {
+    super('Some songs no longer exist');
+    this.name = 'SongsGoneError';
+  }
+}
+
 const API_BASE = '/api';
 
 export const songService = {
@@ -139,6 +150,25 @@ export const songService = {
     }
     return response.json();
   },
+  /** #71: adds one instrument type to several songs, all or none; never replaces their instruments. */
+  async addInstrumentToSongs(songUids: string[], instrument: string): Promise<AddInstrumentResult> {
+    const response = await apiFetch(`${API_BASE}/songs/bulk/instrument`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ songUids, instrument }),
+      credentials: 'include'
+    });
+    if (response.status === 404) {
+      throw new SongsGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to add the instrument');
+    }
+    return response.json();
+  },
+
 
   // Delete song
   async deleteSong(uid: string): Promise<void> {
