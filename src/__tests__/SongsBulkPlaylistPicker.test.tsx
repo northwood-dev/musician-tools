@@ -260,3 +260,69 @@ test('Cancel and ✕ are disabled while Add is running', async () => {
   expect(screen.getByRole('button', { name: '✕' })).toBeDisabled();
   await act(async () => { finishAdd(); });
 });
+
+describe('#90: the panel says when playlists are loading, failed or empty', () => {
+  const selectAlphaAndOpen = async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    await openPicker();
+  };
+
+  test('while they load, the button works and the panel says so', async () => {
+    mockedPlaylists.getAllPlaylists.mockReturnValue(new Promise(() => {}));
+
+    renderSongs();
+    await selectSong('Alpha');
+
+    expect(await screen.findByRole('button', { name: 'Add to playlist' })).toBeEnabled();
+    await openPicker();
+    expect(screen.getByText('Loading playlists…')).toBeInTheDocument();
+  });
+
+  test('when they fail to load, the panel says so, and Retry shows them', async () => {
+    mockedPlaylists.getAllPlaylists.mockRejectedValue(new Error('network'));
+
+    await selectAlphaAndOpen();
+    expect(await screen.findByText("Couldn't load your playlists")).toBeInTheDocument();
+
+    mockedPlaylists.getAllPlaylists.mockResolvedValue([{ uid: 'p1', name: 'Warmups', songUids: [] }] as never);
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByRole('checkbox', { name: /Warmups/ })).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load your playlists")).not.toBeInTheDocument();
+  });
+
+  test('with no playlist yet, the panel invites to create one in My playlists', async () => {
+    mockedPlaylists.getAllPlaylists.mockResolvedValue([] as never);
+
+    await selectAlphaAndOpen();
+
+    expect(await screen.findByText(/No playlists yet\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/my-playlists');
+  });
+
+  test('the panel open while they load shows them as soon as they arrive', async () => {
+    const answers: ((l: unknown) => void)[] = [];
+    mockedPlaylists.getAllPlaylists.mockImplementation(() => new Promise(r => { answers.push(r); }) as never);
+
+    await selectAlphaAndOpen();
+    expect(screen.getByText('Loading playlists…')).toBeInTheDocument();
+
+    await act(async () => { answers.forEach(answer => answer([{ uid: 'p1', name: 'Warmups', songUids: [] }])); });
+
+    expect(screen.getByRole('checkbox', { name: /Warmups/ })).toBeInTheDocument();
+    expect(screen.queryByText('Loading playlists…')).not.toBeInTheDocument();
+  });
+
+  test('a Retry that fails again keeps the failure message', async () => {
+    mockedPlaylists.getAllPlaylists.mockRejectedValue(new Error('network'));
+    await selectAlphaAndOpen();
+    await screen.findByText("Couldn't load your playlists");
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText("Couldn't load your playlists")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(mockedPlaylists.getAllPlaylists.mock.calls.length).toBeGreaterThan(1);
+  });
+});

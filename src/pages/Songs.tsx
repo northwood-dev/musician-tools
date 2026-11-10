@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from '../components/PlaylistsLoadMessage';
 import { usePlaylistMembership, withMember } from '../hooks/usePlaylistMembership';
 import { useArtistAliases } from '../hooks/useArtistAliases';
 import { useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -42,9 +43,6 @@ const initialSong: CreateSongDTO = {
   lastPlayed: undefined,
 };
 
-
-// #56: an empty list can mean "none yet", "still loading" or "failed to load".
-type PlaylistsLoadStatus = 'loading' | 'failed' | 'loaded';
 function Songs() {
   const normalizeCapoValue = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
@@ -2000,6 +1998,8 @@ function Songs() {
           toggleBulkPlaylistPicker={toggleBulkPlaylistPicker}
           closeBulkPlaylistPicker={closeBulkPlaylistPicker}
           playlists={playlists}
+          playlistsLoadStatus={playlistsLoadStatus}
+          onRetryPlaylists={() => { void loadPlaylists(); }}
           myInstruments={myInstruments}
           instrumentTypeOptions={instrumentTypeOptions}
           tuningFilterOptions={tuningFilterOptions}
@@ -2178,15 +2178,7 @@ function Songs() {
                               <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                                 {/* Reached only when what matches is already selected (those are hidden
                                     from the list): a name matching nothing offers Create instead. */}
-                                {playlistsLoadStatus === 'loading' && 'Loading playlists…'}
-                                {playlistsLoadStatus === 'failed' && (
-                                  <>
-                                    Couldn't load your playlists{' '}
-                                    <button type="button" className="text-brand-600 dark:text-brand-400 underline" onClick={() => { void loadPlaylists(); }}>
-                                      Retry
-                                    </button>
-                                  </>
-                                )}
+                                <PlaylistsLoadMessage status={playlistsLoadStatus} onRetry={() => { void loadPlaylists(); }} />
                                 {playlistsLoadStatus === 'loaded' && (playlists.length === 0 ? 'Type a name to create your first playlist' : 'Already selected')}
                               </div>
                             )}
