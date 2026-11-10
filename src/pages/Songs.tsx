@@ -887,15 +887,16 @@ function Songs() {
       : [playlist, ...prev]));
   };
 
-  const handleTogglePlaylist = async (playlistUid: string) => {
-    const wasIn = selectedPlaylistUids.has(playlistUid);
-    const next = new Set(selectedPlaylistUids);
-    if (wasIn) next.delete(playlistUid); else next.add(playlistUid);
-    setSelectedPlaylistUids(next);
-    // Story 13.1: no more Save button — membership is persisted immediately on toggle.
-    // The picker only exists on an open song, so there is always a song uid here.
-    const songUid = editingUid;
-    if (songUid === null) return;
+  // #60: the last click on a playlist wins. Per song and playlist, at most one request is in
+  // flight (an entry in membershipRef means one is); when it answers, one more is sent only if
+  // the user clicked meanwhile and their last choice differs from what the server saved. The
+  // selection shows the last choice; the playlist list holds the server's.
+  const membershipRef = useRef(new Map<string, { want: boolean; saved: boolean }>());
+
+  const syncMembership = async (songUid: string, playlistUid: string) => {
+    const key = `${songUid}:${playlistUid}`;
+    const membership = membershipRef.current.get(key);
+    if (!membership) return;
     const setSelected = (selected: boolean) => {
       if (editingUidRef.current !== songUid) return; // the answer is about a song no longer open
       setSelectedPlaylistUids(prev => {
@@ -904,18 +905,49 @@ function Songs() {
         return aligned;
       });
     };
+    const sent = membership.want;
     try {
-      const updated = wasIn
-        ? await playlistService.removeSongFromPlaylist(playlistUid, songUid)
-        : await playlistService.addSongToPlaylist(playlistUid, songUid);
+      const updated = sent
+        ? await playlistService.addSongToPlaylist(playlistUid, songUid)
+        : await playlistService.removeSongFromPlaylist(playlistUid, songUid);
       upsertPlaylist(updated);
-      setSelected(!!updated.songUids?.includes(songUid));
+      membership.saved = !!updated.songUids?.includes(songUid);
+      // Only a click made meanwhile sends another request: an answer that doesn't reflect the
+      // request is shown as is, never retried in a loop.
+      if (membership.want !== sent && membership.want !== membership.saved) {
+        await syncMembership(songUid, playlistUid);
+        return;
+      }
+      membershipRef.current.delete(key);
+      setSelected(membership.saved);
     } catch (err) {
       console.error(err);
-      setSelected(wasIn); // roll back the optimistic toggle so the UI matches the server
+      membershipRef.current.delete(key); // clicks made meanwhile go with the failed request
+      setSelected(membership.saved); // back to what the server has
       setToastMessage('Could not update playlist');
       setTimeout(() => setToastMessage(null), 2500);
     }
+  };
+
+  const handleTogglePlaylist = (playlistUid: string) => {
+    // Story 13.1: no more Save button — membership is persisted immediately on toggle.
+    // The picker only exists on an open song, so there is always a song uid here.
+    const songUid = editingUid;
+    if (songUid === null) return;
+    const wasIn = selectedPlaylistUids.has(playlistUid);
+    setSelectedPlaylistUids(prev => {
+      const next = new Set(prev);
+      if (wasIn) next.delete(playlistUid); else next.add(playlistUid);
+      return next;
+    });
+    const key = `${songUid}:${playlistUid}`;
+    const membership = membershipRef.current.get(key);
+    if (membership) {
+      membership.want = !wasIn; // the request in flight will pick it up
+      return;
+    }
+    membershipRef.current.set(key, { want: !wasIn, saved: wasIn });
+    void syncMembership(songUid, playlistUid);
   };
 
   // Select a playlist (existing or just-created) into the edited song and reset

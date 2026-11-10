@@ -242,3 +242,132 @@ describe('#56: the picker tells loading, failed and loaded apart', () => {
     expect(chip('Gig set')).not.toBeInTheDocument();
   });
 });
+
+describe('#60: the last click on a playlist wins', () => {
+  // Each add/remove request waits until the test answers it.
+  type Pending = { kind: 'add' | 'remove'; playlistUid: string; resolve: (p: Playlist) => void; reject: (e: Error) => void };
+  let pending: Pending[];
+  const answer = (kind: 'add' | 'remove', playlistUid: string): Pending => {
+    const found = pending.find(p => p.kind === kind && p.playlistUid === playlistUid);
+    if (!found) throw new Error(`no pending ${kind} for ${playlistUid}`);
+    pending = pending.filter(p => p !== found);
+    return found;
+  };
+  const inFlight = (playlistUid: string) => pending.filter(p => p.playlistUid === playlistUid).length;
+
+  beforeEach(() => {
+    pending = [];
+    const track = (kind: 'add' | 'remove') => (playlistUid: string) =>
+      new Promise<Playlist>((resolve, reject) => { pending.push({ kind, playlistUid, resolve, reject }); });
+    mockedPlaylists.addSongToPlaylist.mockImplementation(track('add'));
+    mockedPlaylists.removeSongFromPlaylist.mockImplementation(track('remove'));
+  });
+
+  const chip = (name: string) => screen.queryByTitle(name);
+  const pick = async (name: string) => {
+    fireEvent.focus(screen.getByPlaceholderText('Search, select or create a playlist'));
+    fireEvent.click(within(await screen.findByRole('listbox')).getByText(name));
+  };
+
+  test('select then unselect fast: one request at a time, and the song ends out of the playlist', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    await pick('Gig set');
+    fireEvent.click(await screen.findByTitle('Gig set'));
+
+    expect(chip('Gig set')).not.toBeInTheDocument();
+    expect(inFlight('p2')).toBe(1); // the remove waits for the add
+
+    await act(async () => { answer('add', 'p2').resolve({ ...gigSet, songUids: ['song-a'] }); });
+    expect(chip('Gig set')).not.toBeInTheDocument();
+    expect(inFlight('p2')).toBe(1); // now the remove
+
+    await act(async () => { answer('remove', 'p2').resolve({ ...gigSet, songUids: [] }); });
+    expect(chip('Gig set')).not.toBeInTheDocument();
+    expect(inFlight('p2')).toBe(0);
+    expect(mockedPlaylists.removeSongFromPlaylist).toHaveBeenCalledTimes(1);
+  });
+
+  test('unselect then select fast: the song ends in the playlist', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(await screen.findByTitle('Warmups'));
+    await pick('Warmups');
+    expect(chip('Warmups')).toBeInTheDocument();
+    expect(inFlight('p1')).toBe(1);
+
+    await act(async () => { answer('remove', 'p1').resolve({ ...warmups, songUids: [] }); });
+    await act(async () => { answer('add', 'p1').resolve(warmups); });
+
+    expect(chip('Warmups')).toBeInTheDocument();
+    expect(inFlight('p1')).toBe(0);
+  });
+
+  test('select, unselect, select fast: no extra request once the server already matches', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    await pick('Gig set');
+    fireEvent.click(await screen.findByTitle('Gig set'));
+    await pick('Gig set');
+
+    await act(async () => { answer('add', 'p2').resolve({ ...gigSet, songUids: ['song-a'] }); });
+
+    expect(chip('Gig set')).toBeInTheDocument();
+    expect(inFlight('p2')).toBe(0);
+    expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledTimes(1);
+    expect(mockedPlaylists.removeSongFromPlaylist).not.toHaveBeenCalled();
+  });
+
+  test('two playlists are saved independently', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    fireEvent.click(await screen.findByTitle('Warmups'));
+    await pick('Gig set');
+
+    expect(inFlight('p1')).toBe(1);
+    expect(inFlight('p2')).toBe(1);
+  });
+
+  test('a failed request puts the playlist back as the server has it, drops the clicks made meanwhile, and says so', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    await pick('Gig set');
+    fireEvent.click(await screen.findByTitle('Gig set'));
+    await pick('Gig set');
+    expect(chip('Gig set')).toBeInTheDocument();
+
+    await act(async () => { answer('add', 'p2').reject(new Error('network')); });
+
+    expect(chip('Gig set')).not.toBeInTheDocument();
+    expect(await screen.findByText('Could not update playlist')).toBeInTheDocument();
+    expect(inFlight('p2')).toBe(0);
+    expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledTimes(1);
+  });
+
+  test('leaving the song mid-request still saves the last click', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    await pick('Gig set');
+    fireEvent.click(await screen.findByTitle('Gig set'));
+    fireEvent.click(screen.getByRole('button', { name: /Back to songlist/ }));
+    await settle();
+
+    await act(async () => { answer('add', 'p2').resolve({ ...gigSet, songUids: ['song-a'] }); });
+
+    expect(mockedPlaylists.removeSongFromPlaylist).toHaveBeenCalledWith('p2', 'song-a');
+    await act(async () => { answer('remove', 'p2').resolve({ ...gigSet, songUids: [] }); });
+    expect(inFlight('p2')).toBe(0);
+    expect(screen.queryByText('Could not update playlist')).not.toBeInTheDocument();
+  });
+
+  test('an answer that does not reflect the request is shown as is, with no retry loop', async () => {
+    await openPickerWithPlaylists([warmups, gigSet]);
+
+    await pick('Gig set');
+    await act(async () => { answer('add', 'p2').resolve({ ...gigSet, songUids: [] }); });
+
+    expect(chip('Gig set')).not.toBeInTheDocument();
+    expect(inFlight('p2')).toBe(0);
+    expect(mockedPlaylists.addSongToPlaylist).toHaveBeenCalledTimes(1);
+  }, 3000);
+});
