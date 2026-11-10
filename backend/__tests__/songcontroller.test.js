@@ -4,7 +4,8 @@ jest.mock('../models', () => {
   return {
     Song: {
       create: jest.fn(async (data) => ({ ...data, uid: 'test-uid' })),
-      findOne: jest.fn()
+      findOne: jest.fn(),
+      findAll: jest.fn()
     },
     CatalogSong: {
       findByPk: jest.fn()
@@ -32,7 +33,7 @@ jest.mock('../models', () => {
   };
 });
 
-const { Song, SongPlay, PracticeSession, SessionItem, Instrument, CatalogSong } = require('../models');
+const { Song, SongPlay, PracticeSession, SessionItem, Instrument, CatalogSong, sequelize } = require('../models');
 const { Op } = require('sequelize'); // real package (not mocked) — used to assert lookup WHERE clauses
 const controller = require('../controllers/songcontroller');
 
@@ -871,5 +872,75 @@ describe('refreshSongFromCatalog (story 21.1)', () => {
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json.mock.calls[0][0].error).toBe('source_unavailable');
     expect(song.update).not.toHaveBeenCalled(); // copy left untouched
+  });
+});
+
+describe('setInstrumentOnSongs (#71: one instrument on several songs)', () => {
+  const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  // A song row the user owns: update() changes it in place, as Sequelize does.
+  const row = (uid, instrument) => {
+    const song = { uid, userUid: 'user-1', instrument };
+    song.update = jest.fn(async (changes) => Object.assign(song, changes));
+    song.toJSON = () => ({ uid: song.uid, instrument: song.instrument });
+    return song;
+  };
+  const call = (body) => {
+    const res = mockRes();
+    const next = mockNext();
+    return controller.setInstrumentOnSongs({ session: { user: 'user-1' }, body }, res, next).then(() => ({ res, next }));
+  };
+
+  test('adds the instrument to songs lacking it, keeps their others, and counts the songs that had it', async () => {
+    const guitarOnly = row(A, ['Guitar']);
+    const hasBass = row(B, ['Bass']);
+    Song.findAll.mockResolvedValue([guitarOnly, hasBass]);
+
+    const { res, next } = await call({ songUids: [A, B], instrument: 'Bass' });
+
+    expect(next).not.toHaveBeenCalled();
+    expect(guitarOnly.update).toHaveBeenCalledWith({ instrument: ['Guitar', 'Bass'] }, expect.anything());
+    expect(hasBass.update).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({
+      added: 1,
+      alreadyHad: 1,
+      songs: [{ uid: A, instrument: ['Guitar', 'Bass'] }, { uid: B, instrument: ['Bass'] }],
+    });
+  });
+
+  test("a song not found among the user's (someone else's, or gone) refuses the whole request, nothing changed", async () => {
+    const mine = row(A, []);
+    Song.findAll.mockResolvedValue([mine]); // B is filtered out by the user scope
+
+    const { res, next } = await call({ songUids: [A, B], instrument: 'Bass' });
+
+    expect(next.mock.calls[0][0].status).toBe(404);
+    expect(mine.update).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+    expect(Song.findAll).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ userUid: 'user-1' }),
+    }));
+  });
+
+  test('a malformed song uid is a 404 before any query, not a 500', async () => {
+    Song.findAll.mockClear();
+
+    const { next } = await call({ songUids: [A, 'not-a-uuid'], instrument: 'Bass' });
+
+    expect(next.mock.calls[0][0].status).toBe(404);
+    expect(Song.findAll).not.toHaveBeenCalled();
+  });
+
+  test('a song with no instrument (imported before #34) gets one, inside one transaction with the rows locked', async () => {
+    const imported = row(A, null);
+    Song.findAll.mockResolvedValue([imported]);
+    sequelize.transaction.mockClear();
+
+    const { res } = await call({ songUids: [A], instrument: 'Bass' });
+
+    expect(imported.update).toHaveBeenCalledWith({ instrument: ['Bass'] }, { transaction: { id: 'tx' } });
+    expect(sequelize.transaction).toHaveBeenCalledTimes(1);
+    expect(Song.findAll).toHaveBeenCalledWith(expect.objectContaining({ transaction: { id: 'tx' }, lock: true }));
+    expect(res.json).toHaveBeenCalledWith({ added: 1, alreadyHad: 0, songs: [{ uid: A, instrument: ['Bass'] }] });
   });
 });

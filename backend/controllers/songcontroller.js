@@ -319,6 +319,47 @@ const updateSong = async (req, res, next) => {
 };
 
 // DELETE song
+// #71: adds one instrument type to several of the user's songs, all or none. Each song keeps its
+// other instruments (and their tuning, difficulty and links); one already having it is counted,
+// not changed. The rows are locked for the transaction, so a concurrent edit can't lose an add.
+const setInstrumentOnSongs = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+    const { songUids, instrument } = req.body || {};
+    if (!songUids.every(isUuid)) {
+      return next(createError(404, 'Song not found'));
+    }
+
+    const result = await sequelize.transaction(async (transaction) => {
+      const songs = await Song.findAll({ where: { uid: songUids, userUid: userId }, transaction, lock: true });
+      // Someone else's song and an unknown one get the same 404 (no existence oracle, as getSong).
+      if (songs.length !== new Set(songUids).size) {
+        throw createError(404, 'Song not found');
+      }
+      let added = 0;
+      let alreadyHad = 0;
+      for (const song of songs) {
+        const instruments = Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []);
+        if (instruments.includes(instrument)) {
+          alreadyHad += 1;
+        } else {
+          await song.update({ instrument: [...instruments, instrument] }, { transaction });
+          added += 1;
+        }
+      }
+      return { added, alreadyHad, songs: songs.map(song => song.toJSON()) };
+    });
+    res.json(result);
+  } catch (error) {
+    if (error.status) return next(error);
+    logger.error('Error setting an instrument on songs:', error);
+    next(createError(500, 'Error setting an instrument on songs'));
+  }
+};
+
 const deleteSong = async (req, res, next) => {
   try {
     const userId = req.session.user;
@@ -541,6 +582,7 @@ module.exports = {
   createSong,
   updateSong,
   deleteSong,
+  setInstrumentOnSongs,
   markSongPlayed,
   getSongPlays,
   lookupSongMetadata,
