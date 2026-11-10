@@ -141,6 +141,22 @@ export const songService = {
   },
 
   // Delete song
+  /** #71: adds one instrument type to several songs, all or none. */
+  async setInstrumentOnSongs(songUids: string[], instrument: string): Promise<{ added: number; alreadyHad: number; songs: Song[] }> {
+    const response = await apiFetch(`${API_BASE}/songs/bulk/instrument`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ songUids, instrument }),
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      throw new Error('Failed to set the instrument');
+    }
+    return response.json();
+  },
+
   async deleteSong(uid: string): Promise<void> {
     const response = await apiFetch(`${API_BASE}/songs/${uid}`, {
       method: 'DELETE',

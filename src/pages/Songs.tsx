@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { BulkSetInstrument, type SetInstrumentResult } from '../components/BulkSetInstrument';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from '../components/PlaylistsLoadMessage';
 import { usePlaylistMembership, withMember } from '../hooks/usePlaylistMembership';
 import { useArtistAliases } from '../hooks/useArtistAliases';
@@ -1350,6 +1351,17 @@ function Songs() {
     });
   };
 
+  // #71: the songs come back from the server with their new instruments.
+  const handleInstrumentSet = ({ instrument, added, alreadyHad, songs: updated }: SetInstrumentResult) => {
+    const byUid = new Map(updated.map(song => [song.uid, song]));
+    setSongs(prev => prev.map(song => byUid.get(song.uid) ?? song));
+    // Songs that left a filtered view must not stay selected out of sight.
+    songSelection.clear();
+    const message = `${instrument} added to ${added} song${added === 1 ? '' : 's'}.`;
+    setToastMessage(alreadyHad > 0 ? `${message} ${alreadyHad} already had it.` : message);
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
   const handleApplySelectedToPlaylists = async () => {
     if (bulkPlaylistSelection.size === 0 || selectedSongs.size === 0) {
       closeBulkPlaylistPicker();
@@ -1999,6 +2011,13 @@ function Songs() {
           closeBulkPlaylistPicker={closeBulkPlaylistPicker}
           playlists={playlists}
           playlistsLoadStatus={playlistsLoadStatus}
+          bulkSetInstrument={(
+            <BulkSetInstrument
+              selectedSongUids={Array.from(selectedSongs)}
+              disabled={loading}
+              onApplied={handleInstrumentSet}
+            />
+          )}
           onRetryPlaylists={() => { void loadPlaylists(); }}
           myInstruments={myInstruments}
           instrumentTypeOptions={instrumentTypeOptions}

@@ -61,6 +61,8 @@ export interface SongsListProps {
   // Data
   playlists: Array<{ uid: string; name: string; songUids?: string[] }>;
   playlistsLoadStatus: PlaylistsLoadStatus;
+  /** #71: the bulk Set instrument action, owned by the page. */
+  bulkSetInstrument?: ReactNode;
   onRetryPlaylists: () => void;
   myInstruments: Array<{ uid: string; type?: string; name: string }>;
   instrumentTypeOptions: string[];
@@ -260,6 +262,7 @@ export default function SongsList(props: SongsListProps) {
           </div>
           {/* Bulk actions: the shared bar (22.1) hides itself when nothing is selected. */}
           <BulkActionBar count={props.selectedSongs.size} noun="song(s)">
+            {props.bulkSetInstrument}
             <div className="relative">
               <button
                 type="button"
