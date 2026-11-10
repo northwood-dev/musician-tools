@@ -1,7 +1,4 @@
 import { apiFetch } from './apiFetch';
-// #56, #90: an empty list can mean "none yet", "still loading" or "failed to load".
-export type PlaylistsLoadStatus = 'loading' | 'failed' | 'loaded';
-
 export type Playlist = {
   uid: string;
   name: string;

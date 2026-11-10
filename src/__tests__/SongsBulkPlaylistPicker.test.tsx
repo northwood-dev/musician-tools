@@ -271,8 +271,11 @@ describe('#90: the panel says when playlists are loading, failed or empty', () =
   test('while they load, the button works and the panel says so', async () => {
     mockedPlaylists.getAllPlaylists.mockReturnValue(new Promise(() => {}));
 
-    await selectAlphaAndOpen();
+    renderSongs();
+    await selectSong('Alpha');
 
+    expect(await screen.findByRole('button', { name: 'Add to playlist' })).toBeEnabled();
+    await openPicker();
     expect(screen.getByText('Loading playlists…')).toBeInTheDocument();
   });
 
@@ -309,5 +312,17 @@ describe('#90: the panel says when playlists are loading, failed or empty', () =
 
     expect(screen.getByRole('checkbox', { name: /Warmups/ })).toBeInTheDocument();
     expect(screen.queryByText('Loading playlists…')).not.toBeInTheDocument();
+  });
+
+  test('a Retry that fails again keeps the failure message', async () => {
+    mockedPlaylists.getAllPlaylists.mockRejectedValue(new Error('network'));
+    await selectAlphaAndOpen();
+    await screen.findByText("Couldn't load your playlists");
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(await screen.findByText("Couldn't load your playlists")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(mockedPlaylists.getAllPlaylists.mock.calls.length).toBeGreaterThan(1);
   });
 });

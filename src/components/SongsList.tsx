@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Song } from '../services/songService';
-import type { PlaylistsLoadStatus } from '../services/playlistService';
+import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from './PlaylistsLoadMessage';
 import type { ReactNode } from 'react';
 import SongsSidebar from './SongsSidebar';
 import FiltersDisclosureButton from './FiltersDisclosureButton';
@@ -282,14 +282,9 @@ export default function SongsList(props: SongsListProps) {
                       ✕
                     </button>
                   </div>
-                  {props.playlistsLoadStatus === 'loading' && props.playlists.length === 0 ? (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading playlists…</p>
-                  ) : props.playlistsLoadStatus === 'failed' && props.playlists.length === 0 ? (
+                  {props.playlists.length === 0 && props.playlistsLoadStatus !== 'loaded' ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Couldn't load your playlists{' '}
-                      <button type="button" className="text-brand-500 dark:text-brand-400 hover:text-brand-600 dark:hover:text-brand-300 underline" onClick={props.onRetryPlaylists}>
-                        Retry
-                      </button>
+                      <PlaylistsLoadMessage status={props.playlistsLoadStatus} onRetry={props.onRetryPlaylists} />
                     </p>
                   ) : props.playlists.length === 0 ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
