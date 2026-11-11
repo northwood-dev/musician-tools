@@ -1,6 +1,31 @@
 #!/usr/bin/env sh
-# Block the commit if ANY step fails (set -e): lint + tests, front then back.
-set -e
-npm run lint
-npm test
-cd backend && npm run lint && npm test
+# Block the commit if ANY step fails: lint + tests, front then back.
+#
+# The whole output is shown live and also saved to pre-commit-last.log in the git
+# directory (overwritten each run, never committed), so that a test failing at
+# random can be named afterwards (#21). On failure, the last lines name the log and
+# the failing tests, even when the output above gets truncated.
+
+LOG="$(git rev-parse --absolute-git-dir)/pre-commit-last.log"
+STATUS="$LOG.status"
+
+# In POSIX sh a pipe only reports the status of its last command (tee), so the
+# steps write their own status to a file.
+(
+  (
+    set -e
+    npm run lint
+    npm test
+    cd backend && npm run lint && npm test
+  )
+  echo $? > "$STATUS"
+) 2>&1 | tee "$LOG"
+
+CODE=$(cat "$STATUS" 2>/dev/null || echo 1)
+rm -f "$STATUS"
+[ "$CODE" -eq 0 ] && exit 0
+
+echo
+echo "pre-commit failed. Full output: $LOG"
+grep '●' "$LOG" | grep -v '● Console' | sed 's/^ *//' | sort -u
+exit "$CODE"
