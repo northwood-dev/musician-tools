@@ -30,11 +30,12 @@ Only propose `major` when northwood asks for a major version: a mistake ships it
 
 The workflow bumps the version in the root package (the only place it lives), tags, publishes a GitHub release with notes generated from the merged PRs, and deploys. `CHANGELOG.md` is a frozen archive (up to 2.1.1).
 
-**Green** means `flyctl deploy` succeeded. It doesn't prove that the site serves the new version (#66), so check the footer.
+**Green** means production serves the deployed version: right after `flyctl deploy`, the Deploy job reads the site's `/version.json` and compares it with the `package.json` it deployed (#66).
 
-**Not green:** look at which job stopped.
+**Not green:** look at which job and which step stopped.
 
 - **Deploy failed:** re-run the failed job alone. That retries the deploy without creating another version.
+- **Version check failed** (the step after `flyctl deploy`, log line `expected X, served Y`): production still answers with another build after about two minutes. Look at `served`: an older version means the new machine never took over (check `flyctl status` and the machine logs, then re-run the job); `no version (...)` means the site didn't answer or answered without a `version.json`. Nothing is rolled back automatically.
 - **Deploy cancelled:** a merge replaced the release's waiting deploy, and production still gets the version. Check that merge's deploy instead.
 - **Release failed:** read its log before re-running, because a re-run bumps again. It is safe if the bump never reached `main`, for example when a merge landed just before the push. If the bump is already on `main`, re-running would skip a version: create the missing release by hand instead.
 
