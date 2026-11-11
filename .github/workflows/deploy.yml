@@ -40,3 +40,19 @@ jobs:
       - run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # A successful `flyctl deploy` doesn't prove production serves the new build
+      # (#66). Compare the site's /version.json with the package.json this run just
+      # deployed (retries and deadline: see the script). The app name comes from
+      # fly.toml, so the host lives in one place.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Check that production serves the deployed version
+        run: |
+          APP=$(sed -n "s/^app = '\(.*\)'$/\1/p" fly.toml)
+          : "${APP:?no app name found in fly.toml}"
+          EXPECTED=$(node -p "require('./package.json').version")
+          node backend/scripts/check-served-version.js \
+            "https://$APP.fly.dev/version.json" "$EXPECTED"
