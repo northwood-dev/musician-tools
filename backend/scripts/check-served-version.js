@@ -5,20 +5,25 @@
 //   node backend/scripts/check-served-version.js <url> <expected version>
 //
 // Exits 0 on a match, 1 with "expected X, served Y" otherwise.
+//
+// CI-only: it lives here, next to release-migrate.js, so that it runs with bare
+// `node` (no install, no TypeScript build) and is tested by the backend Jest suite.
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // What production answers, in words: its version, or why there is none yet.
 async function readServed(url, fetch) {
   let response;
+  let text;
   try {
     response = await fetch(url);
+    if (!response.ok) return `no version (HTTP ${response.status})`;
+    text = await response.text();
   } catch (error) {
-    // Network error or request timeout, typically a Fly machine still waking up.
+    // Network error or request timeout, while connecting or while reading the body:
+    // typically a Fly machine still waking up.
     return `no version (${error.cause?.code || error.message})`;
   }
-  if (!response.ok) return `no version (HTTP ${response.status})`;
-  const text = await response.text();
   try {
     const { version } = JSON.parse(text);
     if (typeof version === 'string') return version;
