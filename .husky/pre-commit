@@ -1,6 +1,41 @@
 #!/usr/bin/env sh
-# Block the commit if ANY step fails (set -e): lint + tests, front then back.
-set -e
-npm run lint
-npm test
-cd backend && npm run lint && npm test
+# Block the commit if ANY step fails: lint + tests, front then back.
+#
+# The whole output is shown live and also saved to pre-commit-last.log in the git
+# directory (overwritten each run, never committed), so that a test failing at
+# random can be named afterwards (#21). On failure, the last lines name the log and
+# the failing tests, even when the output above gets truncated.
+
+LOG="$(git rev-parse --absolute-git-dir)/pre-commit-last.log"
+STATUS_FILE="$LOG.status"
+rm -f "$STATUS_FILE"
+
+# In POSIX sh a pipe only reports the status of its last command (tee), so the
+# steps' status goes through a file. Husky runs this script with `sh -e`: the `if`
+# keeps a failing step from ending the subshell before the status is written. The
+# steps are chained with && because `set -e` is ignored inside an `if` condition.
+(
+  if npm run lint && npm test && cd backend && npm run lint && npm test; then
+    echo 0 > "$STATUS_FILE"
+  else
+    echo $? > "$STATUS_FILE"
+  fi
+) 2>&1 | tee "$LOG"
+
+CODE=$(cat "$STATUS_FILE" 2>/dev/null)
+rm -f "$STATUS_FILE"
+case "$CODE" in
+  0) exit 0 ;;
+  '' | *[!0-9]*) CODE=1 ;;
+esac
+
+echo
+echo "pre-commit failed (code $CODE). Full output: $LOG"
+FAILED=$(grep '●' "$LOG" | grep -v '● Console' | sed 's/^ *//' | sort -u)
+if [ -n "$FAILED" ]; then
+  echo "Failing tests:"
+  echo "$FAILED"
+else
+  echo "No failing test named: a lint step (or a crash) stopped the run, see above."
+fi
+exit "$CODE"
