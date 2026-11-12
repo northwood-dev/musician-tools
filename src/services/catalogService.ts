@@ -1,3 +1,4 @@
+import type { StreamingLink } from '../utils/streamingLinks';
 import { apiFetch } from './apiFetch';
 import { SongConflictError } from './songService';
 import type { Song } from './songService';
@@ -16,7 +17,7 @@ export type CatalogSong = {
   durationSeconds?: number | null;
   language?: string[] | string | null;
   genre?: string[] | null;
-  streamingLinks?: Array<{ label: string; url: string }> | null;
+  streamingLinks?: StreamingLink[] | null;
   pitchStandard?: number | null;
   publishedAt?: string | null; // null = draft (19.6) ; timestamp = published
   createdAt?: string;

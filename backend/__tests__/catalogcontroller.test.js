@@ -728,3 +728,91 @@ describe('catalogcontroller', () => {
     expect(next.mock.calls[0][0].status).toBe(500);
   });
 });
+
+describe('Catalog streaming links: YouTube, Spotify, Deezer only (#109)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    CatalogSong.create.mockImplementation(async (data) => ({ ...data, uid: 'new-uid' }));
+  });
+
+  const create = async (streamingLinks) => {
+    const res = mockRes();
+    const next = mockNext();
+    await controller.createCatalogEntry({ body: { title: 'Creep', artist: 'Radiohead', streamingLinks } }, res, next);
+    return { res, next };
+  };
+  const YT = { label: 'YouTube', url: 'https://www.youtube.com/watch?v=XFkzRNyygfk' };
+  const SP = { label: 'Spotify', url: 'https://open.spotify.com/track/70LcF31zb1H0PyJoS1Sx1r' };
+  const DZ = { label: 'Deezer', url: 'https://www.deezer.com/track/138547415' };
+
+  test.each([
+    ['a YouTube search page', [{ label: 'YouTube', url: 'https://www.youtube.com/results?search_query=radiohead+creep' }]],
+    ['a Spotify search page', [{ label: 'Spotify', url: 'https://open.spotify.com/search/radiohead%20creep' }]],
+    ['a Deezer search page', [{ label: 'Deezer', url: 'https://www.deezer.com/search/radiohead%20creep' }]],
+    ['a Spotify album instead of a track', [{ label: 'Spotify', url: 'https://open.spotify.com/album/6400dnyeDyD2mIFHfkwHXN' }]],
+    ['a Spotify link under YouTube', [{ label: 'YouTube', url: SP.url }]],
+    ['another platform', [{ label: 'Apple Music', url: 'https://music.apple.com/fr/album/creep/1097861387?i=1097861703' }]],
+    ['a look-alike domain', [{ label: 'YouTube', url: 'https://www.youtube.com.evil.example/watch?v=x' }]],
+    ['plain http', [{ label: 'Deezer', url: 'http://www.deezer.com/track/138547415' }]],
+    ['two YouTube links', [YT, { ...YT, url: 'https://youtu.be/XFkzRNyygfk' }]],
+    ['a 4th link', [YT, SP, DZ, { label: 'YouTube', url: 'https://youtu.be/other' }]],
+    ['not a list', YT],
+  ])('%s is refused with 400 and nothing is stored', async (_name, streamingLinks) => {
+    const { next } = await create(streamingLinks);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(CatalogSong.create).not.toHaveBeenCalled();
+  });
+
+  test('one link per platform, in the forms the apps share, is stored', async () => {
+    for (const links of [
+      [YT, SP, DZ],
+      [{ label: 'YouTube', url: 'https://youtu.be/XFkzRNyygfk?si=abc' }],
+      [{ label: 'YouTube', url: 'https://music.youtube.com/watch?v=XFkzRNyygfk' }],
+      [{ label: 'Spotify', url: 'https://open.spotify.com/intl-fr/track/70LcF31zb1H0PyJoS1Sx1r?si=x' }],
+      [{ label: 'Deezer', url: 'https://www.deezer.com/fr/track/138547415' }],
+      [{ label: 'Deezer', url: 'https://link.deezer.com/s/30ZtRdFcMa8UvqxCJ3bRu' }],
+      [],
+      null,
+    ]) {
+      CatalogSong.create.mockClear();
+      const { next } = await create(links);
+      expect(next).not.toHaveBeenCalled();
+      expect(CatalogSong.create).toHaveBeenCalledWith(expect.objectContaining({ streamingLinks: links }));
+    }
+  });
+
+  test('an update with a search link is refused with 400 and the entry is untouched', async () => {
+    const entry = { uid: UID, title: 'Creep', artist: 'Radiohead', update: jest.fn() };
+    CatalogSong.findByPk.mockResolvedValue(entry);
+    const next = mockNext();
+    await controller.updateCatalogEntry(
+      { params: { uid: UID }, body: { streamingLinks: [{ label: 'YouTube', url: 'https://www.youtube.com/results?search_query=x' }] } },
+      mockRes(), next,
+    );
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(entry.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('Add to my songlist marks the Catalog links (#110)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('the copied links carry source "catalog"', async () => {
+    CatalogSong.findByPk.mockResolvedValue({
+      uid: UID, title: 'Creep', artist: 'Radiohead', publishedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-03-01T00:00:00.000Z',
+      streamingLinks: [{ label: 'YouTube', url: 'https://youtu.be/XFkzRNyygfk' }],
+    });
+    Song.create.mockImplementation(async (data) => ({ ...data, uid: 'song-uid' }));
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' } }, mockRes(), mockNext());
+    expect(Song.create.mock.calls[0][0].streamingLinks).toEqual([
+      { label: 'YouTube', url: 'https://youtu.be/XFkzRNyygfk', source: 'catalog' },
+    ]);
+  });
+
+  test('an entry without links gives a copy without links', async () => {
+    CatalogSong.findByPk.mockResolvedValue({ uid: UID, title: 'Creep', publishedAt: '2026-01-01T00:00:00.000Z', streamingLinks: null });
+    Song.create.mockImplementation(async (data) => ({ ...data, uid: 'song-uid' }));
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' } }, mockRes(), mockNext());
+    expect(Song.create.mock.calls[0][0].streamingLinks).toBeNull();
+  });
+});

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within, act } from '@testing-librar
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogAdmin from '../pages/CatalogAdmin';
 import { useAuth } from '../contexts/AuthContext';
+import { songService } from '../services/songService';
 import { catalogService, CatalogConflictError, CatalogNotFoundError } from '../services/catalogService';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
@@ -307,5 +308,63 @@ describe('#52: a failed duplicate check', () => {
     await wait(PAST_AUTOSAVE);
 
     expect(cat.updateCatalogEntry).toHaveBeenLastCalledWith('c1', expect.objectContaining({ album: 'No Need to Argue' }));
+  });
+});
+
+test('auto-fill fills metadata but adds no streaming link (#107)', async () => {
+  mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
+  cat.getCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Creep', artist: 'Radiohead', publishedAt: null, streamingLinks: [] });
+  (songService.lookupMetadata as jest.Mock).mockResolvedValue({ source: 'lastfm', album: 'Pablo Honey' });
+  renderAt('/catalog/admin/c1');
+
+  fireEvent.click(await screen.findByRole('button', { name: /Auto-fill/ }));
+
+  await waitFor(() => expect(screen.getByLabelText('Album')).toHaveValue('Pablo Honey'));
+  expect(screen.queryByRole('button', { name: /^Remove .* link$/ })).toBeNull();
+});
+
+describe('the three official links of a Catalog entry (#109)', () => {
+  const openEntry = async (streamingLinks: Array<{ label: string; url: string }> = []) => {
+    mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
+    cat.getCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Creep', artist: 'Radiohead', publishedAt: null, streamingLinks });
+    cat.updateCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Creep' });
+    renderAt('/catalog/admin/c1');
+    await waitFor(() => expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Creep'));
+  };
+  const savedLinks = async () => {
+    await act(async () => { await jest.advanceTimersByTimeAsync(1300); });
+    await waitFor(() => expect(cat.updateCatalogEntry).toHaveBeenCalled());
+    return cat.updateCatalogEntry.mock.calls.at(-1)![1].streamingLinks;
+  };
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  test('pasting a track link in a platform field saves it under that platform', async () => {
+    await openEntry();
+    fireEvent.change(screen.getByLabelText('Spotify link'), { target: { value: 'https://open.spotify.com/track/70LcF31zb1H0PyJoS1Sx1r' } });
+    expect(await savedLinks()).toEqual([{ label: 'Spotify', url: 'https://open.spotify.com/track/70LcF31zb1H0PyJoS1Sx1r' }]);
+  });
+
+  test.each([
+    ['a search page', 'YouTube link', 'https://www.youtube.com/results?search_query=radiohead+creep'],
+    ['another platform\'s link', 'YouTube link', 'https://open.spotify.com/track/70LcF31zb1H0PyJoS1Sx1r'],
+  ])('%s is refused with a message and not saved', async (_name, field, url) => {
+    await openEntry();
+    fireEvent.change(screen.getByLabelText(field), { target: { value: url } });
+    expect(screen.getByRole('alert')).toHaveTextContent('Not a YouTube track link');
+    await act(async () => { await jest.advanceTimersByTimeAsync(1300); });
+    expect(cat.updateCatalogEntry).not.toHaveBeenCalled();
+  });
+
+  test('the saved links fill their fields, and clearing a field removes its link', async () => {
+    await openEntry([
+      { label: 'YouTube', url: 'https://youtu.be/XFkzRNyygfk' },
+      { label: 'Deezer', url: 'https://www.deezer.com/track/138547415' },
+    ]);
+    expect(screen.getByLabelText('YouTube link')).toHaveValue('https://youtu.be/XFkzRNyygfk');
+    expect(screen.getByLabelText('Spotify link')).toHaveValue('');
+    fireEvent.change(screen.getByLabelText('YouTube link'), { target: { value: '' } });
+    expect(await savedLinks()).toEqual([{ label: 'Deezer', url: 'https://www.deezer.com/track/138547415' }]);
   });
 });

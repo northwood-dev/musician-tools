@@ -135,7 +135,7 @@ export default function CatalogSourceBanner({
       <ConfirmDialog
         isOpen={confirmOpen}
         title="Refresh from the Catalog"
-        message="Update key, BPM, etc. to the Catalog version? Your instrument, tuning and notes are kept."
+        message="Update key, BPM, etc. to the Catalog version? Your instrument, tuning, notes and your own links are kept."
         confirmText={refreshing ? 'Refreshing…' : 'Refresh'}
         cancelText="Cancel"
         onConfirm={handleRefresh}

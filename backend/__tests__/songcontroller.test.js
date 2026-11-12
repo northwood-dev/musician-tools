@@ -1008,3 +1008,124 @@ describe('addInstrumentToSongs (#71: one instrument on several songs)', () => {
     expect(older.update).toHaveBeenCalledWith({ instrument: ['Guitar', 'Bass'] }, expect.anything());
   });
 });
+
+describe('Songlist streaming links (#108)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const create = async (streamingLinks) => {
+    const res = mockRes();
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', streamingLinks } }, res, next);
+    return { res, next };
+  };
+
+  test('a javascript: link is refused with 400 and nothing is stored', async () => {
+    const { next } = await create([{ url: 'javascript:alert(1)', label: 'x' }]);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  test('an update with a data: link is refused with 400 and the song is untouched', async () => {
+    const song = ownedSong();
+    Song.findOne.mockResolvedValue(song);
+    const next = mockNext();
+    await controller.updateSong(
+      { session: { user: 'user-1' }, params: { uid: song.uid }, body: { streamingLinks: [{ url: 'data:text/html,hi' }] } },
+      mockRes(), next,
+    );
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(song.update).not.toHaveBeenCalled();
+  });
+
+  const link = (over = {}) => ({ url: 'https://www.youtube.com/watch?v=XFkzRNyygfk', ...over });
+  test.each([
+    ['not a list', { url: 'https://a.example' }],
+    ['a link that is not an object', ['https://a.example']],
+    ['a URL that is not text', [{ url: 42 }]],
+    ['a URL over 2048 characters', [link({ url: `https://a.example/${'x'.repeat(2032)}` })]],
+    ['a label over 100 characters', [link({ label: 'x'.repeat(101) })]],
+    ['a label that is not text', [link({ label: 7 })]],
+    ['an unknown source', [link({ source: 'user' })]],
+    ['11 links of your own', Array.from({ length: 11 }, (_, i) => link({ url: `https://a.example/${i}` }))],
+  ])('%s is refused with 400', async (_name, streamingLinks) => {
+    const { next } = await create(streamingLinks);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  test('valid links at the limits are stored as given', async () => {
+    const links = [
+      link({ url: `https://a.example/${'x'.repeat(2030)}`, label: 'x'.repeat(100) }),
+      link({ label: 'Lesson', source: 'catalog' }),
+      ...Array.from({ length: 8 }, (_, i) => link({ url: `http://a.example/${i}` })),
+    ];
+    expect(links[0].url).toHaveLength(2048);
+    const { next } = await create(links);
+    expect(next).not.toHaveBeenCalled();
+    expect(Song.create).toHaveBeenCalledWith(expect.objectContaining({ streamingLinks: links }));
+  });
+});
+
+describe('Catalog links in a Songlist copy (#110)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const SP_OLD = { label: 'Spotify', url: 'https://open.spotify.com/track/old', source: 'catalog' };
+  const LESSON = { label: 'Lesson', url: 'https://www.youtube.com/watch?v=lesson' };
+  const MINE = { url: 'https://radiohead.bandcamp.com/track/creep' };
+
+  const refresh = async (copyLinks, catalogLinks) => {
+    const song = catalogCopy({ streamingLinks: copyLinks });
+    Song.findOne.mockResolvedValue(song);
+    CatalogSong.findByPk.mockResolvedValue(publishedCatalog({ streamingLinks: catalogLinks }));
+    await controller.refreshSongFromCatalog({ session: { user: 'user-1' }, params: { uid: SONG_UID } }, mockRes(), mockNext());
+    return song.update.mock.calls[0][0].streamingLinks;
+  };
+
+  test('refresh replaces the Catalog links and keeps the personal ones after them', async () => {
+    const links = await refresh(
+      [LESSON, SP_OLD, MINE],
+      [{ label: 'YouTube', url: 'https://youtu.be/new' }, { label: 'Spotify', url: 'https://open.spotify.com/track/new' }],
+    );
+    expect(links).toEqual([
+      { label: 'YouTube', url: 'https://youtu.be/new', source: 'catalog' },
+      { label: 'Spotify', url: 'https://open.spotify.com/track/new', source: 'catalog' },
+      LESSON,
+      MINE,
+    ]);
+  });
+
+  test('a Catalog entry without links leaves only the personal ones', async () => {
+    expect(await refresh([SP_OLD, MINE], null)).toEqual([MINE]);
+  });
+
+  test('a copy without links gets the Catalog ones, marked', async () => {
+    expect(await refresh(null, [{ label: 'Deezer', url: 'https://www.deezer.com/track/1' }]))
+      .toEqual([{ label: 'Deezer', url: 'https://www.deezer.com/track/1', source: 'catalog' }]);
+  });
+
+  test('no links on either side stays empty', async () => {
+    expect(await refresh(null, null)).toBeNull();
+  });
+});
+
+describe('the 10-link cap counts personal links only (#35 review)', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const personal = (n) => Array.from({ length: n }, (_, i) => ({ url: `https://a.example/${i}` }));
+  const marked = [
+    { label: 'YouTube', url: 'https://youtu.be/a', source: 'catalog' },
+    { label: 'Spotify', url: 'https://open.spotify.com/track/b', source: 'catalog' },
+    { label: 'Deezer', url: 'https://www.deezer.com/track/1', source: 'catalog' },
+  ];
+
+  test('10 personal links plus 3 Catalog links are accepted (what a refresh can produce)', async () => {
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', streamingLinks: [...marked, ...personal(10)] } }, mockRes(), next);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('a 4th Catalog-marked link is refused', async () => {
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', streamingLinks: [...marked, { ...marked[0], url: 'https://youtu.be/z' }] } }, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+  });
+});

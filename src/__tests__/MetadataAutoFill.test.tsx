@@ -43,7 +43,7 @@ describe('Metadata Auto-fill Feature', () => {
         />
       );
 
-      const button = screen.getByRole('button', { name: /Auto-fill metadata & links/i });
+      const button = screen.getByRole('button', { name: /Auto-fill metadata/i });
       expect(button).toBeDisabled();
     });
 
@@ -75,7 +75,7 @@ describe('Metadata Auto-fill Feature', () => {
         />
       );
 
-      const button = screen.getByRole('button', { name: /Auto-fill metadata & links/i });
+      const button = screen.getByRole('button', { name: /Auto-fill metadata/i });
       expect(button).not.toBeDisabled();
     });
 
@@ -202,64 +202,13 @@ describe('Metadata Auto-fill Feature', () => {
         />
       );
 
-      const button = screen.getByRole('button', { name: /Auto-fill metadata & links/i });
+      const button = screen.getByRole('button', { name: /Auto-fill metadata/i });
       fireEvent.click(button);
 
       expect(mockOnAutoFill).toHaveBeenCalled();
     });
   });
 
-  describe('Streaming links generation', () => {
-    test('generates correct streaming links for artist and title', () => {
-      const artist = 'The Beatles';
-      const title = 'Hey Jude';
-      const searchQuery = `${artist} ${title}`.trim();
-
-      const expectedLinks = [
-        { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
-        { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
-        { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
-        { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
-        { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
-        { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
-      ];
-
-      expect(expectedLinks).toHaveLength(6);
-      expect(expectedLinks[0].label).toBe('YouTube');
-      expect(expectedLinks[1].label).toBe('Spotify');
-      expect(expectedLinks[2].label).toBe('Apple Music');
-      expect(expectedLinks[3].label).toBe('Deezer');
-      expect(expectedLinks[4].label).toBe('Tidal');
-      expect(expectedLinks[5].label).toBe('Qobuz');
-    });
-
-    test('handles special characters in artist/title', () => {
-      const artist = 'The Beatles & Co.';
-      const title = 'Hey Jude!';
-      const searchQuery = `${artist} ${title}`.trim();
-
-      const encoded = encodeURIComponent(searchQuery);
-      expect(encoded).toContain('%26'); // & is encoded
-      expect(encoded).toContain('!'); // ! is not encoded by encodeURIComponent
-    });
-
-    test('does not duplicate streaming links if they already exist', () => {
-      const currentLinks = [
-        { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=Test+Song' }
-      ];
-
-      const newLinks = [
-        { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=Test+Song' },
-        { label: 'Spotify', url: 'https://open.spotify.com/search/Test+Song' }
-      ];
-
-      const existingUrls = new Set(currentLinks.map(l => l.url));
-      const linksToAdd = newLinks.filter(link => !existingUrls.has(link.url));
-
-      expect(linksToAdd).toHaveLength(1);
-      expect(linksToAdd[0].label).toBe('Spotify');
-    });
-  });
 
   describe('Genre merging logic', () => {
     test('merges genres when some already exist', () => {
@@ -320,56 +269,6 @@ describe('Metadata Auto-fill Feature', () => {
     });
   });
 
-  describe('Streaming links generation', () => {
-    test('generates streaming links even when metadata source is "none"', () => {
-      const title = 'Test Song';
-      const artist = 'Test Artist';
-      
-      // Simulate the logic from Songs.tsx
-      const generateStreamingLinks = (title: string, artist: string) => {
-        const searchQuery = `${artist || ''} ${title || ''}`.trim();
-        if (!searchQuery) return [];
-        
-        return [
-          { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
-          { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
-          { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
-          { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
-          { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
-          { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
-        ];
-      };
-
-      const links = generateStreamingLinks(title, artist);
-
-      expect(links).toHaveLength(6);
-      expect(links[0].label).toBe('YouTube');
-      expect(links[0].url).toContain('youtube.com');
-      expect(links[1].label).toBe('Spotify');
-      expect(links[2].label).toBe('Apple Music');
-      expect(links[3].label).toBe('Deezer');
-      expect(links[4].label).toBe('Tidal');
-      expect(links[5].label).toBe('Qobuz');
-    });
-
-    test('does not duplicate existing streaming links', () => {
-      const newLinks = [
-        { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=test' },
-        { label: 'Spotify', url: 'https://open.spotify.com/search/test' }
-      ];
-      
-      const existingLinks = [
-        { label: 'YouTube', url: 'https://www.youtube.com/results?search_query=test' }
-      ];
-
-      const existingUrls = new Set(existingLinks.map(l => l.url));
-      const linksToAdd = newLinks.filter(link => !existingUrls.has(link.url));
-      const merged = [...existingLinks, ...linksToAdd];
-
-      expect(merged).toHaveLength(2);
-      expect(merged.filter(l => l.label === 'YouTube')).toHaveLength(1);
-    });
-  });
 
   describe('Metadata with source "none" but useful data', () => {
     test('fills form fields when metadata has data even with source "none"', () => {
