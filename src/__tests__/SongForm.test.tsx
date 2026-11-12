@@ -334,6 +334,20 @@ describe('Catalog links in a Songlist song (#110)', () => {
     expect(screen.getByRole('link', { name: 'Spotify' }).closest('div')).toHaveTextContent('Catalog');
   });
 
+  test('Catalog links do not count toward the 10 links of your own', () => {
+    const nine = Array.from({ length: 9 }, (_, i) => ({ url: `https://a.example/${i}` }));
+    const marked = [
+      { label: 'YouTube', url: 'https://youtu.be/a', source: 'catalog' as const },
+      { label: 'Spotify', url: 'https://open.spotify.com/track/b', source: 'catalog' as const },
+      { label: 'Deezer', url: 'https://www.deezer.com/track/1', source: 'catalog' as const },
+    ];
+    const { onSetStreamingLinks } = renderForm({ streamingLinks: [...marked, ...nine] });
+    fireEvent.change(screen.getByLabelText('Link URL'), { target: { value: 'https://a.example/10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add link' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(onSetStreamingLinks).toHaveBeenCalledWith([...marked, ...nine, { url: 'https://a.example/10' }]);
+  });
+
   test('a Catalog link can be removed from the copy, keeping the others in their order', () => {
     const mine = { url: 'https://radiohead.bandcamp.com/track/creep' };
     const { onSetStreamingLinks } = renderForm({ streamingLinks: [

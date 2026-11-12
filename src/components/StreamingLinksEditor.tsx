@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type React from 'react';
 import { CATALOG_PLATFORMS, isPlatformLink, linkName, songlistLinkError, type CatalogPlatform, type StreamingLink } from '../utils/streamingLinks';
 
 type Props = {
@@ -57,7 +58,7 @@ function CatalogLinkFields({ links, onChange, disabled = false }: Omit<Props, 'm
               aria-invalid={draft !== undefined}
             />
             {draft !== undefined && (
-              <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">Not a {platform} track link</p>
+              <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">Not a {platform} track link{saved ? ': the saved link is kept' : ''}</p>
             )}
           </div>
         );
@@ -65,6 +66,8 @@ function CatalogLinkFields({ links, onChange, disabled = false }: Omit<Props, 'm
     </div>
   );
 }
+
+const INPUT = 'rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100';
 
 // Songlist mode (#108): a free list, added by pasting a URL with an optional label, removed
 // with ✕ (no edit in place).
@@ -77,7 +80,7 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
     const trimmedUrl = url.trim();
     const trimmedLabel = label.trim();
     if (!trimmedUrl) return;
-    const problem = songlistLinkError(trimmedUrl, trimmedLabel, links.length);
+    const problem = songlistLinkError(trimmedUrl, trimmedLabel, links.filter(l => l.source !== 'catalog').length);
     if (problem) {
       setError(problem);
       return;
@@ -86,6 +89,11 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
     setUrl('');
     setLabel('');
     setError(null);
+  };
+
+  // Enter adds the link instead of submitting the song form.
+  const addOnEnter = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); add(); }
   };
 
   // The Catalog's official links first (#110), then the user's own, each group in its order.
@@ -126,20 +134,20 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
           type="url"
           aria-label="Link URL"
           placeholder="https://…"
-          className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+          className={`flex-1 ${INPUT}`}
           value={url}
           onChange={(e) => { setUrl(e.target.value); setError(null); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          onKeyDown={addOnEnter}
           disabled={disabled}
         />
         <input
           type="text"
           aria-label="Link label (optional)"
           placeholder="Label (optional)"
-          className="sm:w-40 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+          className={`sm:w-40 ${INPUT}`}
           value={label}
           onChange={(e) => { setLabel(e.target.value); setError(null); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+          onKeyDown={addOnEnter}
           disabled={disabled}
         />
         <button

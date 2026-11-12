@@ -19,7 +19,6 @@ import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
 // (DL-17) — no instrument/personal fields. Auto-fill reuses songService.lookupMetadata
 // and merges NON-destructively (never overwrites a typed value).
 
-
 const emptyForm: CreateCatalogDTO = {
   title: '',
   artist: '',

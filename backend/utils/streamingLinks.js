@@ -20,11 +20,15 @@ function linkError(link) {
 function songlistLinksError(links) {
   if (links === undefined || links === null) return null;
   if (!Array.isArray(links)) return 'Streaming links must be a list';
-  if (links.length > MAX_SONGLIST_LINKS) return `A song can have at most ${MAX_SONGLIST_LINKS} streaming links`;
   for (const link of links) {
     const error = linkError(link);
     if (error) return error;
   }
+  // The cap is on the user's own links: the Catalog's (at most one per platform) come on top,
+  // so a refresh adding them can never push a song over a limit its owner can't save.
+  const marked = links.filter(link => link.source === 'catalog').length;
+  if (links.length - marked > MAX_SONGLIST_LINKS) return `A song can have at most ${MAX_SONGLIST_LINKS} streaming links of your own`;
+  if (marked > Object.keys(CATALOG_PLATFORMS).length) return 'Too many links from the Catalog';
   return null;
 }
 
@@ -78,4 +82,4 @@ function refreshedLinks(copyLinks, catalogLinks) {
   return links.length > 0 ? links : null;
 }
 
-module.exports = { songlistLinksError, catalogLinksError, isPlatformLink, CATALOG_PLATFORMS, refreshedLinks };
+module.exports = { songlistLinksError, catalogLinksError, refreshedLinks };

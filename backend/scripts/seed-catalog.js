@@ -837,8 +837,8 @@ async function runAlias(db, opts) {
 // problem, at publication time.
 
 // The closed list of what may travel from a personal Song into a SHARED fiche. Mirrors
-// songcontroller's INTRINSIC_REFRESH_FIELDS + the three JSON fields it deep-clones, plus
-// `album`. Personal fields — notes, tuning, instrument, lastPlayed — must never appear here.
+// songcontroller's INTRINSIC_REFRESH_FIELDS + the JSON fields it deep-clones (language,
+// genre; streamingLinks excepted, see below), plus `album`. Personal fields — notes, tuning, instrument, lastPlayed — must never appear here.
 //
 // `pitchStandard` was in this list and has been REMOVED: the column carries `DEFAULT 440` in
 // Postgres itself (verified — all 125 fiches hold 440), so it can never read as a hole and

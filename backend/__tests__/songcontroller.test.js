@@ -1046,7 +1046,7 @@ describe('Songlist streaming links (#108)', () => {
     ['a label over 100 characters', [link({ label: 'x'.repeat(101) })]],
     ['a label that is not text', [link({ label: 7 })]],
     ['an unknown source', [link({ source: 'user' })]],
-    ['11 links', Array.from({ length: 11 }, (_, i) => link({ url: `https://a.example/${i}` }))],
+    ['11 links of your own', Array.from({ length: 11 }, (_, i) => link({ url: `https://a.example/${i}` }))],
   ])('%s is refused with 400', async (_name, streamingLinks) => {
     const { next } = await create(streamingLinks);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
@@ -1105,5 +1105,27 @@ describe('Catalog links in a Songlist copy (#110)', () => {
 
   test('no links on either side stays empty', async () => {
     expect(await refresh(null, null)).toBeNull();
+  });
+});
+
+describe('the 10-link cap counts personal links only (#35 review)', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const personal = (n) => Array.from({ length: n }, (_, i) => ({ url: `https://a.example/${i}` }));
+  const marked = [
+    { label: 'YouTube', url: 'https://youtu.be/a', source: 'catalog' },
+    { label: 'Spotify', url: 'https://open.spotify.com/track/b', source: 'catalog' },
+    { label: 'Deezer', url: 'https://www.deezer.com/track/1', source: 'catalog' },
+  ];
+
+  test('10 personal links plus 3 Catalog links are accepted (what a refresh can produce)', async () => {
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', streamingLinks: [...marked, ...personal(10)] } }, mockRes(), next);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  test('a 4th Catalog-marked link is refused', async () => {
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', streamingLinks: [...marked, { ...marked[0], url: 'https://youtu.be/z' }] } }, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
   });
 });

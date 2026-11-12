@@ -755,6 +755,7 @@ describe('Catalog streaming links: YouTube, Spotify, Deezer only (#109)', () => 
     ['a look-alike domain', [{ label: 'YouTube', url: 'https://www.youtube.com.evil.example/watch?v=x' }]],
     ['plain http', [{ label: 'Deezer', url: 'http://www.deezer.com/track/138547415' }]],
     ['two YouTube links', [YT, { ...YT, url: 'https://youtu.be/XFkzRNyygfk' }]],
+    ['a 4th link', [YT, SP, DZ, { label: 'YouTube', url: 'https://youtu.be/other' }]],
     ['not a list', YT],
   ])('%s is refused with 400 and nothing is stored', async (_name, streamingLinks) => {
     const { next } = await create(streamingLinks);

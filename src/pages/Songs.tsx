@@ -1529,7 +1529,6 @@ function Songs() {
     }));
   };
 
-
   // Opens a song in the edit form. `fromDuplicate` is set when navigating here
   // from the add form's "already exists" link, so the edit screen can remind the
   // user their filters may be hiding it from the list.
