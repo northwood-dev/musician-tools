@@ -1,7 +1,7 @@
 const { Song, SongPlay, PracticeSession, SessionItem, Instrument, CatalogSong, sequelize } = require('../models');
 const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
-const { songlistLinksError } = require('../utils/streamingLinks');
+const { songlistLinksError, refreshedLinks } = require('../utils/streamingLinks');
 const logger = require('../logger');
 const { fetchSongMetadata } = require('../services/songMetadataService');
 // Shared FR19 day-validation helpers (same definition as the session controller)
@@ -154,7 +154,8 @@ const refreshSongFromCatalog = async (req, res, next) => {
     for (const f of INTRINSIC_REFRESH_FIELDS) updates[f] = catalog[f] ?? null;
     updates.language = structuredClone(catalog.language ?? null);
     updates.genre = structuredClone(catalog.genre ?? null);
-    updates.streamingLinks = structuredClone(catalog.streamingLinks ?? null);
+    // Only the Catalog's own (marked) links are replaced: the user's links stay (#110).
+    updates.streamingLinks = refreshedLinks(song.streamingLinks, catalog.streamingLinks);
 
     const updated = await song.update(updates);
     res.json(updated);

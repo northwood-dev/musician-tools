@@ -8,7 +8,7 @@
 const { CatalogSong, Song, User, CatalogCollection, CatalogCollectionSong, Playlist, PlaylistSong, ArtistAlias } = require('../models');
 const { Op, fn, col, cast, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
-const { catalogLinksError } = require('../utils/streamingLinks');
+const { catalogLinksError, refreshedLinks } = require('../utils/streamingLinks');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
 const { sameTitle, sameArtist, sameAlias, containsSearchKey, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
@@ -429,7 +429,7 @@ function buildSongFromCatalog(catalog, userUid, instrument) {
     durationSeconds: catalog.durationSeconds ?? null,
     language: structuredClone(catalog.language ?? null),
     genre: structuredClone(catalog.genre ?? null),
-    streamingLinks: structuredClone(catalog.streamingLinks ?? null),
+    streamingLinks: refreshedLinks(null, catalog.streamingLinks), // marked source: "catalog" (#110)
     pitchStandard: catalog.pitchStandard ?? null,
     lastPlayed: null, // never copied — a copy has no practice history
   };

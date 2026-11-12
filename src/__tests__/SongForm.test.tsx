@@ -321,3 +321,26 @@ describe('streaming links of a Songlist song (#108)', () => {
     expect(onSetStreamingLinks).toHaveBeenCalledWith([{ url: 'https://a.example/b' }]);
   });
 });
+
+describe('Catalog links in a Songlist song (#110)', () => {
+  test('Catalog links come first, with a Catalog badge; personal links have none', () => {
+    renderForm({ streamingLinks: [
+      { url: 'https://radiohead.bandcamp.com/track/creep' },
+      { label: 'Spotify', url: 'https://open.spotify.com/track/abc', source: 'catalog' },
+    ] });
+    const links = screen.getAllByRole('link');
+    expect(links.map(l => l.textContent)).toEqual(['Spotify', 'Bandcamp']);
+    expect(screen.getAllByText('Catalog')).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Spotify' }).closest('div')).toHaveTextContent('Catalog');
+  });
+
+  test('a Catalog link can be removed from the copy, keeping the others in their order', () => {
+    const mine = { url: 'https://radiohead.bandcamp.com/track/creep' };
+    const { onSetStreamingLinks } = renderForm({ streamingLinks: [
+      mine,
+      { label: 'Spotify', url: 'https://open.spotify.com/track/abc', source: 'catalog' },
+    ] });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Spotify link' }));
+    expect(onSetStreamingLinks).toHaveBeenCalledWith([mine]);
+  });
+});

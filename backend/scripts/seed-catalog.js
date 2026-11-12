@@ -845,9 +845,12 @@ async function runAlias(db, opts) {
 // could never be filled. Keeping it meant a dead entry plus a special case to exclude it from
 // the emptiness signal. Assumed consequence: a song tuned to 432 Hz does not propagate its
 // pitch to the shared fiche; the curator sets it by hand.
+//
+// `streamingLinks` is NOT here (#110): a song's links are personal, and the Catalog's are
+// the curator's official ones, set by hand. Copying them up would publish a user's links.
 const ENRICH_FIELDS = [
   'album', 'key', 'bpm', 'mode', 'timeSignature', 'durationSeconds',
-  'language', 'genre', 'streamingLinks',
+  'language', 'genre',
 ];
 
 // Plain strings: trimmed before being written. `createCatalogEntry` trims album on the API
@@ -869,7 +872,6 @@ const ENRICH_TEXT_FIELDS = new Set(['album', 'key', 'mode', 'timeSignature']);
 // paper, invisible in the app.
 const ENRICH_SHAPE_GUARDS = {
   genre: value => Array.isArray(value),
-  streamingLinks: value => typeof value === 'object' && value !== null,
 };
 
 // Column name is identical on both tables (verified against information_schema), so one
@@ -877,7 +879,7 @@ const ENRICH_SHAPE_GUARDS = {
 const ENRICH_COLUMNS = {
   album: 'album', key: 'key', bpm: 'bpm', mode: 'mode', timeSignature: 'time_signature',
   durationSeconds: 'duration_seconds', language: 'language', genre: 'genre',
-  streamingLinks: 'streaming_links',
+  streamingLinks: 'streaming_links', // read by publish's « has data » check, never enriched (#110)
 };
 
 // LEFT JOIN, not JOIN: a draft fiche attached to NO song must still come back so it can be

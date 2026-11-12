@@ -64,4 +64,18 @@ function catalogLinksError(links) {
   return null;
 }
 
-module.exports = { songlistLinksError, catalogLinksError, isPlatformLink, CATALOG_PLATFORMS };
+// A Songlist copy holds the Catalog's links marked source: "catalog" (#110), next to the
+// user's own. The copy never shares a reference with the Catalog entry.
+function markedCatalogLinks(catalogLinks) {
+  return (catalogLinks ?? []).map(link => ({ ...structuredClone(link), source: 'catalog' }));
+}
+
+// The links of a copy after a refresh: the Catalog's current links (marked) replace the
+// marked ones; the user's own links are kept, in their order, after them. null when none.
+function refreshedLinks(copyLinks, catalogLinks) {
+  const personal = (copyLinks ?? []).filter(link => link.source !== 'catalog');
+  const links = [...markedCatalogLinks(catalogLinks), ...personal];
+  return links.length > 0 ? links : null;
+}
+
+module.exports = { songlistLinksError, catalogLinksError, isPlatformLink, CATALOG_PLATFORMS, refreshedLinks };

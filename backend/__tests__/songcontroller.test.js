@@ -1065,3 +1065,45 @@ describe('Songlist streaming links (#108)', () => {
     expect(Song.create).toHaveBeenCalledWith(expect.objectContaining({ streamingLinks: links }));
   });
 });
+
+describe('Catalog links in a Songlist copy (#110)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const SP_OLD = { label: 'Spotify', url: 'https://open.spotify.com/track/old', source: 'catalog' };
+  const LESSON = { label: 'Lesson', url: 'https://www.youtube.com/watch?v=lesson' };
+  const MINE = { url: 'https://radiohead.bandcamp.com/track/creep' };
+
+  const refresh = async (copyLinks, catalogLinks) => {
+    const song = catalogCopy({ streamingLinks: copyLinks });
+    Song.findOne.mockResolvedValue(song);
+    CatalogSong.findByPk.mockResolvedValue(publishedCatalog({ streamingLinks: catalogLinks }));
+    await controller.refreshSongFromCatalog({ session: { user: 'user-1' }, params: { uid: SONG_UID } }, mockRes(), mockNext());
+    return song.update.mock.calls[0][0].streamingLinks;
+  };
+
+  test('refresh replaces the Catalog links and keeps the personal ones after them', async () => {
+    const links = await refresh(
+      [LESSON, SP_OLD, MINE],
+      [{ label: 'YouTube', url: 'https://youtu.be/new' }, { label: 'Spotify', url: 'https://open.spotify.com/track/new' }],
+    );
+    expect(links).toEqual([
+      { label: 'YouTube', url: 'https://youtu.be/new', source: 'catalog' },
+      { label: 'Spotify', url: 'https://open.spotify.com/track/new', source: 'catalog' },
+      LESSON,
+      MINE,
+    ]);
+  });
+
+  test('a Catalog entry without links leaves only the personal ones', async () => {
+    expect(await refresh([SP_OLD, MINE], null)).toEqual([MINE]);
+  });
+
+  test('a copy without links gets the Catalog ones, marked', async () => {
+    expect(await refresh(null, [{ label: 'Deezer', url: 'https://www.deezer.com/track/1' }]))
+      .toEqual([{ label: 'Deezer', url: 'https://www.deezer.com/track/1', source: 'catalog' }]);
+  });
+
+  test('no links on either side stays empty', async () => {
+    expect(await refresh(null, null)).toBeNull();
+  });
+});

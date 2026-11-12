@@ -1105,11 +1105,14 @@ const makeModels = (updatedAt = new Date('2026-08-10T21:30:00Z')) => ({
 });
 
 describe('ENRICH_FIELDS — une seule liste, partagée par le code et le test', () => {
-  test('exactement les 10 champs partageables, aucun champ personnel', () => {
+  test('exactement les champs partageables, aucun champ personnel', () => {
     expect([...ENRICH_FIELDS].sort()).toEqual([
       'album', 'bpm', 'durationSeconds', 'genre', 'key', 'language',
-      'mode', 'streamingLinks', 'timeSignature',
+      'mode', 'timeSignature',
     ]);
+    // #110 : les liens d'une chanson sont perso ; ceux du Catalog sont saisis par le
+    // curateur seul, jamais remontés depuis une Songlist.
+    expect(ENRICH_FIELDS).not.toContain('streamingLinks');
     // Retiré après review : la colonne porte DEFAULT 440 dans Postgres, donc elle
     // n'est jamais vue comme un trou et ne pouvait jamais être comblée.
     expect(ENRICH_FIELDS).not.toContain('pitchStandard');
@@ -1174,12 +1177,15 @@ describe('computeFill — on comble les trous, on n’écrase jamais', () => {
   });
 
   test('les objets JSON sont clonés : muter la chanson après coup ne change pas ce qui a été calculé', () => {
-    const song = { ...FULL_SONG, genre: ['Rock'], streamingLinks: { spotify: 'x' } };
+    const song = { ...FULL_SONG, genre: ['Rock'] };
     const { fill } = computeFill({ ...EMPTY_FICHE }, song);
     song.genre.push('Metal');
-    song.streamingLinks.spotify = 'MUTÉ';
     expect(fill.genre).toEqual(['Rock']);
-    expect(fill.streamingLinks).toEqual({ spotify: 'x' });
+  });
+
+  test('les liens de la chanson ne remontent jamais dans la fiche (#110)', () => {
+    const { fill } = computeFill({ ...EMPTY_FICHE }, { ...FULL_SONG, streamingLinks: [{ url: 'https://perso.example' }] });
+    expect(fill).not.toHaveProperty('streamingLinks');
   });
 });
 
@@ -1661,6 +1667,11 @@ describe('publishHasDataExpr — « vide » en SQL doit dire la même chose qu�
 
   test('un tableau ou un objet JSON vide ne compte pas non plus', () => {
     expect(publishHasDataExpr()).toMatch(/c\.genre::text NOT IN \('\[\]', '\{\}'\)/);
+  });
+
+  test('les liens du curateur comptent comme de la donnée, et chaque champ vise une vraie colonne', () => {
+    expect(publishHasDataExpr()).toMatch(/c\.streaming_links::text NOT IN \('\[\]', '\{\}'\)/);
+    expect(publishHasDataExpr()).not.toMatch(/undefined/);
   });
 
   test('la liste est PROPRE à publish : une colonne à valeur par défaut ne peut pas la fausser', () => {

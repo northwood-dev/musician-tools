@@ -88,23 +88,29 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
     setError(null);
   };
 
+  // The Catalog's official links first (#110), then the user's own, each group in its order.
+  const shown = [...links.filter(l => l.source === 'catalog'), ...links.filter(l => l.source !== 'catalog')];
+
   return (
     <div>
       <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Listen</span>
       {links.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
-          {links.map((link, idx) => (
+          {shown.map((link) => (
             <div
-              key={`streaming-link-${link.url}-${link.label ?? ''}`}
+              key={`streaming-link-${link.url}-${link.label ?? ''}-${link.source ?? ''}`}
               className="inline-flex items-center gap-1 rounded-md bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-800 dark:text-blue-100"
             >
+              {link.source === 'catalog' && (
+                <span className="rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white" title="Official link from the Catalog">Catalog</span>
+              )}
               <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[20rem]" title={link.url}>
                 {linkName(link)}
               </a>
               <button
                 type="button"
                 className="ml-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800 px-1"
-                onClick={() => onChange(links.filter((_, i) => i !== idx))}
+                onClick={() => onChange(links.filter(l => l !== link))}
                 aria-label={`Remove ${linkName(link)} link`}
                 title="Remove link"
                 disabled={disabled}

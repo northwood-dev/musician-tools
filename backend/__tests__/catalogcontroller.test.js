@@ -792,3 +792,26 @@ describe('Catalog streaming links: YouTube, Spotify, Deezer only (#109)', () => 
     expect(entry.update).not.toHaveBeenCalled();
   });
 });
+
+describe('Add to my songlist marks the Catalog links (#110)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('the copied links carry source "catalog"', async () => {
+    CatalogSong.findByPk.mockResolvedValue({
+      uid: UID, title: 'Creep', artist: 'Radiohead', publishedAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-03-01T00:00:00.000Z',
+      streamingLinks: [{ label: 'YouTube', url: 'https://youtu.be/XFkzRNyygfk' }],
+    });
+    Song.create.mockImplementation(async (data) => ({ ...data, uid: 'song-uid' }));
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' } }, mockRes(), mockNext());
+    expect(Song.create.mock.calls[0][0].streamingLinks).toEqual([
+      { label: 'YouTube', url: 'https://youtu.be/XFkzRNyygfk', source: 'catalog' },
+    ]);
+  });
+
+  test('an entry without links gives a copy without links', async () => {
+    CatalogSong.findByPk.mockResolvedValue({ uid: UID, title: 'Creep', publishedAt: '2026-01-01T00:00:00.000Z', streamingLinks: null });
+    Song.create.mockImplementation(async (data) => ({ ...data, uid: 'song-uid' }));
+    await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' } }, mockRes(), mockNext());
+    expect(Song.create.mock.calls[0][0].streamingLinks).toBeNull();
+  });
+});
