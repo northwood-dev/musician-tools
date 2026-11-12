@@ -12,6 +12,7 @@ import { keyOptions, modeOptions, timeSignatureOptions, genreOptions, languageOp
 import { DuplicateBanner } from '../components/DuplicateBanner';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Toast } from '../components/Toast';
+import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
 
 // Curator-only admin screen to create a Catalog entry (story 19.2). Utilitarian
 // (DL-14): reuses the design-system utilities, restricted to the INTRINSIC fields
@@ -350,10 +351,6 @@ export default function CatalogAdmin() {
     }
   };
 
-  const removeLink = (url: string) => {
-    setForm(prev => ({ ...prev, streamingLinks: (prev.streamingLinks || []).filter(l => l.url !== url) }));
-  };
-
   // Single-value dropdown (key/mode/timeSignature) — preserves an out-of-list value
   // (e.g. from auto-fill) as an extra option so nothing is silently dropped.
   const renderSelect = (param: 'key' | 'mode' | 'timeSignature', label: string, options: string[]) => {
@@ -514,19 +511,11 @@ export default function CatalogAdmin() {
           </div>
         </div>
 
-        {(form.streamingLinks && form.streamingLinks.length > 0) && (
-          <div>
-            <label className="label-base">Streaming links</label>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {form.streamingLinks.map(link => (
-                <span key={link.url} className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs text-gray-700 dark:text-gray-200">
-                  {link.label}
-                  <button type="button" aria-label={`Remove ${link.label} link`} className="text-gray-400 hover:text-red-500" onClick={() => removeLink(link.url)}>×</button>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <StreamingLinksEditor
+          mode="catalog"
+          links={form.streamingLinks || []}
+          onChange={(links) => setForm(prev => ({ ...prev, streamingLinks: links }))}
+        />
 
         {isEdit && (
           <div className="pt-2">

@@ -1,15 +1,74 @@
 import { useState } from 'react';
-import { linkName, songlistLinkError, type StreamingLink } from '../utils/streamingLinks';
+import { CATALOG_PLATFORMS, isPlatformLink, linkName, songlistLinkError, type CatalogPlatform, type StreamingLink } from '../utils/streamingLinks';
 
 type Props = {
   links: StreamingLink[];
   onChange: (links: StreamingLink[]) => void;
   disabled?: boolean;
+  /** "songlist": a free list of links. "catalog": the three official platform fields. */
+  mode?: 'songlist' | 'catalog';
 };
 
-// The streaming links of a Songlist song (#35): a free list, added by pasting a URL with an
-// optional label, removed with ✕ (no edit in place).
-export function StreamingLinksEditor({ links, onChange, disabled = false }: Props) {
+// The streaming links of a song (#35), in one of two modes.
+export function StreamingLinksEditor({ mode = 'songlist', ...props }: Props) {
+  return mode === 'catalog' ? <CatalogLinkFields {...props} /> : <SonglistLinks {...props} />;
+}
+
+// Catalog mode (#109): one field per platform. A valid track link (or an empty field) is
+// saved at once; anything else stays in the field with a message and is never saved.
+function CatalogLinkFields({ links, onChange, disabled = false }: Omit<Props, 'mode'>) {
+  const [drafts, setDrafts] = useState<Partial<Record<CatalogPlatform, string>>>({});
+
+  const change = (platform: CatalogPlatform, value: string) => {
+    const url = value.trim();
+    if (url && !isPlatformLink(platform, url)) {
+      setDrafts(prev => ({ ...prev, [platform]: value }));
+      return;
+    }
+    setDrafts(prev => {
+      const next = { ...prev };
+      delete next[platform];
+      return next;
+    });
+    const byPlatform = new Map(links.map(l => [l.label, l]));
+    if (url) byPlatform.set(platform, { label: platform, url });
+    else byPlatform.delete(platform);
+    onChange(CATALOG_PLATFORMS.flatMap(p => byPlatform.get(p) ?? []));
+  };
+
+  return (
+    <div className="space-y-3">
+      <span className="label-base">Streaming links</span>
+      {CATALOG_PLATFORMS.map(platform => {
+        const id = `cat-link-${platform.toLowerCase()}`;
+        const draft = drafts[platform];
+        const saved = links.find(l => l.label === platform)?.url ?? '';
+        return (
+          <div key={platform}>
+            <label htmlFor={id} className="label-base">{platform} link</label>
+            <input
+              id={id}
+              type="url"
+              className="input-base"
+              placeholder={`A ${platform} track link`}
+              value={draft ?? saved}
+              onChange={(e) => change(platform, e.target.value)}
+              disabled={disabled}
+              aria-invalid={draft !== undefined}
+            />
+            {draft !== undefined && (
+              <p role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">Not a {platform} track link</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Songlist mode (#108): a free list, added by pasting a URL with an optional label, removed
+// with ✕ (no edit in place).
+function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'>) {
   const [url, setUrl] = useState('');
   const [label, setLabel] = useState('');
   const [error, setError] = useState<string | null>(null);

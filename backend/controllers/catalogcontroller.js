@@ -8,6 +8,7 @@
 const { CatalogSong, Song, User, CatalogCollection, CatalogCollectionSong, Playlist, PlaylistSong, ArtistAlias } = require('../models');
 const { Op, fn, col, cast, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
+const { catalogLinksError } = require('../utils/streamingLinks');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
 const { sameTitle, sameArtist, sameAlias, containsSearchKey, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
@@ -81,6 +82,8 @@ const createCatalogEntry = async (req, res, next) => {
   let normalizedArtist;
   try {
     const body = req.body || {};
+    const linksError = catalogLinksError(body.streamingLinks);
+    if (linksError) return next(createError(400, linksError));
     normalizedTitle = normalizeText(body.title);
     if (!normalizedTitle) {
       return next(createError(400, 'Title is required'));
@@ -124,6 +127,8 @@ const updateCatalogEntry = async (req, res, next) => {
     }
 
     const body = req.body || {};
+    const linksError = catalogLinksError(body.streamingLinks);
+    if (linksError) return next(createError(400, linksError));
     const updates = pickIntrinsic(body);
 
     normalizedTitle = normalizeText(body.title);
