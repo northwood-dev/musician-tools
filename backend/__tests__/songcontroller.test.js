@@ -1008,3 +1008,60 @@ describe('addInstrumentToSongs (#71: one instrument on several songs)', () => {
     expect(older.update).toHaveBeenCalledWith({ instrument: ['Guitar', 'Bass'] }, expect.anything());
   });
 });
+
+describe('Songlist streaming links (#108)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const create = async (streamingLinks) => {
+    const res = mockRes();
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', streamingLinks } }, res, next);
+    return { res, next };
+  };
+
+  test('a javascript: link is refused with 400 and nothing is stored', async () => {
+    const { next } = await create([{ url: 'javascript:alert(1)', label: 'x' }]);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  test('an update with a data: link is refused with 400 and the song is untouched', async () => {
+    const song = ownedSong();
+    Song.findOne.mockResolvedValue(song);
+    const next = mockNext();
+    await controller.updateSong(
+      { session: { user: 'user-1' }, params: { uid: song.uid }, body: { streamingLinks: [{ url: 'data:text/html,hi' }] } },
+      mockRes(), next,
+    );
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(song.update).not.toHaveBeenCalled();
+  });
+
+  const link = (over = {}) => ({ url: 'https://www.youtube.com/watch?v=XFkzRNyygfk', ...over });
+  test.each([
+    ['not a list', { url: 'https://a.example' }],
+    ['a link that is not an object', ['https://a.example']],
+    ['a URL that is not text', [{ url: 42 }]],
+    ['a URL over 2048 characters', [link({ url: `https://a.example/${'x'.repeat(2032)}` })]],
+    ['a label over 100 characters', [link({ label: 'x'.repeat(101) })]],
+    ['a label that is not text', [link({ label: 7 })]],
+    ['an unknown source', [link({ source: 'user' })]],
+    ['11 links', Array.from({ length: 11 }, (_, i) => link({ url: `https://a.example/${i}` }))],
+  ])('%s is refused with 400', async (_name, streamingLinks) => {
+    const { next } = await create(streamingLinks);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  test('valid links at the limits are stored as given', async () => {
+    const links = [
+      link({ url: `https://a.example/${'x'.repeat(2030)}`, label: 'x'.repeat(100) }),
+      link({ label: 'Lesson', source: 'catalog' }),
+      ...Array.from({ length: 8 }, (_, i) => link({ url: `http://a.example/${i}` })),
+    ];
+    expect(links[0].url).toHaveLength(2048);
+    const { next } = await create(links);
+    expect(next).not.toHaveBeenCalled();
+    expect(Song.create).toHaveBeenCalledWith(expect.objectContaining({ streamingLinks: links }));
+  });
+});

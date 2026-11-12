@@ -7,6 +7,7 @@ import { useBlocker, useLocation, useNavigate, useParams } from 'react-router-do
 import { SongForm } from '../components/SongForm';
 import SongsList from '../components/SongsList';
 import { songService, SongConflictError, type CreateSongDTO, type UpdateSongDTO, type Song, SongsGoneError } from '../services/songService';
+import type { StreamingLink } from '../utils/streamingLinks';
 import { instrumentService, type Instrument } from '../services/instrumentService';
 import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
@@ -1521,7 +1522,7 @@ function Songs() {
     }));
   };
 
-  const setStreamingLinks = (links: Array<{ label: string; url: string }>) => {
+  const setStreamingLinks = (links: StreamingLink[]) => {
     setForm(prev => ({
       ...prev,
       streamingLinks: links

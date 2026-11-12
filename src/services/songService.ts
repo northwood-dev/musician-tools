@@ -1,4 +1,5 @@
 import { apiFetch } from './apiFetch';
+import type { StreamingLink } from '../utils/streamingLinks';
 export type Song = {
   uid: string;
   title: string;
@@ -21,7 +22,7 @@ export type Song = {
   instrumentTuning?: Record<string, string | null>;
   myInstrumentUid?: string;
   lastPlayed?: string;
-  streamingLinks?: Array<{ label: string; url: string }>;
+  streamingLinks?: StreamingLink[] | null;
   createdAt?: string;
   updatedAt?: string;
   // Story 21.1/21.2: present (from getSong) when this song is a Catalog copy AND the

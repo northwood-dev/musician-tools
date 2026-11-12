@@ -26,6 +26,7 @@ function renderForm(overrides: Partial<CreateSongDTO> = {}, extraProps: Partial<
   const onChange = jest.fn();
   const onSetDurationSeconds = jest.fn();
   const onSubmit = jest.fn((e: React.FormEvent) => e.preventDefault());
+  const onSetStreamingLinks = jest.fn();
   render(
     <SongForm
       mode="add"
@@ -40,11 +41,12 @@ function renderForm(overrides: Partial<CreateSongDTO> = {}, extraProps: Partial<
       onSetMyInstrumentUid={jest.fn()}
       onToggleTechnique={jest.fn()}
       onSubmit={onSubmit}
+      onSetStreamingLinks={onSetStreamingLinks}
       suggestedAlbums={extraProps.suggestedAlbums || ['Revolver']}
       suggestedArtists={extraProps.suggestedArtists || ['The Beatles']}
     />
   );
-  return { onChange, onSetDurationSeconds };
+  return { onChange, onSetDurationSeconds, onSetStreamingLinks };
 }
 
 test('updates time signature select and calls onChange', () => {
@@ -253,4 +255,69 @@ test('genre combobox: ARIA wiring + hovering an option makes it the single activ
   expect(input).toHaveAttribute('aria-activedescendant', options[1].id);
   // exactly one option is active at a time
   expect(options.filter(o => o.getAttribute('aria-selected') === 'true')).toHaveLength(1);
+});
+describe('streaming links of a Songlist song (#108)', () => {
+  const addLink = (url: string, label = '') => {
+    fireEvent.change(screen.getByLabelText('Link URL'), { target: { value: url } });
+    if (label) fireEvent.change(screen.getByLabelText('Link label (optional)'), { target: { value: label } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add link' }));
+  };
+
+  test('pasting a URL and clicking Add link adds it to the song', () => {
+    const { onSetStreamingLinks } = renderForm();
+    addLink('https://radiohead.bandcamp.com/track/creep');
+    expect(onSetStreamingLinks).toHaveBeenCalledWith([{ url: 'https://radiohead.bandcamp.com/track/creep' }]);
+  });
+
+  test('a label typed with the URL is kept', () => {
+    const { onSetStreamingLinks } = renderForm();
+    addLink('https://www.youtube.com/watch?v=abc', 'Live 1985');
+    expect(onSetStreamingLinks).toHaveBeenCalledWith([{ url: 'https://www.youtube.com/watch?v=abc', label: 'Live 1985' }]);
+  });
+
+  test('a link without a label is named after its site', () => {
+    renderForm({ streamingLinks: [
+      { url: 'https://youtu.be/XFkzRNyygfk' },
+      { url: 'https://radiohead.bandcamp.com/track/creep' },
+      { url: 'https://www.ultimate-guitar.com/tab/123' },
+      { url: 'https://open.spotify.com/track/abc', label: 'Studio' },
+    ] });
+    expect(screen.getByRole('link', { name: 'YouTube' })).toHaveAttribute('href', 'https://youtu.be/XFkzRNyygfk');
+    expect(screen.getByRole('link', { name: 'Bandcamp' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'ultimate-guitar.com' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Studio' })).toBeInTheDocument();
+  });
+
+  test('a link opens in a new tab without giving the site access to the app', () => {
+    renderForm({ streamingLinks: [{ url: 'https://youtu.be/XFkzRNyygfk' }] });
+    const link = screen.getByRole('link', { name: 'YouTube' });
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  test.each([
+    ['a javascript: link', 'javascript:alert(1)', '', /http:\/\/ or https:\/\//],
+    ['a data: link', 'data:text/html,hi', '', /http:\/\/ or https:\/\//],
+    ['a URL over 2048 characters', `https://a.example/${'x'.repeat(2031)}`, '', /at most 2048/],
+    ['a label over 100 characters', 'https://a.example', 'x'.repeat(101), /at most 100/],
+  ])('%s is refused with a message', (_name, url, label, message) => {
+    const { onSetStreamingLinks } = renderForm();
+    addLink(url, label);
+    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    expect(onSetStreamingLinks).not.toHaveBeenCalled();
+  });
+
+  test('an 11th link is refused with a message', () => {
+    const ten = Array.from({ length: 10 }, (_, i) => ({ url: `https://a.example/${i}` }));
+    const { onSetStreamingLinks } = renderForm({ streamingLinks: ten });
+    addLink('https://a.example/11');
+    expect(screen.getByRole('alert')).toHaveTextContent(/at most 10 links/);
+    expect(onSetStreamingLinks).not.toHaveBeenCalled();
+  });
+
+  test('✕ removes a link', () => {
+    const { onSetStreamingLinks } = renderForm({ streamingLinks: [{ url: 'https://youtu.be/a' }, { url: 'https://a.example/b' }] });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove YouTube link' }));
+    expect(onSetStreamingLinks).toHaveBeenCalledWith([{ url: 'https://a.example/b' }]);
+  });
 });

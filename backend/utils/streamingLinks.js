@@ -1,0 +1,31 @@
+// Streaming links of a song (#35). A Songlist song holds a free list of personal links,
+// plus the ones copied from the Catalog (marked source: "catalog"). null or absent means
+// none. Each check returns a message naming the first problem, or null when valid.
+const MAX_SONGLIST_LINKS = 10;
+const MAX_URL_LENGTH = 2048;
+const MAX_LABEL_LENGTH = 100;
+
+function linkError(link) {
+  if (typeof link !== 'object' || link === null || Array.isArray(link)) return 'Each streaming link must be an object';
+  if (typeof link.url !== 'string' || !/^https?:\/\//i.test(link.url)) return 'A streaming link must start with http:// or https://';
+  if (link.url.length > MAX_URL_LENGTH) return `A streaming link must be at most ${MAX_URL_LENGTH} characters`;
+  if (link.label !== undefined && link.label !== null) {
+    if (typeof link.label !== 'string') return 'A streaming link label must be text';
+    if (link.label.length > MAX_LABEL_LENGTH) return `A streaming link label must be at most ${MAX_LABEL_LENGTH} characters`;
+  }
+  if (link.source !== undefined && link.source !== 'catalog') return 'Unknown streaming link source';
+  return null;
+}
+
+function songlistLinksError(links) {
+  if (links === undefined || links === null) return null;
+  if (!Array.isArray(links)) return 'Streaming links must be a list';
+  if (links.length > MAX_SONGLIST_LINKS) return `A song can have at most ${MAX_SONGLIST_LINKS} streaming links`;
+  for (const link of links) {
+    const error = linkError(link);
+    if (error) return error;
+  }
+  return null;
+}
+
+module.exports = { songlistLinksError };

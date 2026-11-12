@@ -10,6 +10,8 @@ import { DuplicateBanner } from './DuplicateBanner';
 import { keyOptions, timeSignatureOptions, modeOptions, genreOptions, languageOptions } from '../utils/songFieldOptions';
 import { handleComboKeyDown, useScrollHighlightIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { AutocompleteInput } from './AutocompleteInput';
+import { StreamingLinksEditor } from './StreamingLinksEditor';
+import type { StreamingLink } from '../utils/streamingLinks';
 
 type Mode = 'add' | 'edit';
 
@@ -28,7 +30,7 @@ type SongFormProps = {
   onSetInstrumentTuning?: (instrumentType: string, tuning: string | null) => void;
   onToggleTechnique: (technique: string) => void;
   onSetInstrumentLinksForInstrument?: (instrumentType: string, links: Array<{ label?: string; url: string }>) => void;
-  onSetStreamingLinks?: (links: Array<{ label: string; url: string }>) => void;
+  onSetStreamingLinks?: (links: StreamingLink[]) => void;
   onSubmit: (e: React.FormEvent) => void;
   onDelete?: () => void;
   onMarkAsPlayedNow?: (instrumentType: string) => void;
@@ -147,39 +149,6 @@ export function SongForm(props: SongFormProps) {
             ))}
           </div>
         </>
-      )}
-      {form.streamingLinks && form.streamingLinks.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {form.streamingLinks.map((link, idx) => (
-              <div
-                key={`streaming-link-${link.url}-${link.label ?? ''}`}
-                className="inline-flex items-center gap-1 rounded-md bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-800 dark:text-blue-100"
-              >
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline truncate max-w-[20rem]"
-                  title={link.label || link.url}
-                >
-                  {link.label || link.url}
-                </a>
-                <button
-                  type="button"
-                  className="ml-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800 px-1"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const updatedLinks = (form.streamingLinks || []).filter((_, i) => i !== idx);
-                    onSetStreamingLinks?.(updatedLinks);
-                  }}
-                  title="Remove link"
-                  disabled={loading}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
       )}
       <div>
         <label htmlFor="song-artist" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Artist</label>
@@ -518,6 +487,11 @@ export function SongForm(props: SongFormProps) {
           </div>
         )}
       </div>
+      <StreamingLinksEditor
+        links={form.streamingLinks || []}
+        onChange={(links) => onSetStreamingLinks?.(links)}
+        disabled={loading}
+      />
       <div>
         <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</span>
         <SongFormInstruments

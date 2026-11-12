@@ -1,6 +1,7 @@
 const { Song, SongPlay, PracticeSession, SessionItem, Instrument, CatalogSong, sequelize } = require('../models');
 const { Op, fn, col, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
+const { songlistLinksError } = require('../utils/streamingLinks');
 const logger = require('../logger');
 const { fetchSongMetadata } = require('../services/songMetadataService');
 // Shared FR19 day-validation helpers (same definition as the session controller)
@@ -176,6 +177,9 @@ const createSong = async (req, res, next) => {
 
     const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body || {};
 
+    const linksError = songlistLinksError(streamingLinks);
+    if (linksError) return next(createError(400, linksError));
+
     normalizedTitle = normalizeText(title);
 
     // Trim before the required check so a whitespace-only title is a 400, not a
@@ -259,6 +263,9 @@ const updateSong = async (req, res, next) => {
     }
 
     const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body || {};
+
+    const linksError = songlistLinksError(streamingLinks);
+    if (linksError) return next(createError(400, linksError));
 
     normalizedTitle = normalizeText(title);
     normalizedArtist = normalizeText(artist);
