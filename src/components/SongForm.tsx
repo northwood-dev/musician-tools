@@ -232,7 +232,7 @@ export function SongForm(props: SongFormProps) {
           onClick={onAutoFillMetadata}
           disabled={loading || metadataLoading || !form.title || !form.artist}
         >
-          {metadataLoading ? 'Auto-filling...' : 'Auto-fill metadata & links'}
+          {metadataLoading ? 'Auto-filling...' : 'Auto-fill metadata'}
         </button>
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {metadataSource ? `Metadata found: ${metadataSource}` : 'Title + artist required'}

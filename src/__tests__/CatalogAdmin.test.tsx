@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within, act } from '@testing-librar
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogAdmin from '../pages/CatalogAdmin';
 import { useAuth } from '../contexts/AuthContext';
+import { songService } from '../services/songService';
 import { catalogService, CatalogConflictError, CatalogNotFoundError } from '../services/catalogService';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
@@ -308,4 +309,16 @@ describe('#52: a failed duplicate check', () => {
 
     expect(cat.updateCatalogEntry).toHaveBeenLastCalledWith('c1', expect.objectContaining({ album: 'No Need to Argue' }));
   });
+});
+
+test('auto-fill fills metadata but adds no streaming link (#107)', async () => {
+  mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
+  cat.getCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Creep', artist: 'Radiohead', publishedAt: null, streamingLinks: [] });
+  (songService.lookupMetadata as jest.Mock).mockResolvedValue({ source: 'lastfm', album: 'Pablo Honey' });
+  renderAt('/catalog/admin/c1');
+
+  fireEvent.click(await screen.findByRole('button', { name: /Auto-fill/ }));
+
+  await waitFor(() => expect(screen.getByLabelText('Album')).toHaveValue('Pablo Honey'));
+  expect(screen.queryByRole('button', { name: /^Remove .* link$/ })).toBeNull();
 });

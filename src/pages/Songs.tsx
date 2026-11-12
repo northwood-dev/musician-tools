@@ -1528,7 +1528,6 @@ function Songs() {
     }));
   };
 
-  // Removed unused handleFetchStreamingLinks
 
   // Opens a song in the edit form. `fromDuplicate` is set when navigating here
   // from the add form's "already exists" link, so the edit screen can remind the
@@ -1608,21 +1607,6 @@ function Songs() {
     setDeleteMode('multiple');
   };
 
-  const generateStreamingLinks = (title: string, artist: string) => {
-    const searchQuery = `${artist || ''} ${title || ''}`.trim();
-    if (!searchQuery) return [];
-    
-    const links = [
-      { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
-      { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
-      { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
-      { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
-      { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
-      { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` }
-    ];
-    return links;
-  };
-
   const handleConfirmDeleteSelected = async () => {
     try {
       setLoading(true);
@@ -1659,13 +1643,6 @@ function Songs() {
       console.log('>>> Frontend: Metadata response:', meta);
       setMetadataSource(meta?.source || null);
 
-      // Generate streaming links regardless of metadata found
-      const newStreamingLinks = generateStreamingLinks(form.title.trim(), form.artist.trim());
-      const currentStreamingLinks = form.streamingLinks || [];
-      const existingUrls = new Set(currentStreamingLinks.map(l => l.url));
-      const linksToAdd = newStreamingLinks.filter(link => !existingUrls.has(link.url));
-      const mergedStreamingLinks = [...currentStreamingLinks, ...linksToAdd];
-
       // Check if meta has any useful data
       const hasUsefulData = meta && (
         meta.bpm || meta.key || meta.mode || meta.timeSignature || meta.album || meta.durationSeconds ||
@@ -1673,14 +1650,7 @@ function Songs() {
       );
 
       if (!meta || (!hasUsefulData && meta.source === 'none')) {
-        console.log('>>> Frontend: No metadata found, but adding streaming links');
         showToast('No metadata found online.');
-        
-        // Still add streaming links even if no metadata
-        setForm(prev => ({
-          ...prev,
-          streamingLinks: mergedStreamingLinks,
-        }));
         return;
       }
 
@@ -1703,7 +1673,6 @@ function Songs() {
         album: prev.album || meta.album || '',
         durationSeconds: prev.durationSeconds ?? meta.durationSeconds,
         genre: mergedGenres,
-        streamingLinks: mergedStreamingLinks,
       }));
     } catch (err) {
       console.error('>>> Frontend: Error during lookup:', err);

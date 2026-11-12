@@ -18,7 +18,6 @@ import { Toast } from '../components/Toast';
 // (DL-17) — no instrument/personal fields. Auto-fill reuses songService.lookupMetadata
 // and merges NON-destructively (never overwrites a typed value).
 
-type StreamingLink = { label: string; url: string };
 
 const emptyForm: CreateCatalogDTO = {
   title: '',
@@ -34,21 +33,6 @@ const emptyForm: CreateCatalogDTO = {
   streamingLinks: [],
   pitchStandard: 440,
 };
-
-// Local mirror of Songs.tsx's link generator (client-side, no network) — replicated
-// rather than importing (it lives inline in a 1800-line page). Keep in sync if it moves.
-function generateStreamingLinks(title: string, artist: string): StreamingLink[] {
-  const searchQuery = `${artist || ''} ${title || ''}`.trim();
-  if (!searchQuery) return [];
-  return [
-    { label: 'YouTube', url: `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}` },
-    { label: 'Spotify', url: `https://open.spotify.com/search/${encodeURIComponent(searchQuery)}` },
-    { label: 'Apple Music', url: `https://music.apple.com/us/search?term=${encodeURIComponent(searchQuery)}` },
-    { label: 'Deezer', url: `https://www.deezer.com/search/${encodeURIComponent(searchQuery)}` },
-    { label: 'Tidal', url: `https://tidal.com/search?q=${encodeURIComponent(searchQuery)}&types=TRACKS` },
-    { label: 'Qobuz', url: `https://www.qobuz.com/us-en/search?q=${encodeURIComponent(searchQuery)}` },
-  ];
-}
 
 // Normalize a genre/language field (string[] | string | null) to an array.
 const asArr = (value: string[] | string | null | undefined): string[] =>
@@ -305,14 +289,9 @@ export default function CatalogAdmin() {
       const meta = await songService.lookupMetadata(title, artist);
       setMetadataSource(meta?.source || null);
 
-      // Links are generated regardless of metadata; merge inside the functional
-      // updater against prev (not the render closure) so a link removed during the
-      // await is not resurrected. Tolerant of a metadata-less (null) response.
-      const generated = generateStreamingLinks(title, artist);
+      // Merge inside the functional updater against prev (not the render closure), and
+      // tolerate a metadata-less (null) response. Auto-fill adds no streaming link (#35).
       setForm(prev => {
-        const current = prev.streamingLinks || [];
-        const existingUrls = new Set(current.map(l => l.url));
-        const streamingLinks = [...current, ...generated.filter(l => !existingUrls.has(l.url))];
         return {
           ...prev,
           bpm: prev.bpm ?? meta?.bpm ?? null,
@@ -324,7 +303,6 @@ export default function CatalogAdmin() {
           genre: (Array.isArray(prev.genre) && prev.genre.length > 0)
             ? prev.genre
             : (Array.isArray(meta?.genres) && meta.genres.length > 0 ? meta.genres : prev.genre),
-          streamingLinks,
         };
       });
     } catch {
@@ -487,7 +465,7 @@ export default function CatalogAdmin() {
             onClick={handleAutoFill}
             disabled={metadataLoading || publishing || !(form.title || '').trim() || !(form.artist || '').trim()}
           >
-            {metadataLoading ? 'Auto-filling…' : 'Auto-fill metadata & links'}
+            {metadataLoading ? 'Auto-filling…' : 'Auto-fill metadata'}
           </button>
           {metadataSource && <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">source: {metadataSource}</span>}
         </div>
