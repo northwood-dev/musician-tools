@@ -130,3 +130,10 @@ test('beforeRefresh returning false CANCELS the refresh (unsaved edits kept)', a
   expect(svc.refreshSongFromCatalog).not.toHaveBeenCalled(); // never reached the POST
   expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument(); // still offered
 });
+
+test('the refresh dialog says your own links are kept (#35)', async () => {
+  svc.getSong.mockResolvedValue(songWith({ uid: 'cat-1', updatedAt: '2026-06-01', drift: true }) as Song);
+  renderBanner();
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }));
+  expect(await screen.findByText(/Update key, BPM/)).toHaveTextContent('Your instrument, tuning, notes and your own links are kept.');
+});
