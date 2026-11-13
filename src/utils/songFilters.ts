@@ -2,6 +2,7 @@ import type { Playlist } from '../services/playlistService';
 import type { Song } from '../services/songService';
 import type { ArtistAlias } from '../services/artistAliasService';
 import { songSearchMatcher } from './songSearch';
+import { instrumentsOf } from './songInstruments';
 
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
@@ -116,9 +117,7 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
 
     const isNoInstrument = instrumentFilter === NO_INSTRUMENT;
     const selected = instrumentFilter && !isNoInstrument ? [instrumentFilter] : [];
-    const songInstruments = Array.isArray(song.instrument)
-      ? song.instrument
-      : (song.instrument ? [song.instrument] : []);
+    const songInstruments = instrumentsOf(song);
     const passesInstrument = isNoInstrument
       ? songInstruments.length === 0
       : (selected.length === 0 ||
