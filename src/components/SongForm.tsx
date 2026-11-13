@@ -59,6 +59,7 @@ const getAvailableTechniques = (instrumentType: string) => {
 
 export function SongForm(props: SongFormProps) {
   const { mode, form, loading, onChange, onSetDurationSeconds, onChangeInstruments, onSetTechniques, onToggleGenre, onToggleLanguage, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata, duplicate = null, onEditDuplicate } = props;
+  // Passes only the field so the memo depends on form.instrument alone, not on the whole form.
   const currentInstruments = useMemo(() => instrumentsOf({ instrument: form.instrument }), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
   const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
