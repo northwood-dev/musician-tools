@@ -1129,3 +1129,52 @@ describe('the 10-link cap counts personal links only (#35 review)', () => {
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
   });
 });
+
+describe('instrument links are checked (#113)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const create = async (instrumentLinks) => {
+    const next = mockNext();
+    await controller.createSong({ session: { user: 'user-1' }, body: { title: 'Creep', instrumentLinks } }, mockRes(), next);
+    return next;
+  };
+  const lesson = (over = {}) => ({ url: 'https://youtu.be/lesson', label: 'Lesson', ...over });
+
+  const INVALID = [
+    ['a javascript: link', { Guitar: [lesson({ url: 'javascript:alert(1)' })] }],
+    ['an URL over 2048 characters', { Guitar: [lesson({ url: `https://a.example/${'x'.repeat(2031)}` })] }],
+    ['a label over 100 characters', { Guitar: [lesson({ label: 'x'.repeat(101) })] }],
+    ['a label that is not text', { Guitar: [lesson({ label: 3 })] }],
+    ['an 11th link on one instrument', { Guitar: Array.from({ length: 11 }, (_, i) => lesson({ url: `https://a.example/${i}` })) }],
+    ['a field that is not an object', [lesson()]],
+    ['an instrument whose value is not a list', { Guitar: lesson() }],
+    ['an instrument name over 50 characters', { ['G'.repeat(51)]: [lesson()] }],
+    ['a link with a source (instrument links never come from the Catalog)', { Guitar: [lesson({ source: 'catalog' })] }],
+  ];
+
+  test.each(INVALID)('%s is refused with 400 and nothing is stored', async (_name, instrumentLinks) => {
+    const next = await create(instrumentLinks);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  test('10 links on each of two instruments, at the length limits, are stored as given', async () => {
+    const ten = (p) => Array.from({ length: 10 }, (_, i) => ({ url: `https://a.example/${p}${i}` }));
+    const instrumentLinks = {
+      Guitar: [lesson({ url: `https://a.example/${'x'.repeat(2030)}`, label: 'x'.repeat(100) }), ...ten('g').slice(1)],
+      ['B'.repeat(50)]: ten('b'),
+    };
+    const next = await create(instrumentLinks);
+    expect(next).not.toHaveBeenCalled();
+    expect(Song.create).toHaveBeenCalledWith(expect.objectContaining({ instrumentLinks }));
+  });
+
+  test.each(INVALID)('on update, %s is refused with 400 and the song is untouched', async (_name, instrumentLinks) => {
+    const song = ownedSong();
+    Song.findOne.mockResolvedValue(song);
+    const next = mockNext();
+    await controller.updateSong({ session: { user: 'user-1' }, params: { uid: song.uid }, body: { instrumentLinks } }, mockRes(), next);
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
+    expect(song.update).not.toHaveBeenCalled();
+  });
+});

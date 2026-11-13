@@ -1,19 +1,41 @@
-// Streaming links of a song (#35). A Songlist song holds a free list of personal links,
-// plus the ones copied from the Catalog (marked source: "catalog"). null or absent means
-// none. Each check returns a message naming the first problem, or null when valid.
+// Links of a song (#35, #111). A Songlist song holds a free list of personal streaming links,
+// plus the ones copied from the Catalog (marked source: "catalog"), and per-instrument resource
+// links. null or absent means none. Each check returns a message naming the first problem, or
+// null when valid.
 const MAX_SONGLIST_LINKS = 10;
+const MAX_INSTRUMENT_LINKS = 10;
+const MAX_INSTRUMENT_NAME_LENGTH = 50;
 const MAX_URL_LENGTH = 2048;
 const MAX_LABEL_LENGTH = 100;
 
-function linkError(link) {
-  if (typeof link !== 'object' || link === null || Array.isArray(link)) return 'Each streaming link must be an object';
-  if (typeof link.url !== 'string' || !/^https?:\/\//i.test(link.url)) return 'A streaming link must start with http:// or https://';
-  if (link.url.length > MAX_URL_LENGTH) return `A streaming link must be at most ${MAX_URL_LENGTH} characters`;
+// One link { url, label? }. `noun` names it in the message; only streaming links may carry a
+// source (instrument links never come from the Catalog).
+function linkError(link, { noun = 'streaming link', allowSource = true } = {}) {
+  if (typeof link !== 'object' || link === null || Array.isArray(link)) return `Each ${noun} must be an object`;
+  if (typeof link.url !== 'string' || !/^https?:\/\//i.test(link.url)) return `A ${noun} must start with http:// or https://`;
+  if (link.url.length > MAX_URL_LENGTH) return `A ${noun} must be at most ${MAX_URL_LENGTH} characters`;
   if (link.label !== undefined && link.label !== null) {
-    if (typeof link.label !== 'string') return 'A streaming link label must be text';
-    if (link.label.length > MAX_LABEL_LENGTH) return `A streaming link label must be at most ${MAX_LABEL_LENGTH} characters`;
+    if (typeof link.label !== 'string') return `A ${noun} label must be text`;
+    if (link.label.length > MAX_LABEL_LENGTH) return `A ${noun} label must be at most ${MAX_LABEL_LENGTH} characters`;
   }
-  if (link.source !== undefined && link.source !== 'catalog') return 'Unknown streaming link source';
+  if (link.source !== undefined && !(allowSource && link.source === 'catalog')) return `Unknown ${noun} source`;
+  return null;
+}
+
+// Resource links per instrument (#111): { "<instrument>": [{ url, label? }] }. The instrument
+// name is not checked against the song's instruments.
+function instrumentLinksError(field) {
+  if (field === undefined || field === null) return null;
+  if (typeof field !== 'object' || Array.isArray(field)) return 'Instrument links must be an object';
+  for (const [instrument, links] of Object.entries(field)) {
+    if (instrument.length > MAX_INSTRUMENT_NAME_LENGTH) return `An instrument name must be at most ${MAX_INSTRUMENT_NAME_LENGTH} characters`;
+    if (!Array.isArray(links)) return `The links of ${instrument} must be a list`;
+    if (links.length > MAX_INSTRUMENT_LINKS) return `An instrument can have at most ${MAX_INSTRUMENT_LINKS} links`;
+    for (const link of links) {
+      const error = linkError(link, { noun: 'link', allowSource: false });
+      if (error) return error;
+    }
+  }
   return null;
 }
 
@@ -82,4 +104,4 @@ function refreshedLinks(copyLinks, catalogLinks) {
   return links.length > 0 ? links : null;
 }
 
-module.exports = { songlistLinksError, catalogLinksError, refreshedLinks };
+module.exports = { songlistLinksError, catalogLinksError, refreshedLinks, instrumentLinksError };
