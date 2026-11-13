@@ -319,7 +319,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                       type="text"
                       placeholder="Label (optional)"
                       value={(newLinkInputs[instrumentType]?.label) || ''}
-                      onChange={(e) => setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), label: e.target.value } }))}
+                      onChange={(e) => { setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), label: e.target.value } })); setLinkErrors(prev => ({ ...prev, [instrumentType]: null })); }}
                       disabled={loading}
                     />
                     <div className="flex gap-2">
@@ -328,7 +328,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                         type="url"
                         placeholder="https://example.com"
                         value={(newLinkInputs[instrumentType]?.url) || ''}
-                        onChange={(e) => setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), url: e.target.value } }))}
+                        onChange={(e) => { setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), url: e.target.value } })); setLinkErrors(prev => ({ ...prev, [instrumentType]: null })); }}
                         disabled={loading}
                       />
                       <button

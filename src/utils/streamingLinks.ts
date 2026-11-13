@@ -7,6 +7,7 @@ export type StreamingLink = { url: string; label?: string | null; source?: 'cata
 export const MAX_SONGLIST_LINKS = 10;
 export const MAX_URL_LENGTH = 2048;
 export const MAX_LABEL_LENGTH = 100;
+const MAX_INSTRUMENT_LINKS = 10;
 
 const KNOWN_SITES: Array<[RegExp, string]> = [
   [/(^|\.)youtube\.com$|^youtu\.be$/, 'YouTube'],
@@ -49,8 +50,6 @@ export function songlistLinkError(url: string, label: string, ownCount: number):
   return linkError(url, label)
     ?? (ownCount >= MAX_SONGLIST_LINKS ? `A song can have at most ${MAX_SONGLIST_LINKS} links of your own` : null);
 }
-
-export const MAX_INSTRUMENT_LINKS = 10;
 
 /** Why a resource link can't be added to an instrument that already has `count` links, or null. */
 export function instrumentLinkError(url: string, label: string, count: number): string | null {

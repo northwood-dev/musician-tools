@@ -90,6 +90,7 @@ test('Bass tunings include the half-step-down 4- and 5-string options (16.2)', (
   expect(values.indexOf('EbAbDbGb')).toBeGreaterThan(values.indexOf('DADG'));
   expect(values.indexOf('BbEbAbDbGb')).toBeLessThan(values.indexOf('Other'));
 });
+
 describe('instrument links are checked (#113)', () => {
   const addLink = (url: string, label = '') => {
     if (label) fireEvent.change(screen.getByPlaceholderText('Label (optional)'), { target: { value: label } });
@@ -113,6 +114,14 @@ describe('instrument links are checked (#113)', () => {
     addLink(url, label);
     expect(screen.getByRole('alert')).toHaveTextContent(message);
     expect(props.onSetInstrumentLinksForInstrument).not.toHaveBeenCalled();
+  });
+
+  test('the message clears as soon as the user edits the link', () => {
+    renderInstrument({ onSetInstrumentLinksForInstrument: jest.fn() });
+    addLink('javascript:alert(1)');
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('https://example.com'), { target: { value: 'https://youtu.be/x' } });
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   test('an 11th link on one instrument is refused', () => {

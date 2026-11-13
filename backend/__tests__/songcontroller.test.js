@@ -1140,7 +1140,7 @@ describe('instrument links are checked (#113)', () => {
   };
   const lesson = (over = {}) => ({ url: 'https://youtu.be/lesson', label: 'Lesson', ...over });
 
-  test.each([
+  const INVALID = [
     ['a javascript: link', { Guitar: [lesson({ url: 'javascript:alert(1)' })] }],
     ['an URL over 2048 characters', { Guitar: [lesson({ url: `https://a.example/${'x'.repeat(2031)}` })] }],
     ['a label over 100 characters', { Guitar: [lesson({ label: 'x'.repeat(101) })] }],
@@ -1149,7 +1149,10 @@ describe('instrument links are checked (#113)', () => {
     ['a field that is not an object', [lesson()]],
     ['an instrument whose value is not a list', { Guitar: lesson() }],
     ['an instrument name over 50 characters', { ['G'.repeat(51)]: [lesson()] }],
-  ])('%s is refused with 400 and nothing is stored', async (_name, instrumentLinks) => {
+    ['a link with a source (instrument links never come from the Catalog)', { Guitar: [lesson({ source: 'catalog' })] }],
+  ];
+
+  test.each(INVALID)('%s is refused with 400 and nothing is stored', async (_name, instrumentLinks) => {
     const next = await create(instrumentLinks);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
     expect(Song.create).not.toHaveBeenCalled();
@@ -1166,14 +1169,11 @@ describe('instrument links are checked (#113)', () => {
     expect(Song.create).toHaveBeenCalledWith(expect.objectContaining({ instrumentLinks }));
   });
 
-  test('an update with a javascript: link is refused with 400 and the song is untouched', async () => {
+  test.each(INVALID)('on update, %s is refused with 400 and the song is untouched', async (_name, instrumentLinks) => {
     const song = ownedSong();
     Song.findOne.mockResolvedValue(song);
     const next = mockNext();
-    await controller.updateSong(
-      { session: { user: 'user-1' }, params: { uid: song.uid }, body: { instrumentLinks: { Bass: [lesson({ url: 'javascript:alert(1)' })] } } },
-      mockRes(), next,
-    );
+    await controller.updateSong({ session: { user: 'user-1' }, params: { uid: song.uid }, body: { instrumentLinks } }, mockRes(), next);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
     expect(song.update).not.toHaveBeenCalled();
   });

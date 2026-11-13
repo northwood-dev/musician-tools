@@ -92,7 +92,11 @@ export function SongForm(props: SongFormProps) {
   // artist/album comboboxes are now the shared <AutocompleteInput> (story 19.11) —
   // their open/highlight state + scroll-into-view live inside that component.
   // removed unused availableTechniques and filteredMyInstruments
-  const allInstrumentLinks = Object.entries(form.instrumentLinks || {}).flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })));
+  // Only http(s) links reach the bar (#114): React blocks javascript: in an href but not data:, and
+  // links stored before #113 were never checked.
+  const allInstrumentLinks = Object.entries(form.instrumentLinks || {})
+    .flatMap(([type, arr]) => (arr || []).map(l => ({ type, url: l.url, label: l.label })))
+    .filter(l => /^https?:\/\//i.test(l.url || ''));
 
   useEffect(() => {
     // Filter out techniques that are not available for any of the current instruments

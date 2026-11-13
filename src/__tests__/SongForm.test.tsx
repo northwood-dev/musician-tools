@@ -367,3 +367,10 @@ test('the Links bar opens instrument links in a new tab without access to the ap
   expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   expect(link).toHaveTextContent('Guitar');
 });
+
+test('the Links bar never shows a stored link that is not http(s) (#114)', () => {
+  renderForm({ instrumentLinks: { Guitar: [{ url: 'data:text/html,hi', label: 'Bad' }, { url: 'https://youtu.be/ok', label: 'Good' }] } });
+  expect(screen.queryByRole('link', { name: /Bad/ })).toBeNull();
+  expect(screen.queryByText('Bad', { selector: '.truncate' })).toBeNull();
+  expect(screen.getByRole('link', { name: /Good/ })).toHaveAttribute('href', 'https://youtu.be/ok');
+});
