@@ -1,4 +1,5 @@
-// Streaming links of a song (#35). Mirrors the backend rules (backend/utils/streamingLinks.js):
+// Links of a song: streaming links (#35) and instrument links (#111). Mirrors the backend rules
+// (backend/utils/streamingLinks.js):
 // the API refuses what these refuse, the form only says it first.
 
 export type StreamingLink = { url: string; label?: string | null; source?: 'catalog' };
@@ -32,16 +33,29 @@ export function linkName(link: StreamingLink): string {
   return link.label || siteName(link.url);
 }
 
+// One link { url, label? } (#35, #111): the rules shared by streaming and instrument links.
+function linkError(url: string, label: string): string | null {
+  if (!/^https?:\/\//i.test(url)) return 'A link must start with http:// or https://';
+  if (url.length > MAX_URL_LENGTH) return `A link must be at most ${MAX_URL_LENGTH} characters`;
+  if (label.length > MAX_LABEL_LENGTH) return `A label must be at most ${MAX_LABEL_LENGTH} characters`;
+  return null;
+}
+
 /**
  * Why a link can't be added to a Songlist song that already has `ownCount` links of the
  * user's own, or null. Catalog links don't count: they come on top (one per platform).
  */
 export function songlistLinkError(url: string, label: string, ownCount: number): string | null {
-  if (!/^https?:\/\//i.test(url)) return 'A link must start with http:// or https://';
-  if (url.length > MAX_URL_LENGTH) return `A link must be at most ${MAX_URL_LENGTH} characters`;
-  if (label.length > MAX_LABEL_LENGTH) return `A label must be at most ${MAX_LABEL_LENGTH} characters`;
-  if (ownCount >= MAX_SONGLIST_LINKS) return `A song can have at most ${MAX_SONGLIST_LINKS} links of your own`;
-  return null;
+  return linkError(url, label)
+    ?? (ownCount >= MAX_SONGLIST_LINKS ? `A song can have at most ${MAX_SONGLIST_LINKS} links of your own` : null);
+}
+
+export const MAX_INSTRUMENT_LINKS = 10;
+
+/** Why a resource link can't be added to an instrument that already has `count` links, or null. */
+export function instrumentLinkError(url: string, label: string, count: number): string | null {
+  return linkError(url, label)
+    ?? (count >= MAX_INSTRUMENT_LINKS ? `An instrument can have at most ${MAX_INSTRUMENT_LINKS} links` : null);
 }
 
 // The Catalog's official links (#109): one per platform, each a track or video of that

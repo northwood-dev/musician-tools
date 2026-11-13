@@ -90,3 +90,36 @@ test('Bass tunings include the half-step-down 4- and 5-string options (16.2)', (
   expect(values.indexOf('EbAbDbGb')).toBeGreaterThan(values.indexOf('DADG'));
   expect(values.indexOf('BbEbAbDbGb')).toBeLessThan(values.indexOf('Other'));
 });
+describe('instrument links are checked (#113)', () => {
+  const addLink = (url: string, label = '') => {
+    if (label) fireEvent.change(screen.getByPlaceholderText('Label (optional)'), { target: { value: label } });
+    fireEvent.change(screen.getByPlaceholderText('https://example.com'), { target: { value: url } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add link' }));
+  };
+
+  test('a valid link is added to the instrument', () => {
+    const props = renderInstrument({ onSetInstrumentLinksForInstrument: jest.fn() });
+    addLink('https://youtu.be/lesson', 'Lesson');
+    expect(props.onSetInstrumentLinksForInstrument).toHaveBeenCalledWith('Guitar', [{ url: 'https://youtu.be/lesson', label: 'Lesson' }]);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  test.each([
+    ['a javascript: link', 'javascript:alert(1)', '', /http:\/\/ or https:\/\//],
+    ['an URL over 2048 characters', `https://a.example/${'x'.repeat(2031)}`, '', /at most 2048/],
+    ['a label over 100 characters', 'https://a.example', 'x'.repeat(101), /at most 100/],
+  ])('%s shows a message and adds nothing', (_name, url, label, message) => {
+    const props = renderInstrument({ onSetInstrumentLinksForInstrument: jest.fn() });
+    addLink(url, label);
+    expect(screen.getByRole('alert')).toHaveTextContent(message);
+    expect(props.onSetInstrumentLinksForInstrument).not.toHaveBeenCalled();
+  });
+
+  test('an 11th link on one instrument is refused', () => {
+    const ten = Array.from({ length: 10 }, (_, i) => ({ url: `https://a.example/${i}` }));
+    const props = renderInstrument({ instrumentLinks: { Guitar: ten }, onSetInstrumentLinksForInstrument: jest.fn() });
+    addLink('https://a.example/11');
+    expect(screen.getByRole('alert')).toHaveTextContent(/at most 10 links/);
+    expect(props.onSetInstrumentLinksForInstrument).not.toHaveBeenCalled();
+  });
+});

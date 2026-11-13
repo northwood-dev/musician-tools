@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { SongPlay } from '../services/songPlayService';
 import { instrumentTechniquesMap, instrumentTuningsMap } from '../constants/instrumentTypes';
+import { instrumentLinkError } from '../utils/streamingLinks';
 
 interface SongFormInstrumentsProps {
   // Instruments data
@@ -79,6 +80,8 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
   } = props;
 
   const [newLinkInputs, setNewLinkInputs] = useState<Record<string, { label: string; url: string }>>({});
+  // Why the last link typed for an instrument was refused (#111), shown under its link fields.
+  const [linkErrors, setLinkErrors] = useState<Record<string, string | null>>({});
   const [hoveredDifficulty, setHoveredDifficulty] = useState<Record<string, number | null>>({});
 
   return (
@@ -337,6 +340,12 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                           if (!url) return;
                           const label = (val.label || '').trim();
                           const currentLinks = instrumentLinks?.[instrumentType] ?? [];
+                          const problem = instrumentLinkError(url, label, currentLinks.length);
+                          if (problem) {
+                            setLinkErrors(prev => ({ ...prev, [instrumentType]: problem }));
+                            return;
+                          }
+                          setLinkErrors(prev => ({ ...prev, [instrumentType]: null }));
                           const nextLinks = [...currentLinks, { url, label: label || undefined }];
                           if (onSetInstrumentLinksForInstrument) {
                             onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
@@ -348,6 +357,9 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                         Add link
                       </button>
                     </div>
+                    {linkErrors[instrumentType] && (
+                      <p role="alert" className="text-sm text-red-600 dark:text-red-400">{linkErrors[instrumentType]}</p>
+                    )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">Add resources for this instrument (videos, tabs, lessons).</p>
                   </div>
                 </div>
