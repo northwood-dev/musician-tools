@@ -132,20 +132,18 @@ export function SongForm(props: SongFormProps) {
           <div className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Links</div>
           <div className="flex flex-wrap gap-2">
             {allInstrumentLinks.map((lnk) => (
-              <button
+              // A real link (#114): opens in a new tab with no handle on the app (noopener).
+              <a
                 key={`quick-link-${lnk.url}-${lnk.label ?? ''}`}
-                type="button"
-                className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                onClick={() => {
-                  if (lnk.url && (lnk.url.startsWith('http://') || lnk.url.startsWith('https://'))) {
-                    window.open(lnk.url, '_blank');
-                  }
-                }}
+                href={lnk.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600"
                 title={`${lnk.label || lnk.url} • ${lnk.type}`}
               >
                 <span className="mr-2 inline-flex items-center rounded bg-white/20 px-2 py-0.5 text-xs">{lnk.type}</span>
                 <span className="truncate max-w-[12rem]">{lnk.label || lnk.url}</span>
-              </button>
+              </a>
             ))}
           </div>
         </>

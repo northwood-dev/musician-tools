@@ -358,3 +358,12 @@ describe('Catalog links in a Songlist song (#110)', () => {
     expect(onSetStreamingLinks).toHaveBeenCalledWith([mine]);
   });
 });
+
+test('the Links bar opens instrument links in a new tab without access to the app (#114)', () => {
+  renderForm({ instrumentLinks: { Guitar: [{ url: 'https://youtu.be/lesson', label: 'Lesson' }] } });
+  const link = screen.getByRole('link', { name: /Lesson/ });
+  expect(link).toHaveAttribute('href', 'https://youtu.be/lesson');
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  expect(link).toHaveTextContent('Guitar');
+});
