@@ -23,6 +23,7 @@ import { StickyActionBar } from '../components/StickyActionBar';
 import CatalogSourceBanner from '../components/CatalogSourceBanner';
 import { findDuplicateSong, songIdentityKey } from '../utils/songDuplicate';
 import { formatLocalDate } from '../utils/heatmap';
+import { instrumentsOf } from '../utils/songInstruments';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -803,7 +804,7 @@ function Songs() {
     const builtForm: CreateSongDTO = {
       ...song,
       capo: normalizeCapoValue(song.capo),
-      instrument: Array.isArray(song.instrument) ? song.instrument : (song.instrument ? [song.instrument] : []),
+      instrument: instrumentsOf(song),
       technique: Array.isArray(song.technique) ? song.technique : [],
       language: Array.isArray(song.language) ? song.language : (song.language ? [song.language] : []),
       genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
