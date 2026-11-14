@@ -3,6 +3,7 @@ import type { Song } from '../services/songService';
 import type { ArtistAlias } from '../services/artistAliasService';
 import { songSearchMatcher } from './songSearch';
 import { instrumentsOf } from './songInstruments';
+import { listOf } from './listOf';
 
 // Special `instrumentFilter` value: match only songs linked to no instrument (orphans).
 export const NO_INSTRUMENT = '__none__';
@@ -180,9 +181,7 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
         : selectedTech.some(t => songTechniques.includes(t)));
 
     const selectedGenres = Array.from(genreFilters);
-    const songGenres = Array.isArray(song.genre)
-      ? song.genre
-      : (song.genre ? [song.genre] : []);
+    const songGenres = listOf(song.genre);
     const passesGenre =
       selectedGenres.length === 0 ||
       (genreMatchMode === 'all'
@@ -211,9 +210,7 @@ export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[]
     const passesMode = !modeFilter || song.mode === modeFilter;
     
     const selectedLanguages = Array.from(languageFilters);
-    const songLanguages = Array.isArray(song.language)
-      ? song.language
-      : (song.language ? [song.language] : []);
+    const songLanguages = listOf(song.language);
     const passesLanguage =
       selectedLanguages.length === 0 ||
       (languageMatchMode === 'all'

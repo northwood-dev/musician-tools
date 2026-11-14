@@ -24,6 +24,7 @@ import CatalogSourceBanner from '../components/CatalogSourceBanner';
 import { findDuplicateSong, songIdentityKey } from '../utils/songDuplicate';
 import { formatLocalDate } from '../utils/heatmap';
 import { instrumentsOf } from '../utils/songInstruments';
+import { listOf } from '../utils/listOf';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -806,8 +807,8 @@ function Songs() {
       capo: normalizeCapoValue(song.capo),
       instrument: instrumentsOf(song),
       technique: Array.isArray(song.technique) ? song.technique : [],
-      language: Array.isArray(song.language) ? song.language : (song.language ? [song.language] : []),
-      genre: Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []),
+      language: listOf(song.language),
+      genre: listOf(song.genre),
     };
     setForm(builtForm);
     setEditBaselineJson(JSON.stringify(builtForm));
@@ -1285,7 +1286,7 @@ function Songs() {
 
   useEffect(() => {
     const languages = songs
-      .flatMap(song => Array.isArray(song.language) ? song.language : (song.language ? [song.language] : []))
+      .flatMap(song => listOf(song.language))
       .filter((language): language is string => !!language && language.trim() !== '')
       .reduce((unique, language) => {
         if (!unique.includes(language)) {
@@ -1299,7 +1300,7 @@ function Songs() {
 
   useEffect(() => {
     const genres = songs
-      .flatMap(song => Array.isArray(song.genre) ? song.genre : (song.genre ? [song.genre] : []))
+      .flatMap(song => listOf(song.genre))
       .filter((genre): genre is string => !!genre && genre.trim() !== '')
       .reduce((unique, genre) => {
         if (!unique.includes(genre)) {
@@ -1440,7 +1441,7 @@ function Songs() {
 
   const toggleFormGenre = (genre: string) => {
     setForm(prevForm => {
-      const current = Array.isArray(prevForm.genre) ? prevForm.genre : (prevForm.genre ? [prevForm.genre] : []);
+      const current = listOf(prevForm.genre);
       const updated = current.includes(genre)
         ? current.filter(g => g !== genre)
         : [...current, genre];
@@ -1450,7 +1451,7 @@ function Songs() {
 
   const toggleFormLanguage = (language: string) => {
     setForm(prevForm => {
-      const current = Array.isArray(prevForm.language) ? prevForm.language : (prevForm.language ? [prevForm.language] : []);
+      const current = listOf(prevForm.language);
       const updated = current.includes(language)
         ? current.filter(l => l !== language)
         : [...current, language];
