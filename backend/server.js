@@ -1,9 +1,9 @@
-var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var morgan = require('morgan');
 var indexRouter = require('./routes/index');
+const { mountSite } = require('./utils/mountSite');
 var app = express();
 var session = require('express-session');
 var pgSession = require('connect-pg-simple')(session);
@@ -154,35 +154,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static frontend (Vite build)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// API routes
-app.use('/api', indexRouter);
-
-// Fallback to index.html for React Router (SPA)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// catch 404 and forward to error handler
-// (404 handler is now unreachable for frontend routes)
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // log the error
-  logger.error(err.message);
-
-  // send the error response
-  res.status(err.status || 500);
-  res.json({
-    status: err.status,
-    message: err.message
-  });
-});
+// Static files, API, page fallback and error handler (#104: kept in one testable module).
+mountSite(app, { apiRouter: indexRouter, publicDir: path.join(__dirname, 'public') });
 
 module.exports = app;

@@ -3,7 +3,7 @@ const request = require('supertest');
 const { loginLimiter, emailSendLimiter } = require('../middleware/ratelimiters');
 
 // Minimal app: optional session shim -> limiter -> 200 handler -> generic error
-// handler mirroring server.js ({ status, message }). Each test builds its own app;
+// handler mirroring utils/mountSite.js ({ status, message }). Each test builds its own app;
 // loginLimiter and emailSendLimiter are distinct instances with distinct stores,
 // so they don't contaminate each other.
 function appWith(limiter, withSession = false) {
