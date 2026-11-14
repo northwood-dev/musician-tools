@@ -21,13 +21,13 @@ function mountSite(app, { apiRouter, publicDir }) {
   });
 
   app.use(function (err, req, res, next) {
-    // set locals, only providing error in development
-    res.locals.message = err.message;
-    res.locals.error = req.app.get('env') === 'development' ? err : {};
+    // A 4xx is the client's mistake (such as an unknown /api URL), a 5xx is ours: only the
+    // latter belongs in the error log.
+    const status = err.status || 500;
+    if (status >= 500) logger.error(err.message);
+    else logger.warn(err.message);
 
-    logger.error(err.message);
-
-    res.status(err.status || 500);
+    res.status(status);
     res.json({
       status: err.status,
       message: err.message,
