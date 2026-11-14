@@ -12,6 +12,8 @@ function RegisterPage() {
     confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
+  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
@@ -42,6 +44,7 @@ function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setAttempt(n => n + 1);
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -116,7 +119,7 @@ function RegisterPage() {
         <>
         {/* Error Message */}
         {error && (
-          <div role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+          <div key={attempt} role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
             {error}
           </div>
         )}

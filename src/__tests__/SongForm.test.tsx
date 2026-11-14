@@ -374,3 +374,12 @@ test('the Links bar never shows a stored link that is not http(s) (#114)', () =>
   expect(screen.queryByText('Bad', { selector: '.truncate' })).toBeNull();
   expect(screen.getByRole('link', { name: /Good/ })).toHaveAttribute('href', 'https://youtu.be/ok');
 });
+
+test('an invalid duration is announced at once (role="alert") (#27)', () => {
+  renderForm({ durationSeconds: null });
+  fireEvent.click(screen.getByText('Details'));
+  const input = screen.getByLabelText('Duration (m:ss)');
+  fireEvent.change(input, { target: { value: '3,3' } });
+  fireEvent.blur(input);
+  expect(screen.getByRole('alert')).toHaveTextContent(/seconds must be 0–59/i);
+});

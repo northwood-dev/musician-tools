@@ -12,6 +12,8 @@ function ProfilePage() {
   // Display name
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
+  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  const [nameAttempt, setNameAttempt] = useState(0);
   const [savingName, setSavingName] = useState(false);
 
   // Email (verify-before-switch, story 7.11)
@@ -27,6 +29,7 @@ function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pwError, setPwError] = useState<string | null>(null);
+  const [pwAttempt, setPwAttempt] = useState(0); // same as nameAttempt
   const [pwRateLimited, setPwRateLimited] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
 
@@ -53,6 +56,7 @@ function ProfilePage() {
   const handleSaveName = async (e: React.FormEvent) => {
     e.preventDefault();
     setNameError(null);
+    setNameAttempt(n => n + 1);
     if (!name.trim()) {
       setNameError('Name is required');
       return;
@@ -96,6 +100,7 @@ function ProfilePage() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwError(null);
+    setPwAttempt(n => n + 1);
     setPwRateLimited(false);
     if (newPassword.length < 10) {
       setPwError('New password must be at least 10 characters');
@@ -142,7 +147,7 @@ function ProfilePage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">Your handle: <span className="font-mono">{profile.handle}</span></p>
         )}
         <form onSubmit={handleSaveName} className="space-y-3">
-          {nameError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{nameError}</p>}
+          {nameError && <p key={nameAttempt} role="alert" className="text-sm text-red-600 dark:text-red-400">{nameError}</p>}
           <input
             className="input-base"
             type="text"
@@ -196,7 +201,7 @@ function ProfilePage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Password</h2>
         <form onSubmit={handleChangePassword} className="space-y-3">
-          {pwError && <p className={pwRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={pwRateLimited ? 'status' : 'alert'}>{pwError}</p>}
+          {pwError && <p key={pwAttempt} className={pwRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={pwRateLimited ? 'status' : 'alert'}>{pwError}</p>}
           <input
             className="input-base"
             type="password"

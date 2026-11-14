@@ -92,3 +92,14 @@ test('a sign-up error is announced at once (role="alert") (#127)', async () => {
   fillAndSubmit({ password: 'short', confirm: 'short' });
   expect(await screen.findByRole('alert')).toHaveTextContent(/at least 10 characters/i);
 });
+
+test('the same mistake twice is announced twice (a new alert each time) (#127)', async () => {
+  mockedUseAuth.mockReturnValue({ register: jest.fn() });
+  renderPage();
+  fillAndSubmit({ password: 'short', confirm: 'short' });
+  const first = await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: /create account/i }));
+  const second = await screen.findByRole('alert');
+  expect(second).toHaveTextContent(/at least 10 characters/i);
+  expect(second).not.toBe(first);
+});

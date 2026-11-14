@@ -127,12 +127,22 @@ describe('Profile errors are announced at once (#127)', () => {
     svc.requestEmailChange.mockRejectedValue(new Error('Invalid email'));
     render(<ProfilePage />);
     await screen.findByText('Ada#0042');
-    const form = screen.getByRole('button', { name: /change email/i }).closest('form')!;
-    const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
-    fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
-    const pw = form.querySelector('input[type="password"]') as HTMLInputElement | null;
-    if (pw) fireEvent.change(pw, { target: { value: 'password123' } });
-    fireEvent.submit(form);
+    fireEvent.change(screen.getByPlaceholderText('New email address'), { target: { value: 'new@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /change email/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email');
+  });
+
+  test('the same password mistake twice is announced twice (a new alert each time)', async () => {
+    render(<ProfilePage />);
+    await screen.findByText('Ada#0042');
+    fireEvent.change(screen.getByPlaceholderText('Current password'), { target: { value: 'oldpass123' } });
+    fireEvent.change(screen.getByPlaceholderText('New password (at least 10 characters)'), { target: { value: 'short' } });
+    fireEvent.change(screen.getByPlaceholderText('Confirm new password'), { target: { value: 'short' } });
+    fireEvent.click(screen.getByRole('button', { name: /change password/i }));
+    const first = await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: /change password/i }));
+    const second = await screen.findByRole('alert');
+    expect(second).toHaveTextContent(/at least 10 characters/i);
+    expect(second).not.toBe(first);
   });
 });
