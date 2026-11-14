@@ -40,3 +40,18 @@ test('a real static file is served as itself', async () => {
   expect(res.status).toBe(200);
   expect(res.body).toEqual({ version: 'test' });
 });
+
+describe('an unknown /api URL answers 404 in JSON (#125)', () => {
+  test.each(['get', 'post', 'put', 'delete'])('%s /api/unknown', async (method) => {
+    const res = await request(app)[method]('/api/unknown');
+    expect(res.status).toBe(404);
+    expect(res.headers['content-type']).toMatch(/application\/json/);
+    expect(res.body).toEqual({ status: 404, message: 'Not found' });
+  });
+
+  test('a removed route under a known prefix too', async () => {
+    const res = await request(app).get('/api/songs/x/streaming-links');
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ status: 404, message: 'Not found' });
+  });
+});
