@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { HomePage } from '../App';
+import HomePage from '../pages/HomePage';
 import { useAuth } from '../contexts/AuthContext';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
