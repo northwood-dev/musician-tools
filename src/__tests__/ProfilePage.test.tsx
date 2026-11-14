@@ -95,3 +95,44 @@ test('a valid password change calls the service and clears the fields', async ()
   await waitFor(() => expect(svc.changePassword).toHaveBeenCalledWith('oldpass123', 'brandnewpass', 'brandnewpass'));
   await screen.findByText(/other sessions were signed out/i);
 });
+
+describe('Profile errors are announced at once (#127)', () => {
+  test('a failed load', async () => {
+    svc.getProfile.mockRejectedValue(new Error('boom'));
+    render(<ProfilePage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load your profile.');
+  });
+
+  test('a refused password change', async () => {
+    render(<ProfilePage />);
+    await screen.findByText('Ada#0042');
+    fireEvent.change(screen.getByPlaceholderText('Current password'), { target: { value: 'oldpass123' } });
+    fireEvent.change(screen.getByPlaceholderText('New password (at least 10 characters)'), { target: { value: 'short' } });
+    fireEvent.change(screen.getByPlaceholderText('Confirm new password'), { target: { value: 'short' } });
+    fireEvent.click(screen.getByRole('button', { name: /change password/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/at least 10 characters/i);
+  });
+
+  test('a refused name', async () => {
+    svc.updateName.mockRejectedValue(new Error('Name already taken'));
+    render(<ProfilePage />);
+    await screen.findByText('Ada#0042');
+    const nameInput = screen.getByDisplayValue('Ada');
+    fireEvent.change(nameInput, { target: { value: 'Bob' } });
+    fireEvent.submit(nameInput.closest('form')!);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Name already taken');
+  });
+
+  test('a refused email change', async () => {
+    svc.requestEmailChange.mockRejectedValue(new Error('Invalid email'));
+    render(<ProfilePage />);
+    await screen.findByText('Ada#0042');
+    const form = screen.getByRole('button', { name: /change email/i }).closest('form')!;
+    const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
+    fireEvent.change(emailInput, { target: { value: 'new@example.com' } });
+    const pw = form.querySelector('input[type="password"]') as HTMLInputElement | null;
+    if (pw) fireEvent.change(pw, { target: { value: 'password123' } });
+    fireEvent.submit(form);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email');
+  });
+});

@@ -85,3 +85,10 @@ describe('RegisterPage (story 7.7 — two outcomes)', () => {
     await screen.findByText(/verification email sent/i);
   });
 });
+
+test('a sign-up error is announced at once (role="alert") (#127)', async () => {
+  mockedUseAuth.mockReturnValue({ register: jest.fn() });
+  renderPage();
+  fillAndSubmit({ password: 'short', confirm: 'short' });
+  expect(await screen.findByRole('alert')).toHaveTextContent(/at least 10 characters/i);
+});

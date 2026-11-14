@@ -94,7 +94,7 @@ function LoginPage() {
             className={rateLimited
               ? 'rounded-lg border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200 px-4 py-3 text-sm'
               : 'rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm'}
-            role={rateLimited ? 'status' : undefined}
+            role={rateLimited ? 'status' : 'alert'}
           >
             {error}
           </div>

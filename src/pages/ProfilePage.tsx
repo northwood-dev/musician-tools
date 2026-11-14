@@ -129,7 +129,7 @@ function ProfilePage() {
       <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile</h1>
 
       {loadError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-300 px-4 py-3 text-sm">{loadError}</div>
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-300 px-4 py-3 text-sm">{loadError}</div>
       )}
       {toast && (
         <div className="rounded-lg border border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/40 dark:text-green-300 px-4 py-3 text-sm" role="status">{toast}</div>
@@ -142,7 +142,7 @@ function ProfilePage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">Your handle: <span className="font-mono">{profile.handle}</span></p>
         )}
         <form onSubmit={handleSaveName} className="space-y-3">
-          {nameError && <p className="text-sm text-red-600 dark:text-red-400">{nameError}</p>}
+          {nameError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{nameError}</p>}
           <input
             className="input-base"
             type="text"
@@ -174,7 +174,7 @@ function ProfilePage() {
           </p>
         ) : (
           <form onSubmit={handleRequestEmailChange} className="space-y-3">
-            {emailError && <p className={emailRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={emailRateLimited ? 'status' : undefined}>{emailError}</p>}
+            {emailError && <p className={emailRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={emailRateLimited ? 'status' : 'alert'}>{emailError}</p>}
             {emailMsg && <p className="text-sm text-green-700 dark:text-green-400">{emailMsg}</p>}
             <input
               className="input-base"
@@ -196,7 +196,7 @@ function ProfilePage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Password</h2>
         <form onSubmit={handleChangePassword} className="space-y-3">
-          {pwError && <p className={pwRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={pwRateLimited ? 'status' : undefined}>{pwError}</p>}
+          {pwError && <p className={pwRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={pwRateLimited ? 'status' : 'alert'}>{pwError}</p>}
           <input
             className="input-base"
             type="password"
