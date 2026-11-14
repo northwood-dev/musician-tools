@@ -13,6 +13,7 @@ import { DuplicateBanner } from '../components/DuplicateBanner';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Toast } from '../components/Toast';
 import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
+import { listOf } from '../utils/listOf';
 
 // Curator-only admin screen to create a Catalog entry (story 19.2). Utilitarian
 // (DL-14): reuses the design-system utilities, restricted to the INTRINSIC fields
@@ -34,10 +35,6 @@ const emptyForm: CreateCatalogDTO = {
   pitchStandard: 440,
 };
 
-// Normalize a genre/language field (string[] | string | null) to an array.
-const asArr = (value: string[] | string | null | undefined): string[] =>
-  Array.isArray(value) ? value : (value ? [value] : []);
-
 // Map a fetched CatalogSong -> the editable form DTO (story 19.5 edit mode). Drops
 // uid/timestamps, coerces nullable columns to the form's empty representation, and
 // clones streamingLinks so editing never mutates the fetched object.
@@ -50,8 +47,8 @@ const mapEntryToForm = (e: CatalogSong): CreateCatalogDTO => ({
   mode: e.mode ?? '',
   timeSignature: e.timeSignature ?? '',
   durationSeconds: e.durationSeconds ?? null,
-  language: asArr(e.language),
-  genre: asArr(e.genre),
+  language: listOf(e.language),
+  genre: listOf(e.genre),
   streamingLinks: (e.streamingLinks ?? []).map(l => ({ ...l })),
   pitchStandard: e.pitchStandard ?? 440,
 });
@@ -373,7 +370,7 @@ export default function CatalogAdmin() {
 
   // Multi-select dropdown + removable chips (genre/language) — same values as the SongForm.
   const renderMulti = (param: 'genre' | 'language', label: string, options: string[]) => {
-    const selected = asArr(form[param] as string[] | string | null);
+    const selected = listOf(form[param] as string[] | string | null);
     const change = (next: string[]) => { setForm(prev => ({ ...prev, [param]: next }) as CreateCatalogDTO); setConflictMessage(null); };
     return (
       <div>
