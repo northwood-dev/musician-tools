@@ -45,3 +45,18 @@ test('no token in the URL shows the invalid-link state (no form)', () => {
   expect(screen.getByText(/this reset link is invalid/i)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /change password/i })).toBeNull();
 });
+
+test('a form error is announced at once (role="alert") (#127)', async () => {
+  renderAt('/reset-password?token=good');
+  fill('short');
+  expect(await screen.findByRole('alert')).toHaveTextContent(/at least 10 characters/i);
+});
+
+test('the same mistake twice is announced twice (a new alert each time) (#127)', async () => {
+  renderAt('/reset-password?token=good');
+  fill('short');
+  const first = await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: /change password/i }));
+  const second = await screen.findByRole('alert');
+  expect(second).not.toBe(first);
+});

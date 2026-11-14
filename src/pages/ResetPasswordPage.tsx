@@ -9,12 +9,15 @@ function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setAttempt(n => n + 1);
     if (newPassword.length < 10) {
       setError('Password must be at least 10 characters');
       return;
@@ -55,7 +58,7 @@ function ResetPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            {error && <p key={attempt} role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
             <input
               className="input-base"
               type="password"

@@ -333,3 +333,22 @@ describe('Songs — routes & deep-links (story 18.2)', () => {
     await waitFor(() => expect(deleteSong).not.toHaveBeenCalled());
   });
 });
+
+describe('Songs — errors are announced (#128)', () => {
+  test('a failed load shows the page banner as an alert', async () => {
+    getAllSongs.mockRejectedValue(new Error('network'));
+    renderSongs();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Error while loading songs');
+  });
+
+  test('"Not saved — retrying" is announced politely (role="status")', async () => {
+    updateSong.mockRejectedValueOnce(new Error('network'));
+    renderSongs();
+    fireEvent.click(await screen.findByText('Alpha'));
+    fireEvent.change(screen.getByLabelText('Artist'), { target: { value: 'Boom' } });
+    await waitFor(
+      () => expect(screen.getAllByRole('status').some(el => /not saved/i.test(el.textContent ?? ''))).toBe(true),
+      { timeout: 2500 },
+    );
+  });
+});

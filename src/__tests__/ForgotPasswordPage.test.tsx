@@ -22,3 +22,11 @@ test('submitting an email shows the generic confirmation (no existence reveal)',
   // Anti-enumeration: never confirm/deny the account.
   expect(screen.queryByText(/no account|doesn't exist|not found/i)).toBeNull();
 });
+
+test('a red error is announced at once (role="alert") (#127)', async () => {
+  svc.requestReset.mockRejectedValue(new Error('Something went wrong'));
+  render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>);
+  fireEvent.change(screen.getByPlaceholderText(/enter your email/i), { target: { value: 'ada@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong');
+});

@@ -1873,7 +1873,7 @@ function Songs() {
       />
 
       {error && (
-        <div className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
+        <div role="alert" className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
           <span>{error}</span>
           <button
             type="button"

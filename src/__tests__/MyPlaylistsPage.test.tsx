@@ -144,3 +144,9 @@ describe('#84: the song search of the playlist form finds a song as the Songlist
     expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
   });
 });
+
+test('a failed load is announced at once (role="alert") (#128)', async () => {
+  mockedPlaylist.getAllPlaylists.mockRejectedValue(new Error('network'));
+  render(<MyPlaylistsPage />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Error while loading playlists');
+});

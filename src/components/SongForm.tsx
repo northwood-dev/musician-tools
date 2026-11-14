@@ -408,7 +408,7 @@ export function SongForm(props: SongFormProps) {
                   disabled={loading}
                 />
                 {durationError && (
-                  <p id="song-duration-error" className="mt-1 text-sm text-red-600 dark:text-red-400">{durationError}</p>
+                  <p id="song-duration-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{durationError}</p>
                 )}
               </div>
               <div>

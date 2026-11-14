@@ -105,7 +105,7 @@ function MyInstrumentsPage() {
         onCancel={() => setDeleteUid(null)}
       />
       {error && (
-        <div className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
+        <div role="alert" className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
           <span>{error}</span>
           <button type="button" className="btn-secondary text-xs" onClick={() => setError(null)}>
             ✕

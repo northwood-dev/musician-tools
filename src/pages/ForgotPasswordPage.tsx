@@ -47,7 +47,7 @@ function ForgotPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <p className={rateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={rateLimited ? 'status' : undefined}>{error}</p>}
+            {error && <p className={rateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={rateLimited ? 'status' : 'alert'}>{error}</p>}
             <input
               className="input-base"
               type="email"

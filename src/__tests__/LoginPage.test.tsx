@@ -78,3 +78,20 @@ describe('LoginPage — rate-limit signal (story 15.1)', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });
+
+describe('LoginPage — errors are announced (#127)', () => {
+  test('a credential error is announced at once (role="alert")', async () => {
+    mockedUseAuth.mockReturnValue({ login: jest.fn().mockRejectedValue(new Error('Invalid email or password')) });
+    renderPage();
+    fillAndSubmit();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
+  });
+
+  test('the amber rate-limit message stays polite (role="status")', async () => {
+    mockedUseAuth.mockReturnValue({ login: jest.fn().mockRejectedValue(new RateLimitError()) });
+    renderPage();
+    fillAndSubmit();
+    expect(await screen.findByRole('status')).toHaveTextContent(/too many attempts/i);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});

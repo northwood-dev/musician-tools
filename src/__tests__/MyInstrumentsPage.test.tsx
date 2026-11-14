@@ -278,3 +278,9 @@ describe('#43: leaving the page', () => {
     expect(await screen.findByText('Your instrument changes could not be saved.')).toBeInTheDocument();
   });
 });
+
+test('a failed load is announced at once (role="alert") (#128)', async () => {
+  mockedService.getAll.mockRejectedValue(new Error('network'));
+  renderPage();
+  expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load instruments');
+});
