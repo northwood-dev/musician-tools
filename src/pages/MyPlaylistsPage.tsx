@@ -169,7 +169,7 @@ function MyPlaylistsPage() {
       />
 
       {error && (
-        <div className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
+        <div role="alert" className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
           <span>{error}</span>
           <button className="btn-secondary text-xs" type="button" onClick={() => setError(null)}>
             ✕
