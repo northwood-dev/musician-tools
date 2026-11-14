@@ -2,8 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 // The home page (`/`): a greeting for a signed-in user, the sign-in actions for a visitor.
-// Lives with the other pages since #28 (it used to sit in App.tsx next to the root layout).
-export function HomePage() {
+export default function HomePage() {
   const { isAuthenticated, user } = useAuth();
 
   return (

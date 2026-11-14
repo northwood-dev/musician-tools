@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router-dom';
 import { RootLayout } from './App';
-import { HomePage } from './pages/HomePage';
+import HomePage from './pages/HomePage';
 import { RequireAuth, GuestOnly } from './components/RequireAuth';
 import { PageErrorScreen, AppErrorScreen } from './components/ErrorScreens';
 import Songs from './pages/Songs';

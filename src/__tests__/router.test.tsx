@@ -14,7 +14,7 @@ jest.mock('../App', () => {
     RootLayout: () => <div data-testid="layout"><Outlet /></div>,
   };
 });
-jest.mock('../pages/HomePage', () => ({ HomePage: () => <div>HOME</div> }));
+jest.mock('../pages/HomePage', () => ({ __esModule: true, default: () => <div>HOME</div> }));
 jest.mock('../pages/Songs', () => ({ __esModule: true, default: () => <div>SONGS</div> }));
 jest.mock('../pages/LoginPage', () => ({ __esModule: true, default: () => <div>LOGIN</div> }));
 jest.mock('../pages/RegisterPage', () => ({ __esModule: true, default: () => <div>REGISTER</div> }));
