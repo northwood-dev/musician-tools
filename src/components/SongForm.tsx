@@ -13,6 +13,7 @@ import { AutocompleteInput } from './AutocompleteInput';
 import { StreamingLinksEditor } from './StreamingLinksEditor';
 import type { StreamingLink } from '../utils/streamingLinks';
 import { instrumentsOf } from '../utils/songInstruments';
+import { listOf } from '../utils/listOf';
 
 type Mode = 'add' | 'edit';
 
@@ -62,8 +63,8 @@ export function SongForm(props: SongFormProps) {
   // Passes only the field so the memo depends on form.instrument alone, not on the whole form.
   const currentInstruments = useMemo(() => instrumentsOf({ instrument: form.instrument }), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
-  const currentGenres = Array.isArray(form.genre) ? form.genre : (form.genre ? [form.genre] : []);
-  const currentLanguages = Array.isArray(form.language) ? form.language : (form.language ? [form.language] : []);
+  const currentGenres = listOf(form.genre);
+  const currentLanguages = listOf(form.language);
   const [selectedInstrumentType, setSelectedInstrumentType] = useState('');
   const [expandedInstruments, setExpandedInstruments] = useState<Set<string>>(new Set(currentInstruments));
   const [detailsAccordionOpen, setDetailsAccordionOpen] = useState(false);
