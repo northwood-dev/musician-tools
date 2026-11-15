@@ -75,7 +75,7 @@ function Header() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(open => !open)}
-                className="lg:hidden w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+                className="lg:hidden w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center motion-safe:transition-colors"
                 aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={mobileMenuOpen}
                 aria-controls="mobile-nav"
@@ -100,7 +100,7 @@ function Header() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="text-gray-700 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:text-brand-400"
+                  className="text-gray-700 hover:text-brand-600 font-medium motion-safe:transition-colors dark:text-gray-300 dark:hover:text-brand-400"
                 >
                   {link.label}
                 </Link>
@@ -113,7 +113,7 @@ function Header() {
             <button
               type="button"
               onClick={() => setDarkMode(!darkMode)}
-              className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+              className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center motion-safe:transition-colors"
               title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {darkMode ? (
@@ -132,7 +132,7 @@ function Header() {
                   ref={accountMenu.buttonRef}
                   type="button"
                   onClick={() => setAccountMenuOpen(open => !open)}
-                  className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
+                  className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center motion-safe:transition-colors"
                   aria-label="Account menu"
                   aria-expanded={accountMenuOpen}
                   aria-controls={accountMenu.panelId}
@@ -145,7 +145,7 @@ function Header() {
                       <Link
                         to="/catalog/manage"
                         onClick={() => setAccountMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                       >
                         Curate
                       </Link>
@@ -153,14 +153,14 @@ function Header() {
                     <Link
                       to="/profile"
                       onClick={() => setAccountMenuOpen(false)}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                     >
                       Profile
                     </Link>
                     <button
                       type="button"
                       onClick={() => { setAccountMenuOpen(false); handleLogout(); }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                     >
                       Sign out
                     </button>
@@ -181,7 +181,7 @@ function Header() {
                 key={link.to}
                 to={link.to}
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg px-3 py-3 text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                className="rounded-lg px-3 py-3 text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
               >
                 {link.label}
               </Link>
@@ -193,7 +193,7 @@ function Header() {
                 <Link
                   to="/catalog/manage"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-3 py-3 text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                  className="block rounded-lg px-3 py-3 text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                 >
                   Curate
                 </Link>
@@ -201,14 +201,14 @@ function Header() {
               <Link
                 to="/profile"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-3 py-3 text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                className="block rounded-lg px-3 py-3 text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
               >
                 Profile
               </Link>
               <button
                 type="button"
                 onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
-                className="w-full rounded-lg px-3 py-3 text-left text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                className="w-full rounded-lg px-3 py-3 text-left text-gray-700 hover:bg-gray-100 hover:text-brand-600 font-medium motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
               >
                 Sign out
               </button>

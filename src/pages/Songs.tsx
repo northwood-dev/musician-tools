@@ -2044,13 +2044,13 @@ function Songs() {
               <span className="text-xs font-medium" role="status" aria-live="polite">
                 {saveStatus === 'saving' && (
                   <span className="inline-flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 animate-pulse" aria-hidden="true" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-gray-400 dark:bg-gray-500 motion-safe:animate-pulse" aria-hidden="true" />
                     Saving…
                   </span>
                 )}
                 {saveStatus === 'saved' && (
                   // key on the time so the fade-in replays on every save (a visible "blip").
-                  <span key={lastSavedAt ?? 'saved'} className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 animate-fade-in">
+                  <span key={lastSavedAt ?? 'saved'} className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 motion-safe:animate-fade-in">
                     Saved ✓{lastSavedAt ? ` · ${lastSavedAt}` : ''}
                   </span>
                 )}

@@ -30,7 +30,7 @@ export function CloseButton({
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current disabled:opacity-50 disabled:cursor-not-allowed ${colour} ${className}`}
+      className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded text-sm motion-safe:transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current disabled:opacity-50 disabled:cursor-not-allowed ${colour} ${className}`}
     >
       <span aria-hidden="true">✕</span>
     </button>

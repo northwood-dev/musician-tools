@@ -16,7 +16,7 @@ export default function FiltersDisclosureButton({ open, onToggle, activeFilterCo
       aria-expanded={open}
       aria-controls="songs-sidebar"
       aria-label={open ? 'Hide filters' : 'Show filters'}
-      className="lg:hidden w-full card-base glass-effect flex items-center justify-between px-3 h-10 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+      className="lg:hidden w-full card-base glass-effect flex items-center justify-between px-3 h-10 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 motion-safe:transition-colors"
     >
       <span>{label}</span>
       <span className="text-xl" aria-hidden="true">{open ? '▾' : '▸'}</span>

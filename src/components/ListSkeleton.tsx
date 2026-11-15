@@ -4,7 +4,7 @@
 //
 // <ListSkeleton>       — a list/table placeholder: N grey bars.
 // <DetailPageSkeleton> — a detail page placeholder: a title bar + a content block.
-const BAR = 'rounded bg-gray-100 dark:bg-gray-700 animate-pulse';
+const BAR = 'rounded bg-gray-100 dark:bg-gray-700 motion-safe:animate-pulse';
 
 // `rows` matches what the surface usually shows (a page of entries, a shorter list of
 // collections); `className` lets a caller keep its own outer spacing.

@@ -17,7 +17,7 @@ import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
 
 // Green states shaped like the site's buttons (rounded-lg px-4 py-2 font-medium),
 // NOT the rounded-full badge pill — consistent with btn-primary/btn-secondary. ≥44px.
-const HIT = 'min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors';
+const HIT = 'min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium motion-safe:transition-colors';
 const ALREADY = `${HIT} bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 dark:hover:bg-green-900/60`;
 const ADDED = `${HIT} bg-green-500 text-white`;
 

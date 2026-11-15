@@ -8,7 +8,7 @@ import type { ReactNode } from 'react';
 //   <ToggleChip>     a filter or option that is on or off (aria-pressed).
 //   <Chip>           a static chip holding other content (a link and its own ✕ button).
 //   <Tag>            a small static label (e.g. "Draft").
-const SHAPE = 'inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+const SHAPE = 'inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-sm motion-safe:transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 const ON = 'bg-brand-500 text-white hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-700';
 const OFF = 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700';
 const NEUTRAL = 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
@@ -44,7 +44,7 @@ export function RemovableChip({
       aria-busy={busy || undefined}
     >
       <span className="truncate">{label}</span>
-      {busy && <span aria-hidden="true" className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
+      {busy && <span aria-hidden="true" className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" />}
       <span aria-hidden="true">✕</span>
     </button>
   );
