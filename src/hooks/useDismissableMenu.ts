@@ -10,17 +10,18 @@ import { useEffect, useRef } from 'react';
 //
 // A press on the button itself is left to the button's own toggle; otherwise the press
 // would close the menu and the click would reopen it.
+//
+// An Escape a nearer element already handled (a dialog, an autocomplete list — they call
+// preventDefault) is theirs: one Escape closes one thing.
 export interface UseDismissableMenuOptions {
   open: boolean;
   onClose: () => void;
   blocked?: boolean;
 }
 
-export function useDismissableMenu<B extends HTMLElement = HTMLButtonElement, M extends HTMLElement = HTMLDivElement>(
-  { open, onClose, blocked = false }: UseDismissableMenuOptions,
-) {
-  const buttonRef = useRef<B>(null);
-  const menuRef = useRef<M>(null);
+export function useDismissableMenu({ open, onClose, blocked = false }: UseDismissableMenuOptions) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   // Read at event time, so the listeners don't re-subscribe on every render.
   const latest = useRef({ onClose, blocked });
   useEffect(() => {
@@ -36,7 +37,7 @@ export function useDismissableMenu<B extends HTMLElement = HTMLButtonElement, M 
       latest.current.onClose();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || latest.current.blocked) return;
+      if (event.key !== 'Escape' || event.defaultPrevented || latest.current.blocked) return;
       latest.current.onClose();
       buttonRef.current?.focus();
     };

@@ -343,3 +343,21 @@ describe('#134: the Set instrument menu closes like its ✕ on an outside click 
     expect(button).toHaveAttribute('aria-expanded', 'true');
   });
 });
+
+test('#38: pressing another bulk button closes the open menu, and the click opens the other', async () => {
+  renderSongs();
+  await selectSong('Alpha');
+  fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
+
+  const addToPlaylist = screen.getByRole('button', { name: 'Add to playlist' });
+  fireEvent.mouseDown(addToPlaylist); // a real click starts with a press outside Set instrument
+  fireEvent.click(addToPlaylist);
+  expect(screen.queryByRole('combobox', { name: 'Instrument to add' })).not.toBeInTheDocument();
+  expect(await screen.findByText('Select playlists')).toBeInTheDocument();
+
+  const setInstrumentButton = screen.getByRole('button', { name: 'Set instrument' });
+  fireEvent.mouseDown(setInstrumentButton);
+  fireEvent.click(setInstrumentButton);
+  expect(screen.queryByText('Select playlists')).not.toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toBeInTheDocument();
+});

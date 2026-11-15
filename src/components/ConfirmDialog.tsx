@@ -42,14 +42,15 @@ export function ConfirmDialog({
       role="dialog"
       tabIndex={-1}
       aria-modal="true"
-      onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+      // preventDefault: the Escape is the dialog's, not a menu's behind it (#38).
+      onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); onCancel(); } }}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-sm mx-4"
         onClick={e => e.stopPropagation()}
         role="document"
         tabIndex={0}
-        onKeyDown={e => { if (e.key === 'Escape') onCancel(); }}
+        onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); onCancel(); } }}
       >
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{title}</h2>
         <p className="text-gray-700 dark:text-gray-300 mb-6">{message}</p>

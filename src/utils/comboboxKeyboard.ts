@@ -51,6 +51,7 @@ export function handleComboKeyDown<T>(
     e.preventDefault(); // never let Enter submit the form while picking
     if (index >= 0 && index < options.length) onSelect(options[index]);
   } else if (e.key === 'Escape') {
+    e.preventDefault(); // this Escape closes the list, not a menu around it (#38)
     setOpen(false);
     setIndex(-1);
   } else if (e.key === 'Tab') {

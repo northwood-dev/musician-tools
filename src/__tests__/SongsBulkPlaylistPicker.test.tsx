@@ -351,6 +351,16 @@ describe('#135: the Add to playlist menu closes like its ✕ on an outside click
     await expectPickerClosedAndBlank();
   });
 
+  test('while the add runs, an outside click and Escape leave it open', async () => {
+    mockedPlaylists.addSongToPlaylist.mockReturnValue(new Promise(() => {}) as never);
+    await pickWarmups();
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    fireEvent.mouseDown(document.body);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.getByText('Select playlists')).toBeInTheDocument();
+  });
+
   test('the button says whether its menu is open', async () => {
     renderSongs();
     await selectSong('Alpha');

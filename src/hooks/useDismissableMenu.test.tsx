@@ -16,6 +16,8 @@ function Menu({ blocked = false }: { blocked?: boolean }) {
         </div>
       )}
       <input aria-label="Some field" />
+      {/* Stands for a dialog or an autocomplete that handles its own Escape. */}
+      <input aria-label="Owns its Escape" onKeyDown={e => { if (e.key === 'Escape') e.preventDefault(); }} />
     </div>
   );
 }
@@ -80,4 +82,14 @@ test('while closed, Escape does not steal focus', () => {
   field.focus();
   fireEvent.keyDown(field, { key: 'Escape' });
   expect(field).toHaveFocus();
+});
+
+test('an Escape already handled by a nearer element (dialog, autocomplete) leaves the menu open', () => {
+  render(<Menu />);
+  openMenu();
+  const owner = screen.getByLabelText('Owns its Escape');
+  owner.focus();
+  fireEvent.keyDown(owner, { key: 'Escape' });
+  expect(menu()).toBeInTheDocument();
+  expect(owner).toHaveFocus();
 });
