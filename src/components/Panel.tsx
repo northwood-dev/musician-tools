@@ -15,6 +15,12 @@ const SIZE = {
   sm: 'w-44 py-1 z-50',
 };
 
+// A title row always comes with its ✕: `title` and `onClose` are given together or not
+// at all (the type refuses one without the other).
+type TitleRow =
+  | { title: ReactNode; onClose: () => void; closeDisabled?: boolean }
+  | { title?: undefined; onClose?: undefined; closeDisabled?: undefined };
+
 export function Panel({
   panel,
   size = 'md',
@@ -25,11 +31,8 @@ export function Panel({
 }: {
   panel: { panelRef: RefObject<HTMLDivElement | null>; panelId: string };
   size?: 'md' | 'sm';
-  title?: ReactNode;
-  onClose?: () => void;
-  closeDisabled?: boolean;
   children: ReactNode;
-}) {
+} & TitleRow) {
   return (
     <div
       ref={panel.panelRef}
@@ -39,7 +42,7 @@ export function Panel({
       {title && (
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm text-gray-700 dark:text-gray-200">{title}</p>
-          {onClose && <CloseButton label="Close" onClick={onClose} disabled={closeDisabled} className="-my-1" />}
+          <CloseButton label="Close" onClick={onClose} disabled={closeDisabled} className="-my-1" />
         </div>
       )}
       {children}

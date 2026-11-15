@@ -36,7 +36,7 @@ export function BulkSetInstrument({
     setInstrument('');
   };
   // Outside click and Escape close like ✕, and like ✕ not while the add runs (#38).
-  const { buttonRef, panelRef, panelId } = useDismissablePanel({ open, onClose: close, blocked: submitting });
+  const panel = useDismissablePanel({ open, onClose: close, blocked: submitting });
 
   const submit = async () => {
     let result: AddInstrumentResult;
@@ -57,18 +57,18 @@ export function BulkSetInstrument({
   return (
     <div className="relative">
       <button
-        ref={buttonRef}
+        ref={panel.buttonRef}
         type="button"
         className="btn-primary btn-sm"
         onClick={() => (open ? close() : onOpenChange(true))}
         disabled={disabled}
         aria-expanded={open}
-        aria-controls={panelId}
+        aria-controls={panel.panelId}
       >
         Set instrument
       </button>
       {open && (
-        <Panel panel={{ panelRef, panelId }} title="Add an instrument" onClose={close} closeDisabled={submitting}>
+        <Panel panel={panel} title="Add an instrument" onClose={close} closeDisabled={submitting}>
           <select
             aria-label="Instrument to add"
             className="w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 text-sm dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50"

@@ -10,9 +10,9 @@ function Demo({ title, closeDisabled }: { title?: string; closeDisabled?: boolea
     <>
       <button ref={panel.buttonRef} type="button" aria-expanded={open} aria-controls={panel.panelId} onClick={() => setOpen(o => !o)}>Open</button>
       {open && (
-        <Panel panel={panel} title={title} onClose={() => setOpen(false)} closeDisabled={closeDisabled}>
-          <p>Panel body</p>
-        </Panel>
+        title
+          ? <Panel panel={panel} title={title} onClose={() => setOpen(false)} closeDisabled={closeDisabled}><p>Panel body</p></Panel>
+          : <Panel panel={panel}><p>Panel body</p></Panel>
       )}
     </>
   );

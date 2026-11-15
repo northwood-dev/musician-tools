@@ -5,14 +5,16 @@ import { useDismissablePanel } from '../hooks/useDismissablePanel';
 
 // The panel block (#156): the frame of the panels that open under a button, with the
 // shared hook (outside press and Escape close it).
-function Demo({ size, title, label, children }: { size?: 'md' | 'sm'; title?: string; label: string; children: ReactNode }) {
+function Demo({ size, title, closeDisabled, label, children }: { size?: 'md' | 'sm'; title?: string; closeDisabled?: boolean; label: string; children: ReactNode }) {
   const [open, setOpen] = useState(true);
   const panel = useDismissablePanel({ open, onClose: () => setOpen(false) });
   return (
     <div className="flex justify-end pr-4 pb-56">
       <div className="relative">
         <button ref={panel.buttonRef} type="button" className="btn-primary btn-sm" aria-expanded={open} aria-controls={panel.panelId} onClick={() => setOpen(o => !o)}>{label}</button>
-        {open && <Panel panel={panel} size={size} title={title} onClose={title ? () => setOpen(false) : undefined}>{children}</Panel>}
+        {open && (title
+          ? <Panel panel={panel} size={size} title={title} onClose={() => setOpen(false)} closeDisabled={closeDisabled}>{children}</Panel>
+          : <Panel panel={panel} size={size}>{children}</Panel>)}
       </div>
     </div>
   );
@@ -42,6 +44,14 @@ export const AccountLinks: Story = {
     <Demo label="Account" size="sm">
       <a href="#profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">Profile</a>
       <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">Sign out</button>
+    </Demo>
+  ),
+};
+
+export const WhileSaving: Story = {
+  render: () => (
+    <Demo label="Set instrument" title="Add an instrument" closeDisabled>
+      <p className="text-sm text-gray-600 dark:text-gray-300">Adding Bass to 3 songs…</p>
     </Demo>
   ),
 };
