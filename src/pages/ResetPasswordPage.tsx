@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { passwordResetService } from '../services/passwordResetService';
+import { FormError } from '../components/FormError';
 
 // Public page reached from the email link (?token=…) — story 7.10.
 function ResetPasswordPage() {
@@ -9,7 +10,8 @@ function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  // Bumped on each submit, passed to FormError as `attempt`: a client-side mistake made
+  // twice is announced twice (#27).
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
@@ -58,7 +60,7 @@ function ResetPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <p key={attempt} role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <FormError message={error} attempt={attempt} />
             <input
               className="input-base"
               type="password"

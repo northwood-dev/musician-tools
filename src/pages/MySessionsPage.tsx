@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { digitsOnly } from '../utils/digitsOnly';
 import { secondsToWholeMinutes } from '../utils/duration';
+import { ErrorBanner } from '../components/ErrorBanner';
 
 type EntryDraft = {
   key: number;
@@ -706,14 +707,7 @@ function MySessionsPage() {
       >
         {toastMessage}
       </div>
-      {error && (
-        <div role="alert" className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 dark:text-red-300 dark:bg-red-900/40 dark:border-red-800 flex items-center justify-between">
-          <span>{error}</span>
-          <button type="button" aria-label="Dismiss error" className="btn-secondary text-xs" onClick={() => setError(null)}>
-            ✕
-          </button>
-        </div>
-      )}
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         {/* relative z-20: the entry picker dropdown overflows the card bottom —

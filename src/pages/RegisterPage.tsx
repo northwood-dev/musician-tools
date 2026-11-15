@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
 import { RateLimitError } from '../services/rateLimit';
+import { FormError } from '../components/FormError';
 
 function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -12,7 +13,8 @@ function RegisterPage() {
     confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
-  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  // Bumped on each submit, passed to FormError as `attempt`: a client-side mistake made
+  // twice is announced twice (#27).
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -118,11 +120,7 @@ function RegisterPage() {
         ) : (
         <>
         {/* Error Message */}
-        {error && (
-          <div key={attempt} role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
+        <FormError message={error} attempt={attempt} />
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

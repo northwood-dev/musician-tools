@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
 import { RateLimitError } from '../services/rateLimit';
+import { FormError } from '../components/FormError';
 
 function LoginPage() {
   const [formData, setFormData] = useState({
@@ -12,7 +13,7 @@ function LoginPage() {
   });
   const [error, setError] = useState<string | null>(null);
   // A rate-limit 429 (story 15.1) reads as "too many attempts", not a credential
-  // error — track it so the message renders amber (info), distinct from red errors.
+  // error — track it so FormError shows it as information, not a mistake.
   const [rateLimited, setRateLimited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -87,18 +88,8 @@ function LoginPage() {
           </div>
         </div>
 
-        {/* Error Message — a rate-limit 429 (story 15.1) shows amber (info: "try
-            again later"), visually distinct from the red of a credential error. */}
-        {error && (
-          <div
-            className={rateLimited
-              ? 'rounded-lg border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200 px-4 py-3 text-sm'
-              : 'rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm'}
-            role={rateLimited ? 'status' : 'alert'}
-          >
-            {error}
-          </div>
-        )}
+        {/* Error message — FormError picks red or amber from rateLimited (#129). */}
+        <FormError message={error} rateLimited={rateLimited} />
 
         {/* Story 7.13: email not verified — prompt to confirm + resend the link. */}
         {needsVerification && (

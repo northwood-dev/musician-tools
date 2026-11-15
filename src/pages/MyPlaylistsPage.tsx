@@ -6,6 +6,7 @@ import { playlistService, type Playlist, type CreatePlaylistDTO } from '../servi
 import { songService, type Song } from '../services/songService';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import { ErrorBanner } from '../components/ErrorBanner';
 
 const initialPlaylist: CreatePlaylistDTO = {
   name: '',
@@ -168,14 +169,7 @@ function MyPlaylistsPage() {
         }}
       />
 
-      {error && (
-        <div role="alert" className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
-          <span>{error}</span>
-          <button className="btn-secondary text-xs" type="button" onClick={() => setError(null)}>
-            ✕
-          </button>
-        </div>
-      )}
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
       {page === 'list' ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

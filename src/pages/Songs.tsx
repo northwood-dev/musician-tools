@@ -25,6 +25,7 @@ import { findDuplicateSong, songIdentityKey } from '../utils/songDuplicate';
 import { formatLocalDate } from '../utils/heatmap';
 import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
+import { ErrorBanner } from '../components/ErrorBanner';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -1874,18 +1875,7 @@ function Songs() {
         }}
       />
 
-      {error && (
-        <div role="alert" className="mx-4 my-4 rounded-md border border-red-300 bg-red-50 text-red-700 p-3 flex items-center justify-between">
-          <span>{error}</span>
-          <button
-            type="button"
-            className="btn-secondary text-xs"
-            onClick={() => setError(null)}
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
       <Toast message={toastMessage} />
 

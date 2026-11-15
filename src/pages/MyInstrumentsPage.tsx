@@ -5,6 +5,7 @@ import { instrumentService, type Instrument, type CreateInstrumentDTO, type Upda
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { useInlineRowSave } from '../hooks/useInlineRowSave';
+import { ErrorBanner } from '../components/ErrorBanner';
 
 type InstrumentRowForm = { name: string; type: string; brand: string; model: string };
 
@@ -104,14 +105,7 @@ function MyInstrumentsPage() {
         onConfirm={handleDelete}
         onCancel={() => setDeleteUid(null)}
       />
-      {error && (
-        <div role="alert" className="mx-4 my-4 card-base glass-effect text-red-700 bg-red-50/80 border border-red-200 flex items-center justify-between">
-          <span>{error}</span>
-          <button type="button" className="btn-secondary text-xs" onClick={() => setError(null)}>
-            ✕
-          </button>
-        </div>
-      )}
+      <ErrorBanner message={error} onDismiss={() => setError(null)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
