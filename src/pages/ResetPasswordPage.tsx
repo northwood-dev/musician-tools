@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { passwordResetService } from '../services/passwordResetService';
 import { FormError } from '../components/FormError';
+import { Notice } from '../components/Notice';
 
 // Public page reached from the email link (?token=…) — story 7.10.
 function ResetPasswordPage() {
@@ -48,16 +49,17 @@ function ResetPasswordPage() {
 
         {done ? (
           <div className="space-y-4 text-center">
-            <div className="rounded-lg border border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/40 dark:text-green-300 px-4 py-4 text-sm" role="status">
+            <Notice tone="success">
               Your password has been changed. For your security, your other sessions were signed out.
-            </div>
+            </Notice>
             <Link to="/login" className="btn-primary inline-flex">Sign in</Link>
           </div>
         ) : !token ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-300 px-4 py-4 text-sm">
+          // Page content shown on arrival, not a reaction to an action: not announced (#27).
+          <Notice tone="error" announce="none">
             This reset link is invalid. Request a new one from{' '}
             <Link to="/forgot-password" className="font-medium underline">the reset page</Link>.
-          </div>
+          </Notice>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <FormError message={error} attempt={attempt} />

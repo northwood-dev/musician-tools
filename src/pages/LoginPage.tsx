@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
 import { RateLimitError } from '../services/rateLimit';
 import { FormError } from '../components/FormError';
+import { Notice } from '../components/Notice';
 
 function LoginPage() {
   const [formData, setFormData] = useState({
@@ -93,7 +94,7 @@ function LoginPage() {
 
         {/* Story 7.13: email not verified — prompt to confirm + resend the link. */}
         {needsVerification && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-200 px-4 py-3 text-sm space-y-2" role="status">
+          <Notice tone="warning" bodyClassName="space-y-2">
             <p className="font-medium">Verify your email to sign in</p>
             <p>We sent a confirmation link to your email. Click it to activate your account, then sign in.</p>
             <button
@@ -104,8 +105,8 @@ function LoginPage() {
             >
               {resending ? 'Sending...' : 'Resend verification email'}
             </button>
-            {resendMessage && <span className="block text-amber-700 dark:text-amber-300">{resendMessage}</span>}
-          </div>
+            {resendMessage && <span className="block opacity-90">{resendMessage}</span>}
+          </Notice>
         )}
 
         {/* Form */}

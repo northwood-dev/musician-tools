@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { songService, RefreshFromCatalogError } from '../services/songService';
 import type { Song } from '../services/songService';
 import { ConfirmDialog } from './ConfirmDialog';
+import { Notice } from './Notice';
 
 // Story 21.2: on a Song fiche, surface the Catalog source (provenance + link) and offer a
 // Refresh when the source has drifted. Self-contained (own getSong fetch) so the ~2000-line
@@ -107,29 +108,28 @@ export default function CatalogSourceBanner({
 
       {/* Drift banner + Refresh */}
       {source?.drift && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-3">
-          <span className="text-sm text-amber-800 dark:text-amber-200">A newer version of this song is in the Catalog.</span>
-          <button
-            type="button"
-            className="btn-secondary text-sm min-h-[44px] shrink-0"
-            onClick={() => setConfirmOpen(true)}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
-        </div>
+        <Notice
+          tone="warning"
+          announce="none"
+          action={(
+            <button
+              type="button"
+              className="btn-secondary text-sm min-h-[44px]"
+              onClick={() => setConfirmOpen(true)}
+              disabled={refreshing}
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+          )}
+        >
+          A newer version of this song is in the Catalog.
+        </Notice>
       )}
 
       {feedback && (
-        <div
-          role={feedback.isError ? 'alert' : 'status'}
-          aria-live={feedback.isError ? 'assertive' : 'polite'}
-          className={`rounded-md px-3 py-2 text-sm font-medium ${feedback.isError
-            ? 'border border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300'
-            : 'border border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'}`}
-        >
+        <Notice key={feedback.isError ? 'error' : 'success'} tone={feedback.isError ? 'error' : 'success'}>
           {feedback.message}
-        </div>
+        </Notice>
       )}
 
       <ConfirmDialog

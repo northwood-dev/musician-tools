@@ -19,6 +19,7 @@ import {
   handleComboKeyDown,
   useScrollHighlightIntoView,
 } from '../utils/comboboxKeyboard';
+import { BulkRecap } from '../components/BulkRecap';
 
 // Curator Collection composer (story 20.2). Lives at /catalog/manage/collections/:uid:
 // rename / delete the Collection, see its member entries (Remove each), and Add entries
@@ -409,35 +410,21 @@ export default function CatalogCollectionCompose() {
           {/* Recap: a SIBLING of the bar, never a child — a fully successful removal
               empties the selection and would take the recap down with the bar. */}
           {removeRecap && (
-            <div
+            <BulkRecap
               // Keyed on severity: a live region whose role mutates in place is not
-              // reliably re-announced.
+              // reliably re-announced — remounting it is.
               key={removeRecap.failed > 0 ? 'recap-alert' : 'recap-status'}
-              role={removeRecap.failed > 0 ? 'alert' : 'status'}
-              // Named: the shared <Toast> keeps a permanent role="status" region mounted.
-              aria-label="Bulk action result"
-              className={`mt-4 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
-                removeRecap.failed > 0
-                  ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
-                  : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
-              }`}
-            >
-              <p>
+              negative={removeRecap.failed > 0}
+              onDismiss={() => setRemoveRecap(null)}
+              className="mt-4"
+              message={<>
                 {[
                   `${removeRecap.removed} removed`,
                   removeRecap.failed > 0 ? `${removeRecap.failed} failed` : null,
                 ].filter(Boolean).join(' · ')}.
                 {removeRecap.failed > 0 && ' The failed entries are still selected, so you can retry.'}
-              </p>
-              <button
-                type="button"
-                className="shrink-0 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                onClick={() => setRemoveRecap(null)}
-                aria-label="Dismiss"
-              >
-                ✕
-              </button>
-            </div>
+              </>}
+            />
           )}
 
           {collection.songs.length === 0 ? (

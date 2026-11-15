@@ -13,6 +13,7 @@ import { BulkRecap } from '../components/BulkRecap';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
+import { Notice } from '../components/Notice';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -158,16 +159,10 @@ export default function CatalogCollection() {
 
       {/* Persistent inline result — stays visible after the import (not a fleeting toast). */}
       {result && (
-        <div
-          role={result.isError ? 'alert' : 'status'}
-          aria-live={result.isError ? 'assertive' : 'polite'}
-          className={`mb-6 rounded-lg border px-4 py-3 text-sm font-medium ${result.isError
-            ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300'
-            : 'border-green-300 bg-green-50 text-green-800 dark:border-green-700 dark:bg-green-900/30 dark:text-green-300'}`}
-        >
+        <Notice key={result.isError ? 'error' : 'success'} tone={result.isError ? 'error' : 'success'} className="mb-6">
           {!result.isError && <span aria-hidden="true">✓ </span>}
           {result.message}
-        </div>
+        </Notice>
       )}
 
       <BulkActionBar count={selection.size} noun="song" nounPlural="songs" className="mb-4">
