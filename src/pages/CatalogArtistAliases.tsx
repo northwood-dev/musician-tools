@@ -6,6 +6,7 @@ import { ListSkeleton } from '../components/ListSkeleton';
 import { artistAliasService, ArtistAliasConflictError } from '../services/artistAliasService';
 import type { ArtistAliasWithCount } from '../services/artistAliasService';
 import { searchKey } from '../utils/searchKey';
+import { Notice } from '../components/Notice';
 
 // #76: curators manage the artist aliases search uses. To change one, remove it and add it
 // again. The count of Catalog entries is what makes a broken alias visible: the artist is free
@@ -113,9 +114,10 @@ export default function CatalogArtistAliases() {
         </button>
       </form>
 
-      {/* Always mounted: a region that appears with its message may not be announced. */}
-      <p role="alert" className={error ? 'mb-4 text-sm text-red-700 dark:text-red-300' : undefined}>{error}</p>
-      <p role="status" className={doneMessage ? 'mb-4 text-sm text-green-700 dark:text-green-300' : undefined}>{doneMessage}</p>
+      {/* Always mounted: a region that appears with its message may not be announced. The
+          regions announce; the Notice inside only draws the box (#153). */}
+      <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
+      <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
 
       {loadFailed && (
         <div className="text-center py-10">

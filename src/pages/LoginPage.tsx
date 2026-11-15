@@ -94,7 +94,7 @@ function LoginPage() {
 
         {/* Story 7.13: email not verified — prompt to confirm + resend the link. */}
         {needsVerification && (
-          <Notice tone="warning"><div className="space-y-2">
+          <Notice tone="warning" bodyClassName="space-y-2">
             <p className="font-medium">Verify your email to sign in</p>
             <p>We sent a confirmation link to your email. Click it to activate your account, then sign in.</p>
             <button
@@ -106,7 +106,7 @@ function LoginPage() {
               {resending ? 'Sending...' : 'Resend verification email'}
             </button>
             {resendMessage && <span className="block opacity-90">{resendMessage}</span>}
-          </div></Notice>
+          </Notice>
         )}
 
         {/* Form */}

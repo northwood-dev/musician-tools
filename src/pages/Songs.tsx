@@ -26,6 +26,7 @@ import { formatLocalDate } from '../utils/heatmap';
 import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { Notice } from '../components/Notice';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -2066,9 +2067,9 @@ function Songs() {
               {editingUid ? 'Edit song' : 'Add song'}
             </h1>
           {editingUid && cameFromDuplicate && (
-            <div className="mb-4 rounded-md border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 p-3 text-sm text-blue-800 dark:text-blue-100">
+            <Notice tone="info" announce="none" className="mb-4">
               If you couldn't find this song in your songlist, remember to reset your filters.
-            </div>
+            </Notice>
           )}
           {/* Story 21.2: Catalog provenance + drift/Refresh (self-contained; renders nothing
               if this song isn't a Catalog copy). onRefreshed re-seeds the open form. */}

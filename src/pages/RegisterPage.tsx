@@ -99,7 +99,7 @@ function RegisterPage() {
              already exists (story 7.7 + hard gate 7.13: register no longer
              auto-logs-in, so a new and an existing email show the SAME screen).
              You must click the link to activate the account before signing in. */
-          <Notice tone="info"><div className="space-y-2">
+          <Notice tone="info" bodyClassName="space-y-2">
             <p className="font-medium">Check your email</p>
             <p>
               We&apos;ve sent a confirmation link. Click it to activate your account, then sign in. If you already have
@@ -117,7 +117,7 @@ function RegisterPage() {
             <Link to="/login" className="block text-brand-600 dark:text-brand-400 font-medium hover:text-brand-700 dark:hover:text-brand-300">
               Go to sign in
             </Link>
-          </div></Notice>
+          </Notice>
         ) : (
         <>
         {/* Error Message */}

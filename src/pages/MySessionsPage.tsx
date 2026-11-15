@@ -697,8 +697,7 @@ function MySessionsPage() {
         onConfirm={handleConfirmMerge}
         onCancel={() => setPendingMerge(null)}
       />
-      {/* Always mounted: a live region must exist in the DOM before its content
-          changes, or screen readers may never announce the toast */}
+      {/* The shared toast keeps its live region mounted itself (#153). */}
       <Toast message={toastMessage} />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">

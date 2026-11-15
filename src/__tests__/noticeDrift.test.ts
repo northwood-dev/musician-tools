@@ -9,9 +9,11 @@ import { join, relative } from 'path';
 const SRC = join(__dirname, '..');
 const OWNER = 'components/Notice.tsx';
 
-const RECIPES: [string, RegExp][] = [
-  ['a red, amber or green message background', /\bbg-(red|amber|green)-50(\/\d+)?\b/],
-  ['the grey info box', /border-gray-200 bg-gray-50 text-gray-700/],
+// Each recipe is a set of classes that must ALL be on one line, in any order.
+const RECIPES: [string, RegExp[]][] = [
+  ['a red, amber or green message background', [/\bbg-(red|amber|green)-50(\/\d+)?(?=[\s'"`]|$)/]],
+  ['a blue message box', [/\bbg-blue-50\b/, /\bborder-blue-\d+\b/]],
+  ['the grey info box', [/\bbg-gray-50\b/, /\bborder-gray-200\b/, /\btext-gray-700\b/]],
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -28,9 +30,10 @@ test('no message box recipe is written by hand outside <Notice>', () => {
     const rel = relative(SRC, file);
     if (rel === OWNER) continue;
     readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-      for (const [what, pattern] of RECIPES) {
-        // Hover / focus states of buttons and rows are not message boxes.
-        if (pattern.test(line.replace(/\b(hover|focus|group-hover):\S+/g, ''))) offenders.push(`${rel}:${i + 1} — ${what}`);
+      for (const [what, patterns] of RECIPES) {
+        // Variant classes (hover:, focus-visible:, active:, dark:…) are states, not boxes.
+        const plain = line.replace(/(^|[\s'"`])[a-z-]+:[^\s'"`]+/g, '$1');
+        if (patterns.every(p => p.test(plain))) offenders.push(`${rel}:${i + 1} — ${what}`);
       }
     });
   }

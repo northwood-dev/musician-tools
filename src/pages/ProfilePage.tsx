@@ -183,7 +183,7 @@ function ProfilePage() {
         ) : (
           <form onSubmit={handleRequestEmailChange} className="space-y-3">
             <FormError message={emailError} rateLimited={emailRateLimited} />
-            {emailMsg && <Notice tone="success">{emailMsg}</Notice>}
+            {emailMsg && <Notice tone="success" label="Email change">{emailMsg}</Notice>}
             <input
               className="input-base"
               type="email"

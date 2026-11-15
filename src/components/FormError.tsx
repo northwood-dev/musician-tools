@@ -1,8 +1,8 @@
 import { Notice } from './Notice';
 
 // The error message above an account form's fields after a failed submit (#129). Since
-// #153 it is a <Notice>: red for an error, amber for a rate limit. One flag decides BOTH its colour and how it is
-// announced, so they can't disagree:
+// #153 it is a <Notice>. One flag decides BOTH its colour and how it is announced, so
+// they can't disagree:
 //   • an error is red and an alert (announced at once);
 //   • a rate limit ("too many attempts, try again later", story 15.1) is amber and a
 //     status (announced politely) — it's information, not a mistake.
@@ -20,7 +20,9 @@ export function FormError({ message, rateLimited = false, attempt }: {
 }) {
   if (!message) return null;
   return (
-    <Notice key={attempt} tone={rateLimited ? 'warning' : 'error'}>
+    // Keyed on the attempt AND the tone: a notice whose role changes in place is not
+    // reliably re-announced (Notice's rule).
+    <Notice key={`${attempt ?? ''}:${rateLimited}`} tone={rateLimited ? 'warning' : 'error'}>
       {message}
     </Notice>
   );
