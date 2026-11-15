@@ -103,11 +103,11 @@ export default function CatalogArtistAliases() {
 
       <form onSubmit={handleAdd} noValidate className="card-base p-4 mb-6 grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
         <div>
-          <label htmlFor={aliasId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Alias</label>
+          <label htmlFor={aliasId} className="label-base">Alias</label>
           <input id={aliasId} className="input-base" value={alias} maxLength={255} onChange={e => setAlias(e.target.value)} placeholder="RHCP" />
         </div>
         <div>
-          <label htmlFor={artistId} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Artist</label>
+          <label htmlFor={artistId} className="label-base">Artist</label>
           <input id={artistId} className="input-base" value={artist} maxLength={255} onChange={e => setArtist(e.target.value)} placeholder="Red Hot Chili Peppers" />
         </div>
         <button type="submit" className="btn-primary min-h-[44px]" disabled={saving}>

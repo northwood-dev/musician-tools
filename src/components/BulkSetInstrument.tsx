@@ -71,7 +71,7 @@ export function BulkSetInstrument({
         <Panel panel={panel} title="Add an instrument" onClose={close} closeDisabled={submitting}>
           <select
             aria-label="Instrument to add"
-            className="w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 text-sm dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50"
+            className="input-base text-sm"
             value={instrument}
             onChange={e => setInstrument(e.target.value)}
             disabled={submitting}

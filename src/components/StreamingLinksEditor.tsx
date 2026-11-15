@@ -67,8 +67,6 @@ function CatalogLinkFields({ links, onChange, disabled = false }: Omit<Props, 'm
   );
 }
 
-const INPUT = 'rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100';
-
 // Songlist mode (#108): a free list, added by pasting a URL with an optional label, removed
 // with ✕ (no edit in place).
 function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'>) {
@@ -101,7 +99,7 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
 
   return (
     <div>
-      <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Listen</span>
+      <span className="label-base">Listen</span>
       {links.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {shown.map((link) => (
@@ -134,7 +132,7 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
           type="url"
           aria-label="Link URL"
           placeholder="https://…"
-          className={`flex-1 ${INPUT}`}
+          className="input-base flex-1"
           value={url}
           onChange={(e) => { setUrl(e.target.value); setError(null); }}
           onKeyDown={addOnEnter}
@@ -144,7 +142,7 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
           type="text"
           aria-label="Link label (optional)"
           placeholder="Label (optional)"
-          className={`sm:w-40 ${INPUT}`}
+          className="input-base sm:w-40"
           value={label}
           onChange={(e) => { setLabel(e.target.value); setError(null); }}
           onKeyDown={addOnEnter}

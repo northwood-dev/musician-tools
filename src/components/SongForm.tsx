@@ -136,7 +136,7 @@ export function SongForm(props: SongFormProps) {
       {/* Top quick links aggregated from all instruments */}
       {allInstrumentLinks.length > 0 && (
         <>
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Links</div>
+          <div className="label-base">Links</div>
           <div className="flex flex-wrap gap-2">
             {allInstrumentLinks.map((lnk) => (
               // A real link (#114): opens in a new tab with no handle on the app (noopener).
@@ -156,23 +156,23 @@ export function SongForm(props: SongFormProps) {
         </>
       )}
       <div>
-        <label htmlFor="song-artist" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Artist</label>
+        <label htmlFor="song-artist" className="label-base">Artist</label>
         <AutocompleteInput
           id="song-artist"
           name="artist"
           value={form.artist}
           onValueChange={(v) => onChange({ target: { name: 'artist', value: v } } as React.ChangeEvent<HTMLInputElement>)}
           suggestions={suggestedArtists}
-          inputClassName="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+          inputClassName="input-base"
           disabled={loading}
           autoComplete="off"
         />
       </div>
       <div>
-        <label htmlFor="song-title" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Title</label>
+        <label htmlFor="song-title" className="label-base">Title</label>
         <input
           id="song-title"
-          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+          className="input-base"
           name="title"
           value={form.title}
           onChange={onChange}
@@ -225,7 +225,7 @@ export function SongForm(props: SongFormProps) {
         {detailsAccordionOpen && (
           <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800 overflow-visible rounded-b-md">
             <div>
-              <label htmlFor="genres-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Genres</label>
+              <label htmlFor="genres-search" className="label-base">Genres</label>
               <div className="relative z-30">
                 <input
                   id="genres-search"
@@ -239,7 +239,7 @@ export function SongForm(props: SongFormProps) {
                     e, filteredGenreOptions, selectedGenreIndex, setSelectedGenreIndex, setGenreSearchOpen,
                     (genre) => { onToggleGenre(genre); setGenreSearchQuery(''); setGenreSearchOpen(false); setSelectedGenreIndex(-1); },
                   )}
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   disabled={loading}
                   {...comboboxInputAria('song-genres-list', genreSearchOpen, selectedGenreIndex)}
                 />
@@ -290,21 +290,21 @@ export function SongForm(props: SongFormProps) {
               )}
             </div>
             <div>
-              <label htmlFor="song-album" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Album</label>
+              <label htmlFor="song-album" className="label-base">Album</label>
               <AutocompleteInput
                 id="song-album"
                 name="album"
                 value={typeof form.album === 'string' ? form.album : ''}
                 onValueChange={(v) => onChange({ target: { name: 'album', value: v } } as React.ChangeEvent<HTMLInputElement>)}
                 suggestions={suggestedAlbums}
-                inputClassName="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                inputClassName="input-base"
                 wrapperClassName="relative z-[25]"
                 disabled={loading}
                 autoComplete="off"
               />
             </div>
             <div>
-              <label htmlFor="language-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Languages</label>
+              <label htmlFor="language-search" className="label-base">Languages</label>
               <div className="relative z-20">
                 <input
                   id="language-search"
@@ -318,7 +318,7 @@ export function SongForm(props: SongFormProps) {
                     e, filteredLanguageOptions, selectedLanguageIndex, setSelectedLanguageIndex, setLanguageSearchOpen,
                     (language) => { onToggleLanguage(language); setLanguageSearchQuery(''); setLanguageSearchOpen(false); setSelectedLanguageIndex(-1); },
                   )}
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   disabled={loading}
                   {...comboboxInputAria('song-languages-list', languageSearchOpen, selectedLanguageIndex)}
                 />
@@ -370,10 +370,10 @@ export function SongForm(props: SongFormProps) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label htmlFor="song-duration" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Duration (m:ss)</label>
+                <label htmlFor="song-duration" className="label-base">Duration (m:ss)</label>
                 <input
                   id="song-duration"
-                  className={`mt-1 block w-full rounded-md border ${durationError ? 'border-red-500 dark:border-red-500' : 'border-gray-300 dark:border-gray-600'} p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100`}
+                  className={`input-base ${durationError ? 'border-red-500 focus:border-red-500 dark:border-red-500 dark:focus:border-red-500' : ''}`}
                   name="durationSeconds"
                   type="text"
                   inputMode="numeric"
@@ -412,10 +412,10 @@ export function SongForm(props: SongFormProps) {
                 )}
               </div>
               <div>
-                <label htmlFor="song-bpm" className="block text-sm font-medium text-gray-700 dark:text-gray-100">BPM</label>
+                <label htmlFor="song-bpm" className="label-base">BPM</label>
                 <input
                   id="song-bpm"
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   name="bpm"
                   type="number"
                   value={form.bpm ?? ''}
@@ -425,10 +425,10 @@ export function SongForm(props: SongFormProps) {
                 />
               </div>
               <div>
-                <label htmlFor="song-time-signature" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Time Signature</label>
+                <label htmlFor="song-time-signature" className="label-base">Time Signature</label>
                 <select
                   id="song-time-signature"
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   name="timeSignature"
                   value={form.timeSignature || ''}
                   onChange={onChange}
@@ -443,10 +443,10 @@ export function SongForm(props: SongFormProps) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label htmlFor="song-key" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Key</label>
+                <label htmlFor="song-key" className="label-base">Key</label>
                 <select
                   id="song-key"
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   name="key"
                   value={form.key || ''}
                   onChange={onChange}
@@ -459,10 +459,10 @@ export function SongForm(props: SongFormProps) {
                 </select>
               </div>
               <div>
-                <label htmlFor="song-mode" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Mode</label>
+                <label htmlFor="song-mode" className="label-base">Mode</label>
                 <select
                   id="song-mode"
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   name="mode"
                   value={form.mode || ''}
                   onChange={onChange}
@@ -475,10 +475,10 @@ export function SongForm(props: SongFormProps) {
                 </select>
               </div>
               <div>
-                <label htmlFor="song-pitch-standard" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Pitch Standard (Hz)</label>
+                <label htmlFor="song-pitch-standard" className="label-base">Pitch Standard (Hz)</label>
                 <input
                   id="song-pitch-standard"
-                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                  className="input-base"
                   name="pitchStandard"
                   type="number"
                   value={form.pitchStandard ?? 440}
@@ -498,7 +498,7 @@ export function SongForm(props: SongFormProps) {
         disabled={loading}
       />
       <div>
-        <span className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Instruments</span>
+        <span className="label-base">Instruments</span>
         <SongFormInstruments
           currentInstruments={currentInstruments}
           capo={form.capo ?? null}
@@ -532,7 +532,7 @@ export function SongForm(props: SongFormProps) {
         />
         
         <div className="mt-4">
-          <label htmlFor="add-instrument" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Add an instrument</label>
+          <label htmlFor="add-instrument" className="label-base">Add an instrument</label>
           <select
             id="add-instrument"
             value={selectedInstrumentType}
@@ -544,7 +544,7 @@ export function SongForm(props: SongFormProps) {
               }
               setSelectedInstrumentType('');
             }}
-            className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+            className="input-base"
             disabled={loading}
           >
             <option value="">Select an instrument to add</option>
@@ -558,10 +558,10 @@ export function SongForm(props: SongFormProps) {
       {playlistSlot}
 
       <div>
-        <label htmlFor="song-notes" className="block text-sm font-medium text-gray-700 dark:text-gray-100">Notes</label>
+        <label htmlFor="song-notes" className="label-base">Notes</label>
         <textarea
           id="song-notes"
-          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+          className="input-base"
           name="notes"
           value={form.notes}
           onChange={onChange}

@@ -2131,7 +2131,7 @@ function Songs() {
                             }
                           },
                         )}
-                        className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                        className="input-base"
                         {...comboboxInputAria('song-playlists-list', playlistSearchOpen, selectedPlaylistIndex)}
                       />
                       {playlistSearchOpen && (

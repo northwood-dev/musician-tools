@@ -149,7 +149,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
               <div className="p-3 space-y-3 bg-gray-50 dark:bg-gray-800">
                 {/* Difficulty */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Difficulty</label>
+                  <label className="label-base">Difficulty</label>
                   <div className="flex items-center gap-2">
                     {[1, 2, 3, 4, 5].map((val) => {
                       const current = instrumentDifficulty[instrumentType] ?? null;
@@ -182,9 +182,9 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                 {/* Tuning */}
                 {getAvailableTunings(instrumentType).length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Tuning</label>
+                    <label className="label-base">Tuning</label>
                     <select
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      className="input-base"
                       aria-label="Tuning"
                       value={instrumentTuning[instrumentType] || ''}
                       onChange={(e) => {
@@ -205,9 +205,9 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                 {/* Capo (Guitar only) */}
                 {instrumentType === 'Guitar' && (
                   <div>
-                    <div className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Capo</div>
+                    <div className="label-base">Capo</div>
                     <input
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      className="input-base"
                       type="number"
                       min={1}
                       max={12}
@@ -226,9 +226,9 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                 {/* My Instrument */}
                 {filteredMyInstruments.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">My Instrument</label>
+                    <label className="label-base">My Instrument</label>
                     <select
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      className="input-base"
                       value={myInstrumentUid || ''}
                       onChange={(e) => onSetMyInstrumentUid(e.target.value || undefined)}
                       disabled={loading}
@@ -244,7 +244,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                 {/* Techniques */}
                 {instrumentTechniques.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Techniques</label>
+                    <label className="label-base">Techniques</label>
                     <div className="flex flex-wrap gap-2">
                       {instrumentTechniques.map((tech) => {
                         const selected = currentTechniques.includes(tech);
@@ -271,7 +271,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
 
                 {/* Instrument Links */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-2">Links for {instrumentType}</label>
+                  <label className="label-base">Links for {instrumentType}</label>
                   {(instrumentLinks?.[instrumentType]?.length ?? 0) > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {(instrumentLinks?.[instrumentType] || []).map((link, idx) => (
@@ -300,7 +300,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                   )}
                   <div className="space-y-2">
                     <input
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                      className="input-base"
                       type="text"
                       placeholder="Label (optional)"
                       value={(newLinkInputs[instrumentType]?.label) || ''}
@@ -309,7 +309,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                     />
                     <div className="flex gap-2">
                       <input
-                        className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 p-2 focus:outline-none focus:ring-2 focus:ring-brand-500 dark:bg-gray-700 dark:text-gray-100"
+                        className="input-base flex-1"
                         type="url"
                         placeholder="https://example.com"
                         value={(newLinkInputs[instrumentType]?.url) || ''}
