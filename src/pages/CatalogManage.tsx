@@ -470,15 +470,15 @@ export default function CatalogManage() {
             className="btn-primary text-sm px-3 py-1.5"
             onClick={toggleAddMenu}
             disabled={adding || deleting}
-            aria-haspopup="menu"
             aria-expanded={addMenuOpen}
+            aria-controls={addMenu.panelId}
           >
             Add to collection
           </button>
           {addMenuOpen && (
             <div
               ref={addMenu.menuRef}
-              role="menu"
+              id={addMenu.panelId}
               className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3"
             >
               <div className="flex items-center justify-between mb-2">

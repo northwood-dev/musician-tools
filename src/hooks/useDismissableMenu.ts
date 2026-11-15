@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 // A menu opened by a button (the bulk-bar menus, the header account menu) closes like
 // its ✕ on a press outside it and on Escape — wherever focus is — and Escape gives
@@ -11,6 +11,10 @@ import { useEffect, useRef } from 'react';
 // A press on the button itself is left to the button's own toggle; otherwise the press
 // would close the menu and the click would reopen it.
 //
+// The panel is a DISCLOSURE, not an ARIA menu (#145): no menu roles, Tab moves through it.
+// `panelId` is unique per instance: put it on the panel's `id` and the button's
+// `aria-controls`, so the button points to what it opened.
+//
 // An Escape a nearer element already handled (a dialog, an autocomplete list — they call
 // preventDefault) is theirs: one Escape closes one thing.
 export interface UseDismissableMenuOptions {
@@ -22,6 +26,7 @@ export interface UseDismissableMenuOptions {
 export function useDismissableMenu({ open, onClose, blocked = false }: UseDismissableMenuOptions) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
   // Read at event time, so the listeners don't re-subscribe on every render.
   const latest = useRef({ onClose, blocked });
   useEffect(() => {
@@ -49,5 +54,5 @@ export function useDismissableMenu({ open, onClose, blocked = false }: UseDismis
     };
   }, [open]);
 
-  return { buttonRef, menuRef };
+  return { buttonRef, menuRef, panelId };
 }

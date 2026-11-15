@@ -494,3 +494,19 @@ describe('#135: the Add to collection menu closes like its ✕ on an outside cli
     expect(screen.getByRole('button', { name: 'Add to collection' })).toHaveFocus();
   });
 });
+
+test('#149: Add to collection is a disclosure, not a menu, and points to its panel', async () => {
+  cat.listCollections.mockResolvedValue(twoCollections);
+  renderManage();
+  await screen.findByText('Zombie');
+  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  const button = screen.getByRole('button', { name: 'Add to collection' });
+  fireEvent.click(button);
+  await screen.findByRole('button', { name: /Beginner classics/ });
+
+  expect(screen.queryByRole('menu')).toBeNull();
+  expect(button).not.toHaveAttribute('aria-haspopup');
+  expect(button).toHaveAttribute('aria-expanded', 'true');
+  const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
+  expect(panel).toHaveTextContent('Select a collection');
+});

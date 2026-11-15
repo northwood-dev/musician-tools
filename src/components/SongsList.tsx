@@ -281,11 +281,12 @@ export default function SongsList(props: SongsListProps) {
                 onClick={props.toggleBulkPlaylistPicker}
                 disabled={props.loading}
                 aria-expanded={props.bulkPlaylistOpen}
+                aria-controls={playlistMenu.panelId}
               >
                 Add to playlist
               </button>
               {props.bulkPlaylistOpen && (
-                <div ref={playlistMenu.menuRef} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
+                <div ref={playlistMenu.menuRef} id={playlistMenu.panelId} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
                     <button

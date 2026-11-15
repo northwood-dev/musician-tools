@@ -5,13 +5,13 @@ import { useDismissableMenu } from './useDismissableMenu';
 // A button that opens a menu, as the bulk bar and the header build them (#38).
 function Menu({ blocked = false }: { blocked?: boolean }) {
   const [open, setOpen] = useState(false);
-  const { buttonRef, menuRef } = useDismissableMenu({ open, onClose: () => setOpen(false), blocked });
+  const { buttonRef, menuRef, panelId } = useDismissableMenu({ open, onClose: () => setOpen(false), blocked });
   return (
     <div>
       <p>Elsewhere on the page</p>
-      <button ref={buttonRef} type="button" aria-expanded={open} onClick={() => setOpen(o => !o)}>Open menu</button>
+      <button ref={buttonRef} type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(o => !o)}>Open menu</button>
       {open && (
-        <div ref={menuRef} role="group" aria-label="The menu">
+        <div ref={menuRef} id={panelId} role="group" aria-label="The menu">
           <button type="button">Inside</button>
         </div>
       )}
@@ -92,4 +92,14 @@ test('an Escape already handled by a nearer element (dialog, autocomplete) leave
   fireEvent.keyDown(owner, { key: 'Escape' });
   expect(menu()).toBeInTheDocument();
   expect(owner).toHaveFocus();
+});
+
+test('the panel id links the button to its panel, unique per instance (#149)', () => {
+  render(<><Menu /><Menu /></>);
+  const [first, second] = screen.getAllByRole('button', { name: 'Open menu' });
+  fireEvent.click(first);
+  const id = first.getAttribute('aria-controls');
+  expect(id).toBeTruthy();
+  expect(document.getElementById(id!)).toBe(screen.getByRole('group', { name: 'The menu' }));
+  expect(second.getAttribute('aria-controls')).not.toBe(id);
 });

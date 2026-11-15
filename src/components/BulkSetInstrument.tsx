@@ -35,7 +35,7 @@ export function BulkSetInstrument({
     setInstrument('');
   };
   // Outside click and Escape close like ✕, and like ✕ not while the add runs (#38).
-  const { buttonRef, menuRef } = useDismissableMenu({ open, onClose: close, blocked: submitting });
+  const { buttonRef, menuRef, panelId } = useDismissableMenu({ open, onClose: close, blocked: submitting });
 
   const submit = async () => {
     let result: AddInstrumentResult;
@@ -62,11 +62,12 @@ export function BulkSetInstrument({
         onClick={() => (open ? close() : onOpenChange(true))}
         disabled={disabled}
         aria-expanded={open}
+        aria-controls={panelId}
       >
         Set instrument
       </button>
       {open && (
-        <div ref={menuRef} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
+        <div ref={menuRef} id={panelId} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-700 dark:text-gray-200">Add an instrument</p>
             <button
