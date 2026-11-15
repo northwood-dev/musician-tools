@@ -280,7 +280,7 @@ export default function Catalog() {
       )}
 
       {!error && data && (
-        <div className={loading ? 'opacity-50 transition-opacity duration-150' : 'transition-opacity duration-150'} aria-busy={loading}>
+        <div className={loading ? 'opacity-50 motion-safe:transition-opacity duration-150' : 'motion-safe:transition-opacity duration-150'} aria-busy={loading}>
           {data.total === 0 ? (
             <EmptyState>{hasQuery ? 'No songs match your search.' : 'The Catalog is filling up — check back soon.'}</EmptyState>
           ) : (

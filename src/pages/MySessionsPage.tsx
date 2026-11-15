@@ -877,7 +877,7 @@ function MySessionsPage() {
               })}
               <button
                 type="button"
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-brand-300 text-brand-700 font-semibold hover:bg-brand-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-900/30"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-dashed border-brand-300 text-brand-700 font-semibold hover:bg-brand-50 motion-safe:transition-colors disabled:opacity-50 disabled:cursor-not-allowed dark:border-brand-600 dark:text-brand-300 dark:hover:bg-brand-900/30"
                 onClick={addEntry}
                 disabled={loading}
               >

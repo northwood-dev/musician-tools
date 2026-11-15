@@ -91,7 +91,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
   return (
     <aside
       id="songs-sidebar"
-      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden transition-all duration-300 card-base glass-effect lg:sticky lg:top-24`}
+      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all duration-300 card-base glass-effect lg:sticky lg:top-24`}
       aria-hidden={false}
     >
       {/* Collapsed rail — desktop only (>= lg). Under lg the "Filters" disclosure
@@ -138,7 +138,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.filtersAccordionOpen}
               onClick={() => props.setFiltersAccordionOpen(!props.filtersAccordionOpen)}
             >
@@ -195,7 +195,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.playlistAccordionOpen}
               onClick={() => props.setPlaylistAccordionOpen(!props.playlistAccordionOpen)}
             >
@@ -234,7 +234,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             <div className="card-base mt-3">
               <button
                 type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
                 aria-expanded={props.difficultyAccordionOpen}
                 onClick={() => props.setDifficultyAccordionOpen(!props.difficultyAccordionOpen)}
               >
@@ -265,7 +265,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             <div className="card-base mt-3">
               <button
                 type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
                 aria-expanded={props.capoAccordionOpen}
                 onClick={() => props.setCapoAccordionOpen(!props.capoAccordionOpen)}
               >
@@ -296,7 +296,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             <div className="card-base mt-3">
               <button
                 type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
                 aria-expanded={props.tuningAccordionOpen}
                 onClick={() => props.setTuningAccordionOpen(!props.tuningAccordionOpen)}
               >
@@ -328,7 +328,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             <div className="card-base mt-3">
               <button
                 type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
                 aria-expanded={props.techniqueAccordionOpen}
                 onClick={() => props.setTechniqueAccordionOpen(!props.techniqueAccordionOpen)}
               >
@@ -400,7 +400,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.genreAccordionOpen}
               onClick={() => props.setGenreAccordionOpen(!props.genreAccordionOpen)}
             >
@@ -475,7 +475,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.languageAccordionOpen}
               onClick={() => props.setLanguageAccordionOpen(!props.languageAccordionOpen)}
             >
@@ -497,7 +497,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                   <>
                     <div className="space-y-2">
                       {props.languageFilterOptions.map(language => (
-                        <label key={language} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded transition">
+                        <label key={language} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded motion-safe:transition">
                           <input
                             type="checkbox"
                             checked={props.languageFilters.has(language)}
@@ -555,7 +555,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.keyAccordionOpen}
               onClick={() => props.setKeyAccordionOpen(!props.keyAccordionOpen)}
             >
@@ -592,7 +592,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.modeAccordionOpen}
               onClick={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
             >
@@ -624,7 +624,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.timeSignatureAccordionOpen}
               onClick={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
             >
@@ -659,7 +659,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.bpmAccordionOpen}
               onClick={() => props.setBpmAccordionOpen(!props.bpmAccordionOpen)}
             >
@@ -701,7 +701,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           <div className="card-base mt-3">
             <button
               type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md transition-colors shadow-sm"
+              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
               aria-expanded={props.pitchAccordionOpen}
               onClick={() => props.setPitchAccordionOpen(!props.pitchAccordionOpen)}
             >

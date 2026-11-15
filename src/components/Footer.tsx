@@ -32,7 +32,7 @@ function Footer() {
                 href="https://github.com/northwood-dev"
                 target="_blank"
                 rel="noreferrer"
-                className="font-medium text-brand-400 hover:text-brand-300 underline-offset-2 hover:underline transition-colors whitespace-nowrap"
+                className="font-medium text-brand-400 hover:text-brand-300 underline-offset-2 hover:underline motion-safe:transition-colors whitespace-nowrap"
               >
                 northwood.dev
               </a>
