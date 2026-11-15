@@ -208,11 +208,12 @@ export default function CatalogManage() {
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const displayedUids = data?.items.map(i => i.uid) ?? [];
   const allDisplayedSelected = selection.allDisplayedSelected(displayedUids);
+  const someDisplayedSelected = selection.someDisplayedSelected(displayedUids);
 
   // Select-all is "within": union/subtract only the displayed (paginated) uids, so a
   // selection made on another page survives — composed from the shared primitives.
   const toggleSelectAll = () => {
-    if (displayedUids.every(u => selection.isSelected(u))) selection.removeMany(displayedUids);
+    if (selection.anyDisplayedSelected(displayedUids)) selection.removeMany(displayedUids);
     else selection.addMany(displayedUids);
   };
 
@@ -651,6 +652,7 @@ export default function CatalogManage() {
                       <th className={selectionCell('px-3 py-2 w-12 text-center')}>
                         <SelectAllCheckbox
                           allSelected={allDisplayedSelected}
+                          someSelected={someDisplayedSelected}
                           onToggle={toggleSelectAll}
                           disabled={adding || deleting}
                         />

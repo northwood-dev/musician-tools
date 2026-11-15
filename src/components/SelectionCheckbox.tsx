@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 // The two shared row-selection checkboxes of the list screens (story 22.1): the
 // header "select all" box and the per-row box. Pair them with <BulkActionBar> and the
@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 // <MultiSelectTable>" decision (epic 22, C).
 //
 // What the primitives GUARANTEE, so no page has to repeat it:
-//   • an explicit aria-label ("Select all" / "Deselect all", "Select {label}"),
+//   • an explicit aria-label ("Select all", "Select {label}"),
 //   • a hit area covering the WHOLE cell, not just the 16px box,
 //   • stopPropagation on the row box: ticking it never triggers the row's onClick.
 //
@@ -42,23 +42,40 @@ function CheckboxCell({ children, isolate }: { children: ReactNode; isolate: boo
 
 export interface SelectAllCheckboxProps {
   allSelected: boolean;
+  // Some but not all displayed rows are selected: the box shows the native mixed state
+  // (a dash), exposed to assistive technology as aria-checked="mixed" (#37).
+  someSelected: boolean;
   onToggle: () => void;
   disabled?: boolean;
 }
 
-export function SelectAllCheckbox({ allSelected, onToggle, disabled }: SelectAllCheckboxProps) {
-  const label = allSelected ? 'Deselect all' : 'Select all';
+// One stable name in every state: the checkbox itself carries checked / mixed / not
+// checked, so a screen reader reads "Select all, mixed" instead of a control that
+// renames itself "Deselect all" (#37).
+const SELECT_ALL = 'Select all';
+
+export function SelectAllCheckbox({ allSelected, someSelected, onToggle, disabled }: SelectAllCheckboxProps) {
+  // `indeterminate` is a DOM property with no HTML attribute: React can't set it, a ref must.
+  // No dependency list on purpose: a native click clears the property and React only
+  // restores `checked`, so the dash is re-asserted after every render — even one where
+  // `mixed` didn't change. Layout effect: set before paint, no one-frame flicker.
+  const ref = useRef<HTMLInputElement>(null);
+  const mixed = someSelected && !allSelected;
+  useLayoutEffect(() => {
+    if (ref.current) ref.current.indeterminate = mixed;
+  });
   return (
     // The header cell is never clickable, so this one needs no click isolation.
     <CheckboxCell isolate={false}>
       <input
+        ref={ref}
         type="checkbox"
         className={INPUT}
         checked={allSelected}
         onChange={onToggle}
         disabled={disabled}
-        aria-label={label}
-        title={label}
+        aria-label={SELECT_ALL}
+        title={SELECT_ALL}
       />
     </CheckboxCell>
   );

@@ -71,6 +71,7 @@ export interface SongsListProps {
   genreOptions: string[];
   availableTechniqueFilters: string[];
   allDisplayedSelected: boolean;
+  someDisplayedSelected: boolean;
   hasActiveFilters: boolean;
   activeFilterCount: number;
   showTuningFilters: boolean;
@@ -376,6 +377,7 @@ export default function SongsList(props: SongsListProps) {
                       <th className={selectionCell('text-center p-2 border-b dark:border-gray-700 w-12')}>
                         <SelectAllCheckbox
                           allSelected={props.allDisplayedSelected}
+                          someSelected={props.someDisplayedSelected}
                           onToggle={props.toggleSelectAll}
                           disabled={props.loading}
                         />

@@ -51,7 +51,7 @@ export default function CatalogCollection() {
   const userToggle = (u: string) => { bulkAdd.setRecap(null); selection.toggle(u); };
   const userSelectAll = (uids: string[]) => {
     bulkAdd.setRecap(null);
-    if (selection.allDisplayedSelected(uids)) selection.clear();
+    if (selection.anyDisplayedSelected(uids)) selection.clear();
     else selection.selectOnly(uids);
   };
 
@@ -211,6 +211,7 @@ export default function CatalogCollection() {
                 <th scope="col" className={selectionCell('px-3 py-2 w-12 text-center')}>
                   <SelectAllCheckbox
                     allSelected={selection.allDisplayedSelected(selectableUids)}
+                    someSelected={selection.someDisplayedSelected(selectableUids)}
                     onToggle={() => userSelectAll(selectableUids)}
                     disabled={bulkAdd.running}
                   />

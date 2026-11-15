@@ -254,7 +254,7 @@ describe('#50: entries found to be gone are marked on their row', () => {
 
     expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeChecked();
     expect(screen.getByLabelText('Select Creep by Radiohead')).not.toBeChecked();
-    expect(screen.getByLabelText('Deselect all')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select all')).toBeChecked();
   });
 
   test('a row that failed for another reason is not marked and stays selected', async () => {

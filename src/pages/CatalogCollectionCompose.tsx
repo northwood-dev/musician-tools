@@ -117,7 +117,7 @@ export default function CatalogCollectionCompose() {
   const userToggle = (uid: string) => { setRemoveRecap(null); selection.toggle(uid); };
   const userSelectAll = (uids: string[]) => {
     setRemoveRecap(null);
-    if (selection.allDisplayedSelected(uids)) selection.clear();
+    if (selection.anyDisplayedSelected(uids)) selection.clear();
     else selection.selectOnly(uids); // not paginated: select-all REPLACES
   };
 
@@ -280,6 +280,8 @@ export default function CatalogCollectionCompose() {
       setConfirmOpen(false);
     }
   };
+
+  const memberUids = collection?.songs.map(s => s.uid) ?? [];
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-6">
@@ -449,8 +451,9 @@ export default function CatalogCollectionCompose() {
                   <tr className="text-left text-gray-500 dark:text-gray-400">
                     <th className={selectionCell('px-3 py-2 w-12 text-center')}>
                       <SelectAllCheckbox
-                        allSelected={selection.allDisplayedSelected(collection.songs.map(s => s.uid))}
-                        onToggle={() => userSelectAll(collection.songs.map(s => s.uid))}
+                        allSelected={selection.allDisplayedSelected(memberUids)}
+                        someSelected={selection.someDisplayedSelected(memberUids)}
+                        onToggle={() => userSelectAll(memberUids)}
                         disabled={removing}
                       />
                     </th>
