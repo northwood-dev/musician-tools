@@ -14,6 +14,7 @@ import { useRowSelection } from '../hooks/useRowSelection';
 import { runBounded, BatchSkippedError } from '../utils/runBounded';
 import { useGlobalToast } from '../contexts/GlobalToastContext';
 import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSonglist';
+import { useDismissableMenu } from '../hooks/useDismissableMenu';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -77,6 +78,8 @@ export default function CatalogManage() {
   const [menuError, setMenuError] = useState(false);
   const [pickedCollection, setPickedCollection] = useState<string>('');
   const [adding, setAdding] = useState(false);
+  // Outside click and Escape (wherever focus is) close the menu like its ✕ (#38).
+  const addMenu = useDismissableMenu({ open: addMenuOpen, onClose: () => setAddMenuOpen(false) });
   const addingRef = useRef(false); // in-flight guard: two fast clicks read the same render
   const [addRecap, setAddRecap] = useState<AddRecap | null>(null);
   const menuAbortRef = useRef<AbortController | null>(null);
@@ -462,6 +465,7 @@ export default function CatalogManage() {
             containing block — a `fixed` menu would anchor to the bar, not the viewport. */}
         <div className="relative">
           <button
+            ref={addMenu.buttonRef}
             type="button"
             className="btn-primary text-sm px-3 py-1.5"
             onClick={toggleAddMenu}
@@ -473,9 +477,9 @@ export default function CatalogManage() {
           </button>
           {addMenuOpen && (
             <div
+              ref={addMenu.menuRef}
               role="menu"
               className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3"
-              onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); setAddMenuOpen(false); } }}
             >
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-700 dark:text-gray-200">Select a collection</p>

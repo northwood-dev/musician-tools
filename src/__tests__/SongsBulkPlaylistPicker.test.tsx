@@ -327,3 +327,36 @@ describe('#90: the panel says when playlists are loading, failed or empty', () =
     expect(mockedPlaylists.getAllPlaylists.mock.calls.length).toBeGreaterThan(1);
   });
 });
+
+describe('#135: the Add to playlist menu closes like its ✕ on an outside click and on Escape', () => {
+  test('an outside click closes it and drops the ticked playlists', async () => {
+    await pickWarmups();
+    fireEvent.mouseDown(screen.getByText('Beta'));
+    await expectPickerClosedAndBlank();
+  });
+
+  test('ticking a playlist inside leaves it open', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    await openPicker();
+    fireEvent.mouseDown(playlistBox('Warmups'));
+    fireEvent.click(playlistBox('Warmups'));
+    expect(screen.getByText('Select playlists')).toBeInTheDocument();
+  });
+
+  test('Escape closes it and puts focus back on the Add to playlist button', async () => {
+    await pickWarmups();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.getByRole('button', { name: 'Add to playlist' })).toHaveFocus();
+    await expectPickerClosedAndBlank();
+  });
+
+  test('the button says whether its menu is open', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    const button = await screen.findByRole('button', { name: 'Add to playlist' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await openPicker();
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+  });
+});

@@ -461,3 +461,36 @@ test('un ajout groupé à une collection, abandonné, annonce quand même ce qui
     screen.getByText(/You left while entries were being added to the collection/)
   ).toBeInTheDocument());
 });
+
+describe('#135: the Add to collection menu closes like its ✕ on an outside click and on Escape', () => {
+  const openAddMenu = async () => {
+    cat.listCollections.mockResolvedValue(twoCollections);
+    renderManage();
+    await screen.findByText('Zombie');
+    fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
+    await screen.findByRole('button', { name: /Beginner classics/ });
+  };
+  const menuOpen = () => screen.queryByText('Select a collection') !== null;
+
+  test('an outside click closes it', async () => {
+    await openAddMenu();
+    fireEvent.mouseDown(screen.getByText('Zombie'));
+    expect(menuOpen()).toBe(false);
+  });
+
+  test('picking a collection inside leaves it open', async () => {
+    await openAddMenu();
+    const pick = screen.getByRole('button', { name: /Beginner classics/ });
+    fireEvent.mouseDown(pick);
+    fireEvent.click(pick);
+    expect(menuOpen()).toBe(true);
+  });
+
+  test('Escape with focus outside the menu closes it and focuses the button', async () => {
+    await openAddMenu();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(menuOpen()).toBe(false);
+    expect(screen.getByRole('button', { name: 'Add to collection' })).toHaveFocus();
+  });
+});

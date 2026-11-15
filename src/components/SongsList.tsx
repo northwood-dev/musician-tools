@@ -8,6 +8,7 @@ import FiltersDisclosureButton from './FiltersDisclosureButton';
 import { BulkActionBar } from './BulkActionBar';
 import { RowSelectionCheckbox, SelectAllCheckbox } from './SelectionCheckbox';
 import { selectionCell } from '../utils/selectionCell';
+import { useDismissableMenu } from '../hooks/useDismissableMenu';
 
 export interface SongsListProps {
   // State
@@ -133,6 +134,13 @@ export interface SongsListProps {
 }
 
 export default function SongsList(props: SongsListProps) {
+  // The bulk Add to playlist menu closes like its ✕ on an outside click or Escape, and
+  // like its ✕ not while the page is loading (#38).
+  const playlistMenu = useDismissableMenu({
+    open: props.bulkPlaylistOpen,
+    onClose: props.closeBulkPlaylistPicker,
+    blocked: props.loading,
+  });
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
       <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -267,15 +275,17 @@ export default function SongsList(props: SongsListProps) {
             {props.bulkSetInstrument}
             <div className="relative">
               <button
+                ref={playlistMenu.buttonRef}
                 type="button"
                 className="btn-primary text-sm px-3 py-1.5"
                 onClick={props.toggleBulkPlaylistPicker}
                 disabled={props.loading}
+                aria-expanded={props.bulkPlaylistOpen}
               >
                 Add to playlist
               </button>
               {props.bulkPlaylistOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
+                <div ref={playlistMenu.menuRef} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
                     <button
