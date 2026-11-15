@@ -65,7 +65,7 @@ test('during a save the table stays visible and the row being saved is disabled'
 
   await waitFor(() => expect(mockedService.update).toHaveBeenCalled());
   expect(screen.getByText('Telecaster')).toBeInTheDocument();
-  expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+  expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
   expect(screen.getByDisplayValue('Fender')).toBeDisabled();
 
   finishSave(jazzBass);
@@ -87,7 +87,7 @@ test('a failed Save keeps the row open with what was typed and shows the error',
 test('the initial load shows the loading state', async () => {
   renderPage();
 
-  expect(screen.getByText('Loading...')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('Loading…');
   expect(await screen.findByText('Jazz Bass')).toBeInTheDocument();
 });
 

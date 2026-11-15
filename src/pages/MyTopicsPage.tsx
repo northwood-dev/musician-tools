@@ -6,6 +6,8 @@ import { TOPIC_EDIT_PARAM } from '../utils/liveNames';
 import { useInlineRowSave } from '../hooks/useInlineRowSave';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Page } from '../components/Page';
+import { EmptyState } from '../components/EmptyState';
+import { ListSkeleton } from '../components/ListSkeleton';
 
 const topicRowId = (uid: string) => `topic-${uid}`;
 
@@ -177,11 +179,9 @@ function MyTopicsPage() {
           </form>
 
           {loading ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+            <ListSkeleton rows={4} label="Loading…" />
           ) : list.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              {loadFailed ? 'Topics could not be loaded.' : 'No topics saved yet.'}
-            </p>
+            <EmptyState>{loadFailed ? 'Topics could not be loaded.' : 'No topics saved yet.'}</EmptyState>
           ) : (
             <div className="card-base overflow-hidden">
               <div className="overflow-x-auto">

@@ -21,6 +21,7 @@ import {
 } from '../utils/comboboxKeyboard';
 import { BulkRecap } from '../components/BulkRecap';
 import { Page, PageTitle } from '../components/Page';
+import { EmptyState } from '../components/EmptyState';
 
 // Curator Collection composer (story 20.2). Lives at /catalog/manage/collections/:uid:
 // rename / delete the Collection, see its member entries (Remove each), and Add entries
@@ -437,9 +438,7 @@ export default function CatalogCollectionCompose() {
           )}
 
           {collection.songs.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 py-8 text-center">
-              No entries yet — search above to add some.
-            </p>
+            <EmptyState>No entries yet — search above to add some.</EmptyState>
           ) : (
             <div className="mt-2 overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
               <table className="min-w-full text-sm">

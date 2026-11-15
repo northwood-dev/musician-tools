@@ -12,6 +12,8 @@ import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { CloseButton } from './CloseButton';
 import { Page } from './Page';
 import { Panel } from './Panel';
+import { EmptyState } from './EmptyState';
+import { ListSkeleton } from './ListSkeleton';
 
 export interface SongsListProps {
   // State
@@ -356,14 +358,14 @@ export default function SongsList(props: SongsListProps) {
             </button>
           </BulkActionBar>
           {props.loading ? (
-            <div className="card-base p-6 text-sm text-gray-600 dark:text-gray-400">Loading...</div>
+            <ListSkeleton rows={6} label="Loading…" />
           ) : props.filteredSongs.length === 0 ? (
-            <div className="card-base p-6 text-center text-gray-600 dark:text-gray-400">
-              <EmptyListMessage
+            <div className="card-base">
+              <EmptyState><EmptyListMessage
                 hasActiveFilters={props.activeFilterCount > 0}
                 hasSearch={props.searchQuery !== ''}
                 onClearFilters={props.clearAllFilters}
-              />
+              /></EmptyState>
             </div>
           ) : (
             <div className="card-base overflow-hidden">

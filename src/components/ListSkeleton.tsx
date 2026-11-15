@@ -8,12 +8,21 @@ const BAR = 'rounded bg-gray-100 dark:bg-gray-700 animate-pulse';
 
 // `rows` matches what the surface usually shows (a page of entries, a shorter list of
 // collections); `className` lets a caller keep its own outer spacing.
-export function ListSkeleton({ rows = 6, className }: { rows?: number; className?: string }) {
-  return (
+// `label` (e.g. "Loading…") makes it announce the load politely, for a page that has no
+// other loading signal; without it, the bars are visual filler only.
+export function ListSkeleton({ rows = 6, className, label }: { rows?: number; className?: string; label?: string }) {
+  const bars = (
     <div className={className ? `space-y-2 ${className}` : 'space-y-2'} aria-hidden="true">
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} className={`h-10 ${BAR}`} />
       ))}
+    </div>
+  );
+  if (!label) return bars;
+  return (
+    <div role="status">
+      <span className="sr-only">{label}</span>
+      {bars}
     </div>
   );
 }

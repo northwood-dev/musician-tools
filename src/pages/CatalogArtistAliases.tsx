@@ -8,6 +8,7 @@ import type { ArtistAliasWithCount } from '../services/artistAliasService';
 import { searchKey } from '../utils/searchKey';
 import { Notice } from '../components/Notice';
 import { Page } from '../components/Page';
+import { EmptyState } from '../components/EmptyState';
 
 // #76: curators manage the artist aliases search uses. To change one, remove it and add it
 // again. The count of Catalog entries is what makes a broken alias visible: the artist is free
@@ -130,7 +131,7 @@ export default function CatalogArtistAliases() {
       {!loadFailed && aliases === null && <ListSkeleton rows={6} />}
 
       {!loadFailed && aliases?.length === 0 && (
-        <p className="text-gray-500 dark:text-gray-400 py-6 text-center">No aliases yet.</p>
+        <EmptyState>No aliases yet.</EmptyState>
       )}
 
       {!loadFailed && aliases !== null && aliases.length > 0 && (

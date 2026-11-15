@@ -16,6 +16,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 import { Page } from '../components/Page';
+import { EmptyState } from '../components/EmptyState';
 
 const EMPTY_FACETS: CatalogFacets = { genre: [], key: [], mode: [], timeSignature: [] };
 const asArr = (s: string): string[] => (s ? s.split(',').filter(Boolean) : []);
@@ -281,9 +282,7 @@ export default function Catalog() {
       {!error && data && (
         <div className={loading ? 'opacity-50 transition-opacity duration-150' : 'transition-opacity duration-150'} aria-busy={loading}>
           {data.total === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 py-10 text-center">
-              {hasQuery ? 'No songs match your search.' : 'The Catalog is filling up — check back soon.'}
-            </p>
+            <EmptyState>{hasQuery ? 'No songs match your search.' : 'The Catalog is filling up — check back soon.'}</EmptyState>
           ) : (
             <>
               {data.items.length > 0
@@ -301,7 +300,7 @@ export default function Catalog() {
                     goneUids={goneUids}
                     onGone={uid => { markGone([uid]); selection.removeMany([uid]); }}
                   />
-                : <p className="text-gray-500 dark:text-gray-400 py-6 text-center">This page is empty — go back to a previous page.</p>}
+                : <EmptyState>This page is empty — go back to a previous page.</EmptyState>}
               <Pagination page={page} totalPages={totalPages} onPageChange={p => patchParams({ page: String(p) })} />
             </>
           )}

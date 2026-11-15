@@ -9,6 +9,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { CloseButton } from '../components/CloseButton';
 import { Page } from '../components/Page';
+import { EmptyState } from '../components/EmptyState';
+import { ListSkeleton } from '../components/ListSkeleton';
 
 const initialPlaylist: CreatePlaylistDTO = {
   name: '',
@@ -198,9 +200,9 @@ function MyPlaylistsPage() {
 
           <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
             {loading ? (
-              <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
+              <ListSkeleton rows={4} label="Loading…" />
             ) : playlists.length === 0 ? (
-              <p className="text-sm text-gray-600 dark:text-gray-400">No playlists yet. Create one to get started.</p>
+              <EmptyState>No playlists yet. Create one to get started.</EmptyState>
             ) : (
               <div className="card-base overflow-hidden">
                 <div className="overflow-x-auto">
