@@ -123,42 +123,30 @@
     }
   }
 
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slide-down {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   .animate-fade-in {
     animation: fade-in 0.3s ease-out;
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.3s ease-out;
-  }
-
-  .animate-slide-down {
-    animation: slide-down 0.3s ease-out;
   }
 
   .overflow-x-hidden {
     overflow-x: hidden;
     max-width: 100%;
+  }
+}
+
+/* Reduced motion (#39): when the system asks for it, nothing on the site moves.
+   One rule for every element, so an animation added later is covered by default.
+   0.01ms rather than none: the animation still reaches its end state (a fade-in ends
+   visible), it just gets there at once. Nothing is replaced: placeholders, the saving
+   dot and the busy ring stay drawn, still; aria-busy / aria-hidden are unchanged. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
   }
 }
