@@ -35,7 +35,8 @@ function renderInstrument(overrides = {}) {
 test('clicking a technique toggles callback', () => {
   const props = renderInstrument();
   const technique = instrumentTechniquesMap['Guitar'][0];
-  const btn = screen.getByText(technique);
+  const btn = screen.getByRole('button', { name: technique });
+  expect(btn).toHaveAttribute('aria-pressed', 'false'); // #159: a toggle chip says whether it is on
   fireEvent.click(btn);
   expect(props.onToggleTechnique).toHaveBeenCalledWith(technique);
 });

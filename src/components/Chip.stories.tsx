@@ -15,10 +15,12 @@ export const All: Story = {
         <RemovableChip label="Rock" onRemove={fn()} />
         <RemovableChip label="Warmups" onRemove={fn()} dimmed ariaLabel="Warmups, being removed — click to keep" />
         <RemovableChip label="Jazz" onRemove={fn()} disabled />
+        <RemovableChip label="Gig set" onRemove={fn()} busy />
       </div>
       <div className="flex flex-wrap gap-2">
         <ToggleChip pressed onToggle={fn()}>Rock</ToggleChip>
         <ToggleChip pressed={false} onToggle={fn()}>Reggae</ToggleChip>
+        <ToggleChip pressed={false} onToggle={fn()} disabled>Disabled</ToggleChip>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Chip>

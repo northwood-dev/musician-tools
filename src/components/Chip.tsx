@@ -21,7 +21,6 @@ export function RemovableChip({
   ariaLabel,
   dimmed,
   busy,
-  extra,
 }: {
   label: string;
   onRemove: () => void;
@@ -31,9 +30,8 @@ export function RemovableChip({
   ariaLabel?: string;
   /** Faded: the value is on its way out (a playlist being removed). */
   dimmed?: boolean;
+  /** A slow request is running: a small spinner shows, and the chip says so (aria-busy). */
   busy?: boolean;
-  /** Extra content after the label (e.g. a spinner). */
-  extra?: ReactNode;
 }) {
   return (
     <button
@@ -46,7 +44,7 @@ export function RemovableChip({
       aria-busy={busy || undefined}
     >
       <span className="truncate">{label}</span>
-      {extra}
+      {busy && <span aria-hidden="true" className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />}
       <span aria-hidden="true">✕</span>
     </button>
   );

@@ -2193,9 +2193,6 @@ function Songs() {
                             dimmed={removing}
                             ariaLabel={removing ? `${playlist.name}, being removed — click to keep` : undefined}
                             busy={slowPlaylistUids.has(playlist.uid)}
-                            extra={slowPlaylistUids.has(playlist.uid) && (
-                              <span aria-hidden="true" className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                            )}
                           />
                           );
                         })}
