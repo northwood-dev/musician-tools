@@ -10,7 +10,7 @@ function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // A rate-limit 429 (story 15.1) renders amber (info), distinct from a red error.
+  // A rate-limit 429 (story 15.1): FormError shows it as information, not a mistake.
   const [rateLimited, setRateLimited] = useState(false);
   const [loading, setLoading] = useState(false);
 

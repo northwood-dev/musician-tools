@@ -10,7 +10,8 @@ function ResetPasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  // Bumped on each submit, passed to FormError as `attempt`: a client-side mistake made
+  // twice is announced twice (#27).
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);

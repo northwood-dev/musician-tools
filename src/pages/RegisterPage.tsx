@@ -13,7 +13,8 @@ function RegisterPage() {
     confirmPassword: '',
   });
   const [error, setError] = useState<string | null>(null);
-  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  // Bumped on each submit, passed to FormError as `attempt`: a client-side mistake made
+  // twice is announced twice (#27).
   const [attempt, setAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);

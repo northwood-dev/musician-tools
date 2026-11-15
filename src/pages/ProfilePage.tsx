@@ -13,7 +13,8 @@ function ProfilePage() {
   // Display name
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
-  // Bumped on each submit: the alert's key, so the same mistake twice is announced twice (#27).
+  // Bumped on each submit, passed to FormError as `attempt`: a client-side mistake made
+  // twice is announced twice (#27).
   const [nameAttempt, setNameAttempt] = useState(0);
   const [savingName, setSavingName] = useState(false);
 
@@ -21,7 +22,7 @@ function ProfilePage() {
   const [newEmail, setNewEmail] = useState('');
   const [emailMsg, setEmailMsg] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
-  // A rate-limit 429 (story 15.1) renders amber (info), distinct from a red error.
+  // A rate-limit 429 (story 15.1): FormError shows it as information, not a mistake.
   const [emailRateLimited, setEmailRateLimited] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
 

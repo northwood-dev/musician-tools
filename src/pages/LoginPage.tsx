@@ -13,7 +13,7 @@ function LoginPage() {
   });
   const [error, setError] = useState<string | null>(null);
   // A rate-limit 429 (story 15.1) reads as "too many attempts", not a credential
-  // error — track it so the message renders amber (info), distinct from red errors.
+  // error — track it so FormError shows it as information, not a mistake.
   const [rateLimited, setRateLimited] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -88,8 +88,7 @@ function LoginPage() {
           </div>
         </div>
 
-        {/* Error Message — a rate-limit 429 (story 15.1) shows amber (info: "try
-            again later"), visually distinct from the red of a credential error. */}
+        {/* Error message — FormError picks red or amber from rateLimited (#129). */}
         <FormError message={error} rateLimited={rateLimited} />
 
         {/* Story 7.13: email not verified — prompt to confirm + resend the link. */}
