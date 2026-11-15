@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Icons (#40). The PNGs are generated from favicon.svg by `npm run icons`. The SVG
+         comes LAST: Chromium picks the last suitable icon, so it keeps the SVG, and the
+         PNG is only a fallback for browsers that can't read SVG favicons. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Musician" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Musician Tools</title>
   </head>
