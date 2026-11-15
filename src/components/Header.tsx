@@ -133,21 +133,20 @@ function Header() {
                   onClick={() => setAccountMenuOpen(open => !open)}
                   className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
                   aria-label="Account menu"
-                  aria-haspopup="menu"
                   aria-expanded={accountMenuOpen}
+                  aria-controls={accountMenu.panelId}
                 >
                   <span className="text-lg" aria-hidden="true">👤</span>
                 </button>
                 {accountMenuOpen && (
                   <div
                     ref={accountMenu.menuRef}
-                    role="menu"
+                    id={accountMenu.panelId}
                     className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg py-1 dark:border-gray-700 dark:bg-gray-800 z-50"
                   >
                     {user?.isCurator && (
                       <Link
                         to="/catalog/manage"
-                        role="menuitem"
                         onClick={() => setAccountMenuOpen(false)}
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                       >
@@ -156,7 +155,6 @@ function Header() {
                     )}
                     <Link
                       to="/profile"
-                      role="menuitem"
                       onClick={() => setAccountMenuOpen(false)}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                     >
@@ -164,7 +162,6 @@ function Header() {
                     </Link>
                     <button
                       type="button"
-                      role="menuitem"
                       onClick={() => { setAccountMenuOpen(false); handleLogout(); }}
                       className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                     >
