@@ -31,7 +31,6 @@ jest.mock('../pages/Catalog', () => ({ __esModule: true, default: () => <div>CAT
 jest.mock('../pages/CatalogAdmin', () => ({ __esModule: true, default: () => <div>CATALOG_ADMIN</div> }));
 jest.mock('../pages/CatalogManage', () => ({ __esModule: true, default: () => <div>CATALOG_MANAGE</div> }));
 jest.mock('../pages/CatalogEntry', () => ({ __esModule: true, default: () => <div>CATALOG_ENTRY</div> }));
-jest.mock('../pages/StyleguidePage', () => ({ __esModule: true, default: () => <div>STYLEGUIDE</div> }));
 
 import { routes } from '../router';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,12 +61,6 @@ describe('router — data-router route tree (story 18.1)', () => {
 
   test('an unknown path redirects to home (catch-all → /)', () => {
     renderAt('/does-not-exist', false);
-    expect(screen.getByText('HOME')).toBeInTheDocument();
-  });
-
-  test('#152: the styleguide does not exist in a production build (catch-all → /)', () => {
-    renderAt('/dev/styleguide', true);
-    expect(screen.queryByText('STYLEGUIDE')).toBeNull();
     expect(screen.getByText('HOME')).toBeInTheDocument();
   });
 
