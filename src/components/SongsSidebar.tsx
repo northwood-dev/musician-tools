@@ -91,7 +91,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
   return (
     <aside
       id="songs-sidebar"
-      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all duration-300 card-base glass-effect lg:sticky lg:top-24`}
+      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all motion-safe:duration-300 card-base glass-effect lg:sticky lg:top-24`}
       aria-hidden={false}
     >
       {/* Collapsed rail — desktop only (>= lg). Under lg the "Filters" disclosure

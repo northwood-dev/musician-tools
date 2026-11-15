@@ -10,7 +10,9 @@ const SRC = join(__dirname, '..');
 
 // A class token whose utility (after its variants) is motion, without motion-safe: among
 // its variants. `transition-none` / `animate-none` are not motion.
-const MOTION = /^(animate-(?!none)[\w-]+|transition(-(?!none)[\w-]+)?|scroll-smooth)$/;
+// Timings too: an unprefixed duration-200 is overridden by the motion-safe transition's
+// default 150ms, which is declared later (found measuring the buttons in Chrome).
+const MOTION = /^(animate-(?!none)[\w-]+|transition(-(?!none)[\w-]+)?|scroll-smooth|duration-\d+|ease-[\w-]+|delay-\d+)$/;
 export function unsafeMotion(text: string): string[] {
   const tokens = text.split(/[\s'"`{}()]+/).filter(Boolean);
   return tokens.filter(t => {
@@ -64,10 +66,11 @@ test('every motion in the stylesheet is motion-safe or under the no-preference q
 
 test('the guard catches what it should (probe)', () => {
   expect(unsafeMotion('rounded animate-pulse')).toEqual(['animate-pulse']);
-  expect(unsafeMotion('hover:bg-x transition-colors duration-200')).toEqual(['transition-colors']);
+  expect(unsafeMotion('hover:bg-x transition-colors duration-200')).toEqual(['transition-colors', 'duration-200']);
   expect(unsafeMotion('motion-safe:animate-spin motion-safe:transition-all')).toEqual([]);
   expect(unsafeMotion('dark:motion-safe:transition-colors scroll-smooth')).toEqual(['scroll-smooth']);
   expect(unsafeMotion('transition-none animate-none')).toEqual([]);
+  expect(unsafeMotion('motion-safe:transition-colors duration-200')).toEqual(['duration-200']);
 });
 
 test('no motion property is forced with !important (#170)', () => {

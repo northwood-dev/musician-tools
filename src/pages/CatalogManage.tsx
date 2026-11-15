@@ -610,7 +610,7 @@ export default function CatalogManage() {
       )}
 
       {!error && data && (
-        <div className={loading ? 'opacity-50 motion-safe:transition-opacity duration-150' : 'motion-safe:transition-opacity duration-150'} aria-busy={loading}>
+        <div className={loading ? 'opacity-50 motion-safe:transition-opacity motion-safe:duration-150' : 'motion-safe:transition-opacity motion-safe:duration-150'} aria-busy={loading}>
           {data.total === 0 ? (
             <EmptyState>{search.trim() ? 'No entries match your search.' : 'The Catalog is empty — add the first entry.'}</EmptyState>
           ) : data.items.length === 0 ? (
