@@ -281,6 +281,8 @@ export default function CatalogCollectionCompose() {
     }
   };
 
+  const memberUids = collection?.songs.map(s => s.uid) ?? [];
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4 py-6">
       <Link to="/catalog/manage?tab=collections" className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
@@ -449,9 +451,9 @@ export default function CatalogCollectionCompose() {
                   <tr className="text-left text-gray-500 dark:text-gray-400">
                     <th className={selectionCell('px-3 py-2 w-12 text-center')}>
                       <SelectAllCheckbox
-                        allSelected={selection.allDisplayedSelected(collection.songs.map(s => s.uid))}
-                        someSelected={selection.someDisplayedSelected(collection.songs.map(s => s.uid))}
-                        onToggle={() => userSelectAll(collection.songs.map(s => s.uid))}
+                        allSelected={selection.allDisplayedSelected(memberUids)}
+                        someSelected={selection.someDisplayedSelected(memberUids)}
+                        onToggle={() => userSelectAll(memberUids)}
                         disabled={removing}
                       />
                     </th>

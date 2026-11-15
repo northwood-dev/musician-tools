@@ -33,9 +33,7 @@ export interface RowSelection {
   removeMany: (uids: string[]) => void; // subtract these from the current selection
   allDisplayedSelected: (uids: string[]) => boolean; // non-empty AND every uid selected
   someDisplayedSelected: (uids: string[]) => boolean; // at least one uid selected, but not all (#37)
-  // The select-all rule (#132): if any displayed row is selected (mixed OR all), a click
-  // deselects the displayed rows; otherwise it selects them all.
-  anyDisplayedSelected: (uids: string[]) => boolean;
+  anyDisplayedSelected: (uids: string[]) => boolean; // at least one uid selected, mixed or all (#132)
 }
 
 export function useRowSelection(opts: UseRowSelectionOptions = {}): RowSelection {

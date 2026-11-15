@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 
 // The two shared row-selection checkboxes of the list screens (story 22.1): the
 // header "select all" box and the per-row box. Pair them with <BulkActionBar> and the
@@ -56,11 +56,14 @@ const SELECT_ALL = 'Select all';
 
 export function SelectAllCheckbox({ allSelected, someSelected, onToggle, disabled }: SelectAllCheckboxProps) {
   // `indeterminate` is a DOM property with no HTML attribute: React can't set it, a ref must.
+  // No dependency list on purpose: a native click clears the property and React only
+  // restores `checked`, so the dash is re-asserted after every render — even one where
+  // `mixed` didn't change. Layout effect: set before paint, no one-frame flicker.
   const ref = useRef<HTMLInputElement>(null);
   const mixed = someSelected && !allSelected;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (ref.current) ref.current.indeterminate = mixed;
-  }, [mixed]);
+  });
   return (
     // The header cell is never clickable, so this one needs no click isolation.
     <CheckboxCell isolate={false}>

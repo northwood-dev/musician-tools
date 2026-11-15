@@ -1689,8 +1689,8 @@ function Songs() {
   // Select-all is "replace": exactly the displayed (filtered) songs — matches the prior
   // `new Set(displayed)`, so a selection filtered out of view is dropped.
   const toggleSelectAll = () => {
-    if (songSelection.anyDisplayedSelected(displayedSongs.map(song => song.uid))) songSelection.clear();
-    else songSelection.selectOnly(displayedSongs.map(song => song.uid));
+    if (songSelection.anyDisplayedSelected(displayedUids)) songSelection.clear();
+    else songSelection.selectOnly(displayedUids);
   };
 
   const sortedSongs = songs;
@@ -1808,8 +1808,9 @@ function Songs() {
 
   const displayedSongs = sortByColumnFunc(filteredSongs);
 
-  const allDisplayedSelected = songSelection.allDisplayedSelected(displayedSongs.map(song => song.uid));
-  const someDisplayedSelected = songSelection.someDisplayedSelected(displayedSongs.map(song => song.uid));
+  const displayedUids = displayedSongs.map(song => song.uid);
+  const allDisplayedSelected = songSelection.allDisplayedSelected(displayedUids);
+  const someDisplayedSelected = songSelection.someDisplayedSelected(displayedUids);
 
   const SortHeader = ({ column, label, align = 'left' }: { column: string; label: string; align?: 'left' | 'right' }) => (
     <th

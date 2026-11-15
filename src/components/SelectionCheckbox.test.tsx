@@ -111,3 +111,13 @@ test('a disabled select-all is really disabled', () => {
   render(<StrictMode><SelectAllCheckbox allSelected={false} someSelected={false} onToggle={() => {}} disabled /></StrictMode>);
   expect(screen.getByLabelText('Select all')).toBeDisabled();
 });
+
+test('the dash survives a click that does not change the selection (#37 review)', () => {
+  // A native click clears `indeterminate`; React restores `checked` on a controlled
+  // input but not that DOM property, so the box must re-assert it after every render.
+  const { rerender } = render(<SelectAllCheckbox allSelected={false} someSelected onToggle={() => {}} />);
+  const selectAll = screen.getByRole('checkbox', { name: 'Select all' });
+  fireEvent.click(selectAll);
+  rerender(<SelectAllCheckbox allSelected={false} someSelected onToggle={() => {}} />);
+  expect(selectAll).toBePartiallyChecked();
+});

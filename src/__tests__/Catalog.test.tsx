@@ -567,4 +567,6 @@ test('#132: a click on a mixed select-all clears this page only; another page ke
   expect(screen.getByLabelText('Select Boom by Crash')).not.toBeChecked();
   expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
   expect(screen.getByText('1 song selected')).toBeInTheDocument(); // Zombie, on page 1
+  expect(selectAll).not.toBeChecked();
+  expect(selectAll).not.toBePartiallyChecked();
 });
