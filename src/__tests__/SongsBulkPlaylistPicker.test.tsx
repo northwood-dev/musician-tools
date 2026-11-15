@@ -95,7 +95,7 @@ describe('#46: the picker resets when the selection becomes empty', () => {
     await openPicker();
     fireEvent.click(playlistBox('Warmups'));
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Deselect all' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select all' }));
     await selectSong('Beta');
 
     await screen.findByRole('button', { name: 'Add to playlist' });

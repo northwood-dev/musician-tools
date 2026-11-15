@@ -211,6 +211,7 @@ export default function CatalogCollection() {
                 <th scope="col" className={selectionCell('px-3 py-2 w-12 text-center')}>
                   <SelectAllCheckbox
                     allSelected={selection.allDisplayedSelected(selectableUids)}
+                    someSelected={selection.someDisplayedSelected(selectableUids)}
                     onToggle={() => userSelectAll(selectableUids)}
                     disabled={bulkAdd.running}
                   />

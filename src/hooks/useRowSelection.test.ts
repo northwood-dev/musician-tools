@@ -30,6 +30,16 @@ test('allDisplayedSelected: false on empty list, true only when every displayed 
   expect(result.current.allDisplayedSelected(['a', 'b', 'c'])).toBe(false); // c not selected
 });
 
+test('someDisplayedSelected: true only when some but not all displayed uids are selected (#37)', () => {
+  const { result } = renderHook(() => useRowSelection());
+  expect(result.current.someDisplayedSelected([])).toBe(false);
+  expect(result.current.someDisplayedSelected(['a', 'b'])).toBe(false); // none
+  act(() => result.current.toggle('a'));
+  expect(result.current.someDisplayedSelected(['a', 'b'])).toBe(true); // some
+  act(() => result.current.toggle('b'));
+  expect(result.current.someDisplayedSelected(['a', 'b'])).toBe(false); // all
+});
+
 test('selectOnly REPLACES the whole selection (Songlist select-all semantics)', () => {
   const { result } = renderHook(() => useRowSelection());
   act(() => { result.current.toggle('x'); result.current.selectOnly(['a', 'b']); });

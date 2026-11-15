@@ -32,6 +32,7 @@ export interface RowSelection {
   addMany: (uids: string[]) => void; // union these into the current selection
   removeMany: (uids: string[]) => void; // subtract these from the current selection
   allDisplayedSelected: (uids: string[]) => boolean; // non-empty AND every uid selected
+  someDisplayedSelected: (uids: string[]) => boolean; // at least one uid selected, but not all (#37)
 }
 
 export function useRowSelection(opts: UseRowSelectionOptions = {}): RowSelection {
@@ -89,5 +90,6 @@ export function useRowSelection(opts: UseRowSelectionOptions = {}): RowSelection
     addMany,
     removeMany,
     allDisplayedSelected: (uids: string[]) => uids.length > 0 && uids.every(u => selected.has(u)),
+    someDisplayedSelected: (uids: string[]) => uids.some(u => selected.has(u)) && !uids.every(u => selected.has(u)),
   };
 }

@@ -22,6 +22,7 @@ export default function CatalogList({
   selectedUids,
   onToggle,
   allSelected,
+  someSelected,
   onToggleAll,
   selectionDisabled,
   goneUids,
@@ -34,6 +35,7 @@ export default function CatalogList({
   selectedUids?: Set<string>;
   onToggle?: (uid: string) => void;
   allSelected?: boolean;
+  someSelected?: boolean;
   onToggleAll?: () => void;
   selectionDisabled?: boolean;
   // Entries found to be gone (#32): marked on their row, and no longer selectable.
@@ -51,6 +53,7 @@ export default function CatalogList({
               <th className={selectionCell('px-3 py-2 w-12 text-center')}>
                 <SelectAllCheckbox
                   allSelected={!!allSelected}
+                  someSelected={!!someSelected}
                   onToggle={() => onToggleAll?.()}
                   disabled={selectionDisabled}
                 />

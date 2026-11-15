@@ -446,7 +446,7 @@ describe('#49: entries found to be gone are marked on their row', () => {
     expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeChecked();
     expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
     expect(screen.getByText('1 song selected')).toBeInTheDocument();
-    expect(screen.getByLabelText('Deselect all')).toBeInTheDocument();
+    expect(screen.getByLabelText('Select all')).toBeChecked();
   });
 
   test('a row whose own button finds the entry gone is marked the same way', async () => {

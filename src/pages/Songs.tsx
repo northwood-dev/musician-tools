@@ -1809,6 +1809,7 @@ function Songs() {
   const displayedSongs = sortByColumnFunc(filteredSongs);
 
   const allDisplayedSelected = songSelection.allDisplayedSelected(displayedSongs.map(song => song.uid));
+  const someDisplayedSelected = songSelection.someDisplayedSelected(displayedSongs.map(song => song.uid));
 
   const SortHeader = ({ column, label, align = 'left' }: { column: string; label: string; align?: 'left' | 'right' }) => (
     <th
@@ -2010,6 +2011,7 @@ function Songs() {
           genreOptions={availableGenres}
           availableTechniqueFilters={availableTechniqueFilters}
           allDisplayedSelected={allDisplayedSelected}
+          someDisplayedSelected={someDisplayedSelected}
           hasActiveFilters={hasActiveFilters}
           activeFilterCount={activeFilterCount}
           mobileFiltersOpen={mobileFiltersOpen}

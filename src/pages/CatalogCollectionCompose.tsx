@@ -450,6 +450,7 @@ export default function CatalogCollectionCompose() {
                     <th className={selectionCell('px-3 py-2 w-12 text-center')}>
                       <SelectAllCheckbox
                         allSelected={selection.allDisplayedSelected(collection.songs.map(s => s.uid))}
+                        someSelected={selection.someDisplayedSelected(collection.songs.map(s => s.uid))}
                         onToggle={() => userSelectAll(collection.songs.map(s => s.uid))}
                         disabled={removing}
                       />
