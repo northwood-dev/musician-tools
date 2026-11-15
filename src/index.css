@@ -132,3 +132,19 @@
     max-width: 100%;
   }
 }
+
+/* Reduced motion (#39): when the system asks for it, nothing on the site moves.
+   One rule for every element, so an animation added later is covered by default.
+   0.01ms rather than none: the animation still reaches its end state (a fade-in ends
+   visible), it just gets there at once. Nothing is replaced: placeholders, the saving
+   dot and the busy ring stay drawn, still; aria-busy / aria-hidden are unchanged. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
