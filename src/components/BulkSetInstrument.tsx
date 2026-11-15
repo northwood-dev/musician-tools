@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { songService, type AddInstrumentResult } from '../services/songService';
+import { useDismissableMenu } from '../hooks/useDismissableMenu';
 
 export type InstrumentAdded = AddInstrumentResult & { instrument: string };
 
@@ -33,6 +34,8 @@ export function BulkSetInstrument({
     onOpenChange(false);
     setInstrument('');
   };
+  // Outside click and Escape close like ✕, and like ✕ not while the add runs (#38).
+  const { buttonRef, menuRef } = useDismissableMenu({ open, onClose: close, blocked: submitting });
 
   const submit = async () => {
     let result: AddInstrumentResult;
@@ -53,15 +56,17 @@ export function BulkSetInstrument({
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
         className="btn-primary text-sm px-3 py-1.5"
         onClick={() => (open ? close() : onOpenChange(true))}
         disabled={disabled}
+        aria-expanded={open}
       >
         Set instrument
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
+        <div ref={menuRef} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-700 dark:text-gray-200">Add an instrument</p>
             <button
