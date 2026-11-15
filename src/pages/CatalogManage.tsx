@@ -15,6 +15,7 @@ import { runBounded, BatchSkippedError } from '../utils/runBounded';
 import { useGlobalToast } from '../contexts/GlobalToastContext';
 import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSonglist';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
+import { BulkRecap } from '../components/BulkRecap';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -572,21 +573,14 @@ export default function CatalogManage() {
           (not a toast — lesson 20.4) and segmented: an already-member entry is an
           outcome, never a failure. */}
       {addRecap && (
-        <div
-          // Keyed on the severity: a live region whose role mutates in place is not
+        <BulkRecap
+          // Keyed on severity: a live region whose role mutates in place is not
           // reliably re-announced — remounting it is.
           key={addRecap.failed > 0 ? 'recap-alert' : 'recap-status'}
-          role={addRecap.failed > 0 ? 'alert' : 'status'}
-          // Named: the shared <Toast> keeps a permanent role="status" region mounted
-          // (22.5), so an unnamed one here would be ambiguous for users and tests alike.
-          aria-label="Bulk action result"
-          className={`mt-4 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
-            addRecap.failed > 0
-              ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
-              : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'
-          }`}
-        >
-          <p>
+          negative={addRecap.failed > 0}
+          onDismiss={() => setAddRecap(null)}
+          className="mt-4"
+          message={<>
             {addRecap.collectionGone
               // Every single call 404'd on the collection: another curator deleted it.
               // Retrying cannot work, so don't offer it.
@@ -601,16 +595,8 @@ export default function CatalogManage() {
                     addRecap.unknown > 0 ? `${addRecap.unknown} unclear` : null,
                   ].filter(Boolean).join(' · ') + ` — "${addRecap.collectionName}".`}
             {addRecap.failed > 0 && !addRecap.collectionGone && ' The failed entries are still selected, so you can retry.'}
-          </p>
-          <button
-            type="button"
-            className="shrink-0 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            onClick={() => setAddRecap(null)}
-            aria-label="Dismiss"
-          >
-            ✕
-          </button>
-        </div>
+          </>}
+        />
       )}
 
       <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200 mt-6 mb-2" aria-live="polite">

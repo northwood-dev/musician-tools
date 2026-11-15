@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
 import { RateLimitError } from '../services/rateLimit';
 import { FormError } from '../components/FormError';
+import { Notice } from '../components/Notice';
 
 function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -98,7 +99,7 @@ function RegisterPage() {
              already exists (story 7.7 + hard gate 7.13: register no longer
              auto-logs-in, so a new and an existing email show the SAME screen).
              You must click the link to activate the account before signing in. */
-          <div className="rounded-lg border border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 px-4 py-4 text-sm space-y-2" role="status">
+          <Notice tone="info"><div className="space-y-2">
             <p className="font-medium">Check your email</p>
             <p>
               We&apos;ve sent a confirmation link. Click it to activate your account, then sign in. If you already have
@@ -116,7 +117,7 @@ function RegisterPage() {
             <Link to="/login" className="block text-brand-600 dark:text-brand-400 font-medium hover:text-brand-700 dark:hover:text-brand-300">
               Go to sign in
             </Link>
-          </div>
+          </div></Notice>
         ) : (
         <>
         {/* Error Message */}

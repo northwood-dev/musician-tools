@@ -14,6 +14,7 @@ import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { digitsOnly } from '../utils/digitsOnly';
 import { secondsToWholeMinutes } from '../utils/duration';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { Toast } from '../components/Toast';
 
 type EntryDraft = {
   key: number;
@@ -698,15 +699,7 @@ function MySessionsPage() {
       />
       {/* Always mounted: a live region must exist in the DOM before its content
           changes, or screen readers may never announce the toast */}
-      <div
-        role="status"
-        aria-label="Notification"
-        className={toastMessage
-          ? 'fixed bottom-6 right-6 z-50 rounded-lg bg-green-600 dark:bg-green-700 text-white px-4 py-2 shadow-lg'
-          : 'sr-only'}
-      >
-        {toastMessage}
-      </div>
+      <Toast message={toastMessage} />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 

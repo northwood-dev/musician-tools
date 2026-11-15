@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { passwordResetService } from '../services/passwordResetService';
 import { RateLimitError } from '../services/rateLimit';
 import { FormError } from '../components/FormError';
+import { Notice } from '../components/Notice';
 
 // Public, pre-auth (story 7.10). The response is intentionally generic — we never
 // reveal whether the email exists.
@@ -43,9 +44,9 @@ function ForgotPasswordPage() {
         </div>
 
         {submitted ? (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 px-4 py-4 text-sm" role="status">
+          <Notice tone="info">
             If an account matches that email, we just sent a reset link. Check your inbox (and spam).
-          </div>
+          </Notice>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <FormError message={error} rateLimited={rateLimited} />

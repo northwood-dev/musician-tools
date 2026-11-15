@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { profileService, type Profile } from '../services/profileService';
 import { RateLimitError } from '../services/rateLimit';
 import { FormError } from '../components/FormError';
+import { Notice } from '../components/Notice';
 
 function ProfilePage() {
   const { patchUser } = useAuth();
@@ -136,10 +137,10 @@ function ProfilePage() {
       <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile</h1>
 
       {loadError && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/40 dark:text-red-300 px-4 py-3 text-sm">{loadError}</div>
+        <Notice tone="error">{loadError}</Notice>
       )}
       {toast && (
-        <div className="rounded-lg border border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/40 dark:text-green-300 px-4 py-3 text-sm" role="status">{toast}</div>
+        <Notice tone="success">{toast}</Notice>
       )}
 
       {/* Display name */}
@@ -182,7 +183,7 @@ function ProfilePage() {
         ) : (
           <form onSubmit={handleRequestEmailChange} className="space-y-3">
             <FormError message={emailError} rateLimited={emailRateLimited} />
-            {emailMsg && <p className="text-sm text-green-700 dark:text-green-400">{emailMsg}</p>}
+            {emailMsg && <Notice tone="success">{emailMsg}</Notice>}
             <input
               className="input-base"
               type="email"
