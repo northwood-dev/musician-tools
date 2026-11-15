@@ -12,8 +12,9 @@ const SRC = join(__dirname, '..');
 // its variants. `transition-none` / `animate-none` are not motion.
 // Timings too: an unprefixed duration-200 is overridden by the motion-safe transition's
 // default 150ms, which is declared later (found measuring the buttons in Chrome).
-const MOTION = /^(animate-(?!none)[\w-]+|transition(-(?!none)[\w-]+)?|scroll-smooth|duration-\d+|ease-[\w-]+|delay-\d+)$/;
-export function unsafeMotion(text: string): string[] {
+// Also arbitrary values (duration-[250ms]) and the important modifier (!transition-colors).
+const MOTION = /^!?(animate-(?!none)[\w[\]-]+|transition(-(?!none)[\w[\],-]+)?|scroll-smooth|duration-[\w[\]-]+|ease-[\w[\]-]+|delay-[\w[\]-]+)$/;
+function unsafeMotion(text: string): string[] {
   const tokens = text.split(/[\s'"`{}()]+/).filter(Boolean);
   return tokens.filter(t => {
     const parts = t.split(':');
@@ -58,7 +59,7 @@ test('every motion in the stylesheet is motion-safe or under the no-preference q
     }
     return false;
   });
-  for (const m of css.matchAll(/(scroll-behavior\s*:\s*smooth|\banimation\s*:)/g)) {
+  for (const m of css.matchAll(/(scroll-behavior\s*:\s*smooth|\banimation(-[\w-]+)?\s*:|\btransition(-[\w-]+)?\s*:)/g)) {
     if (!insideNoPref(m.index!)) offenders.push(m[1]);
   }
   expect(offenders).toEqual([]);
@@ -71,9 +72,11 @@ test('the guard catches what it should (probe)', () => {
   expect(unsafeMotion('dark:motion-safe:transition-colors scroll-smooth')).toEqual(['scroll-smooth']);
   expect(unsafeMotion('transition-none animate-none')).toEqual([]);
   expect(unsafeMotion('motion-safe:transition-colors duration-200')).toEqual(['duration-200']);
+  expect(unsafeMotion('duration-[250ms] !transition-colors animate-[wiggle_1s]')).toEqual(['duration-[250ms]', '!transition-colors', 'animate-[wiggle_1s]']);
 });
 
 test('no motion property is forced with !important (#170)', () => {
   const css = readFileSync(join(SRC, 'index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   expect(css.match(/\b(animation|transition|scroll-behavior)[\w-]*\s*:[^;]*!important/g) ?? []).toEqual([]);
+  expect(css.match(/@apply[^;]*!(animate|transition|duration)/g) ?? []).toEqual([]);
 });

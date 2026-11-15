@@ -5,6 +5,11 @@ export default {
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
+    // Tests and stories are not the app: the drift guards' sample class strings (e.g.
+    // an unprefixed animate-pulse to probe the #160 guard) must not end up in the CSS.
+    '!./src/**/*.test.{ts,tsx}',
+    '!./src/__tests__/**',
+    '!./src/test/**',
   ],
   theme: {
     extend: {
