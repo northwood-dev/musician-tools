@@ -7,6 +7,7 @@ import { songService, type Song } from '../services/songService';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { CloseButton } from '../components/CloseButton';
 
 const initialPlaylist: CreatePlaylistDTO = {
   name: '',
@@ -230,7 +231,7 @@ function MyPlaylistsPage() {
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
-                                className="btn-secondary text-sm"
+                                className="btn-secondary btn-sm"
                                 onClick={() => handleEdit(playlist.uid)}
                                 disabled={loading}
                               >
@@ -238,7 +239,7 @@ function MyPlaylistsPage() {
                               </button>
                               <button
                                 type="button"
-                                className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 disabled:opacity-50 text-sm"
+                                className="btn-danger btn-sm"
                                 onClick={() => handleDelete(playlist.uid)}
                                 disabled={loading}
                               >
@@ -301,15 +302,7 @@ function MyPlaylistsPage() {
                     disabled={loading}
                   />
                   {songSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setSongSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg font-bold"
-                      title="Clear search"
-                      disabled={loading}
-                    >
-                      ✕
-                    </button>
+                    <CloseButton label="Clear search" onClick={() => setSongSearch('')} disabled={loading} className="absolute right-1 top-1/2 -translate-y-1/2" />
                   )}
                 </div>
                 <div className="card-base max-h-96 overflow-y-auto">

@@ -9,6 +9,7 @@ import { BulkActionBar } from './BulkActionBar';
 import { RowSelectionCheckbox, SelectAllCheckbox } from './SelectionCheckbox';
 import { selectionCell } from '../utils/selectionCell';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
+import { CloseButton } from './CloseButton';
 
 export interface SongsListProps {
   // State
@@ -258,14 +259,7 @@ export default function SongsList(props: SongsListProps) {
                 className="input-base pr-10"
               />
               {props.searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => props.setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
-                  aria-label="Clear search"
-                >
-                  ✕
-                </button>
+                <CloseButton label="Clear search" onClick={() => props.setSearchQuery('')} className="absolute right-1 top-1/2 -translate-y-1/2" />
               )}
               </div>
             </div>
@@ -277,7 +271,7 @@ export default function SongsList(props: SongsListProps) {
               <button
                 ref={playlistMenu.buttonRef}
                 type="button"
-                className="btn-primary text-sm px-3 py-1.5"
+                className="btn-primary btn-sm"
                 onClick={props.toggleBulkPlaylistPicker}
                 disabled={props.loading}
                 aria-expanded={props.bulkPlaylistOpen}
@@ -289,14 +283,7 @@ export default function SongsList(props: SongsListProps) {
                 <div ref={playlistMenu.panelRef} id={playlistMenu.panelId} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
-                    <button
-                      type="button"
-                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
-                      onClick={props.closeBulkPlaylistPicker}
-                      disabled={props.loading}
-                    >
-                      ✕
-                    </button>
+                    <CloseButton label="Close" onClick={props.closeBulkPlaylistPicker} disabled={props.loading} />
                   </div>
                   {props.playlists.length === 0 && props.playlistsLoadStatus !== 'loaded' ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -329,7 +316,7 @@ export default function SongsList(props: SongsListProps) {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                          className="btn-secondary btn-sm"
                           onClick={props.closeBulkPlaylistPicker}
                           disabled={props.loading}
                         >
@@ -337,7 +324,7 @@ export default function SongsList(props: SongsListProps) {
                         </button>
                         <button
                           type="button"
-                          className="text-sm px-3 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+                          className="btn-primary btn-sm"
                           onClick={props.handleApplySelectedToPlaylists}
                           disabled={props.bulkPlaylistSelection.size === 0 || props.loading}
                         >
@@ -353,7 +340,7 @@ export default function SongsList(props: SongsListProps) {
             {isRealInstrument(props.instrumentFilter) && (
               <button
                 type="button"
-                className="btn-primary text-sm px-3 py-1.5"
+                className="btn-primary btn-sm"
                 onClick={props.handleMarkSelectedAsPlayedNow}
                 disabled={props.loading}
               >
@@ -362,7 +349,7 @@ export default function SongsList(props: SongsListProps) {
             )}
             <button
               type="button"
-              className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 disabled:opacity-50"
+              className="btn-danger btn-sm"
               onClick={props.handleDeleteSelected}
               disabled={props.loading}
             >
@@ -444,7 +431,7 @@ function EmptyListMessage({ hasActiveFilters, hasSearch, onClearFilters }: {
     return (
       <>
         No songs match your filters.{' '}
-        <button type="button" className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 underline" onClick={onClearFilters}>
+        <button type="button" className="btn-link" onClick={onClearFilters}>
           Clear filters
         </button>
       </>

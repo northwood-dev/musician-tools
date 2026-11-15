@@ -49,7 +49,7 @@ test('clicking difficulty star calls setter', () => {
 
 test('remove instrument button removes instrument', () => {
   const props = renderInstrument();
-  const remove = screen.getByTitle('Remove this instrument');
+  const remove = screen.getByRole('button', { name: 'Remove Guitar' });
   fireEvent.click(remove);
   expect(props.onChangeInstruments).toHaveBeenCalledWith([]);
 });

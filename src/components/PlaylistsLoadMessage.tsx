@@ -14,7 +14,7 @@ export function PlaylistsLoadMessage({ status, onRetry }: { status: PlaylistsLoa
         Couldn't load your playlists{' '}
         <button
           type="button"
-          className="text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 underline"
+          className="btn-link"
           onClick={onRetry}
         >
           Retry

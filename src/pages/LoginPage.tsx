@@ -101,7 +101,7 @@ function LoginPage() {
               type="button"
               onClick={handleResend}
               disabled={resending}
-              className="font-medium underline hover:no-underline disabled:opacity-60"
+              className="btn-link btn-link-inherit"
             >
               {resending ? 'Sending...' : 'Resend verification email'}
             </button>

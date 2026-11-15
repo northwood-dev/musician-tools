@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { songService, type AddInstrumentResult } from '../services/songService';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
+import { CloseButton } from './CloseButton';
 
 export type InstrumentAdded = AddInstrumentResult & { instrument: string };
 
@@ -58,7 +59,7 @@ export function BulkSetInstrument({
       <button
         ref={buttonRef}
         type="button"
-        className="btn-primary text-sm px-3 py-1.5"
+        className="btn-primary btn-sm"
         onClick={() => (open ? close() : onOpenChange(true))}
         disabled={disabled}
         aria-expanded={open}
@@ -70,15 +71,7 @@ export function BulkSetInstrument({
         <div ref={panelRef} id={panelId} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-700 dark:text-gray-200">Add an instrument</p>
-            <button
-              type="button"
-              aria-label="Close"
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
-              onClick={close}
-              disabled={submitting}
-            >
-              ✕
-            </button>
+            <CloseButton label="Close" onClick={close} disabled={submitting} />
           </div>
           <select
             aria-label="Instrument to add"
@@ -96,7 +89,7 @@ export function BulkSetInstrument({
           <div className="flex justify-end gap-2">
             <button
               type="button"
-              className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+              className="btn-secondary btn-sm"
               onClick={close}
               disabled={submitting}
             >
@@ -104,7 +97,7 @@ export function BulkSetInstrument({
             </button>
             <button
               type="button"
-              className="text-sm px-3 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+              className="btn-primary btn-sm"
               onClick={() => { void submit(); }}
               disabled={instrument === '' || submitting}
             >

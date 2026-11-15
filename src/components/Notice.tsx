@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { CloseButton } from './CloseButton';
 
 // The message block of the design pass (#141, #153): one recipe per tone, dark mode
 // included, instead of the red / amber / green / grey boxes copied by hand page by page.
@@ -62,17 +63,7 @@ export function Notice({
     <>
       <div className={`min-w-0 flex-1 ${bodyClassName}`}>{children}</div>
       {action && <div className="shrink-0">{action}</div>}
-      {onDismiss && (
-        <button
-          type="button"
-          aria-label={dismissLabel}
-          // A 32px target with a visible keyboard focus, not a bare glyph.
-          className="shrink-0 -my-1 inline-flex h-8 w-8 items-center justify-center rounded text-sm opacity-70 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
-          onClick={onDismiss}
-        >
-          ✕
-        </button>
-      )}
+      {onDismiss && <CloseButton label={dismissLabel} onClick={onDismiss} tone="inherit" className="-my-1" />}
     </>
   );
   return (

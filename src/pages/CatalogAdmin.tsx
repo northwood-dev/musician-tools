@@ -454,7 +454,7 @@ export default function CatalogAdmin() {
         <div>
           <button
             type="button"
-            className="btn-secondary text-xs"
+            className="btn-secondary btn-sm"
             onClick={handleAutoFill}
             disabled={metadataLoading || publishing || !(form.title || '').trim() || !(form.artist || '').trim()}
           >
@@ -517,7 +517,7 @@ export default function CatalogAdmin() {
           <div className="pt-2">
             <button
               type="button"
-              className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-2 text-sm hover:bg-red-700 disabled:opacity-50"
+              className="btn-danger btn-sm"
               onClick={() => setDeleteOpen(true)}
               disabled={deleting}
             >

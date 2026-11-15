@@ -307,7 +307,7 @@ function MyHeatmapPage() {
                 type="button"
                 id="heatmap-prev-year"
                 aria-label="Previous year"
-                className="btn-secondary text-sm"
+                className="btn-secondary btn-sm"
                 onClick={() => changeYear(-1)}
                 disabled={year <= 1900}
               >
@@ -317,7 +317,7 @@ function MyHeatmapPage() {
                 type="button"
                 id="heatmap-next-year"
                 aria-label="Next year"
-                className="btn-secondary text-sm"
+                className="btn-secondary btn-sm"
                 onClick={() => changeYear(1)}
                 disabled={year >= currentYear}
               >
@@ -441,7 +441,7 @@ function MyHeatmapPage() {
               && selectedDate <= formatLocalDate(new Date()) && (
               <Link
                 to={`/my-sessions?date=${selectedDate}`}
-                className="btn-secondary text-sm inline-flex items-center"
+                className="btn-secondary btn-sm inline-flex items-center"
               >
                 Log a session for this day
               </Link>
@@ -459,14 +459,14 @@ function MyHeatmapPage() {
                         <Link
                           to={`/my-sessions?edit=${session.uid}`}
                           aria-label={`Edit session of ${session.date}`}
-                          className="btn-secondary text-sm"
+                          className="btn-secondary btn-sm"
                         >
                           Edit
                         </Link>
                         <button
                           type="button"
                           aria-label={`Delete session of ${session.date}`}
-                          className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
+                          className="btn-danger btn-sm"
                           onClick={() => setDeleteSessionUid(session.uid)}
                           disabled={deleteInFlight}
                         >
