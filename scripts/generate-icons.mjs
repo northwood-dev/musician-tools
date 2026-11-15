@@ -1,6 +1,7 @@
-// Generates the PNG icons the page head declares (#40), with no dependency: it draws the
-// logo of public/favicon.svg itself (same 32-unit geometry, same gradient, same note)
-// and writes the PNG bytes with Node's zlib.
+// Generates the PNG icons the page head declares (#40), with no dependency: it reads the
+// logo's geometry from public/favicon.svg (the single source: gradient, corner radius,
+// stem, flag, head), draws it itself, and writes the PNG bytes with Node's zlib.
+// Needs Node 22.2+ (zlib.crc32).
 //
 //   npm run icons
 //
@@ -11,32 +12,60 @@
 //   favicon-32.png        32×32, RGBA. The favicon as is (rounded corners, transparent
 //                         outside), for browsers that can't read the SVG favicon.
 //
-// If the logo changes, change favicon.svg AND the shapes below, then rerun.
-import { writeFileSync } from 'node:fs';
+// If the logo changes, change favicon.svg and rerun. The parser below expects its current
+// shape (one gradient, one rounded rect, then a stem <rect>, a cubic flag <path> and a
+// rotated <ellipse>) and stops loudly if it no longer finds it.
+import { readFileSync, writeFileSync } from 'node:fs';
 import { deflateSync, crc32 } from 'node:zlib';
 
-// ---- The logo, in favicon.svg's 32×32 space -------------------------------------------
-const GRADIENT_FROM = [0x4f, 0x6c, 0xff]; // at (0,0)
-const GRADIENT_TO = [0x93, 0x33, 0xea]; // at (32,32)
-const CORNER_RADIUS = 8; // favicon only
+const publicDir = new URL('../public/', import.meta.url);
+const svg = readFileSync(new URL('favicon.svg', publicDir), 'utf8');
 
-// The flag: "M17.3 8 C 21.5 8.8 23.4 12 21.2 16 C 22.2 12.6 20.2 10.6 17.3 11.2 Z",
-// flattened into a polygon.
+function must(pattern, what) {
+  const match = svg.match(pattern);
+  if (!match) throw new Error(`favicon.svg: could not find ${what} — update scripts/generate-icons.mjs`);
+  return match;
+}
+const numbers = (text) => text.match(/-?\d*\.?\d+/g).map(Number);
+const hex = (colour) => [1, 3, 5].map(i => parseInt(colour.slice(i, i + 2), 16));
+
+// ---- The logo, read from favicon.svg's 32×32 space -----------------------------------
+const [GRADIENT_FROM, GRADIENT_TO] = [...svg.matchAll(/stop-color="(#[0-9a-fA-F]{6})"/g)].map(m => hex(m[1]));
+if (!GRADIENT_TO) throw new Error('favicon.svg: expected two gradient stops');
+const CORNER_RADIUS = Number(must(/<rect[^>]*\brx="([\d.]+)"/, 'the rounded background')[1]);
+
+const stemTag = must(/<g fill="#ffffff">\s*(<rect[^>]*>)/, 'the stem <rect>')[1];
+const STEM = Object.fromEntries(['x', 'y', 'width', 'height'].map(k =>
+  [k, Number(stemTag.match(new RegExp(`\\b${k}="([\\d.]+)"`))[1])]));
+
+// The flag: "M x y C … C … Z", flattened into a polygon.
+const flagPath = must(/<path d="(M[^"]+)"/, 'the flag <path>')[1];
+const [mx, my, ...curves] = numbers(flagPath);
+if (curves.length !== 12) throw new Error('favicon.svg: the flag is expected to be two cubic curves');
+
+const headTag = must(/<ellipse[^>]*>/, 'the note head <ellipse>')[0];
+const attr = (tag, name) => Number(tag.match(new RegExp(`\\b${name}="(-?[\\d.]+)"`))[1]);
+const HEAD = {
+  cx: attr(headTag, 'cx'), cy: attr(headTag, 'cy'), rx: attr(headTag, 'rx'), ry: attr(headTag, 'ry'),
+  angle: (numbers(headTag.match(/rotate\(([^)]*)\)/)[1])[0] * Math.PI) / 180,
+};
+
 function cubic(p0, p1, p2, p3, steps = 48) {
-  const out = [];
+  const points = [];
   for (let i = 1; i <= steps; i++) {
     const t = i / steps, u = 1 - t;
-    out.push([
+    points.push([
       u * u * u * p0[0] + 3 * u * u * t * p1[0] + 3 * u * t * t * p2[0] + t * t * t * p3[0],
       u * u * u * p0[1] + 3 * u * u * t * p1[1] + 3 * u * t * t * p2[1] + t * t * t * p3[1],
     ]);
   }
-  return out;
+  return points;
 }
+const pt = (i) => [curves[i], curves[i + 1]];
 const FLAG = [
-  [17.3, 8],
-  ...cubic([17.3, 8], [21.5, 8.8], [23.4, 12], [21.2, 16]),
-  ...cubic([21.2, 16], [22.2, 12.6], [20.2, 10.6], [17.3, 11.2]),
+  [mx, my],
+  ...cubic([mx, my], pt(0), pt(2), pt(4)),
+  ...cubic(pt(4), pt(6), pt(8), pt(10)),
 ];
 
 function insidePolygon(x, y, poly) {
@@ -48,13 +77,13 @@ function insidePolygon(x, y, poly) {
   return inside;
 }
 
-const COS20 = Math.cos((20 * Math.PI) / 180), SIN20 = Math.sin((20 * Math.PI) / 180);
+// The head is drawn rotated by HEAD.angle: undo that rotation to test a point.
+const COS = Math.cos(-HEAD.angle), SIN = Math.sin(-HEAD.angle);
 function insideNote(x, y) {
-  if (x >= 15.4 && x <= 17.3 && y >= 8 && y <= 22.5) return true; // the stem
-  // The head: ellipse (13, 22.5), rx 4.1, ry 3.1, rotate(-20) → undo the rotation.
-  const dx = x - 13, dy = y - 22.5;
-  const ex = dx * COS20 - dy * SIN20, ey = dx * SIN20 + dy * COS20;
-  if ((ex / 4.1) ** 2 + (ey / 3.1) ** 2 <= 1) return true;
+  if (x >= STEM.x && x <= STEM.x + STEM.width && y >= STEM.y && y <= STEM.y + STEM.height) return true;
+  const dx = x - HEAD.cx, dy = y - HEAD.cy;
+  const ex = dx * COS - dy * SIN, ey = dx * SIN + dy * COS;
+  if ((ex / HEAD.rx) ** 2 + (ey / HEAD.ry) ** 2 <= 1) return true;
   return insidePolygon(x, y, FLAG);
 }
 
@@ -119,7 +148,6 @@ function png({ size, channels, pixels }) {
   ]);
 }
 
-const out = new URL('../public/', import.meta.url);
-writeFileSync(new URL('apple-touch-icon.png', out), png(render(180, { noteScale: 0.82 })));
-writeFileSync(new URL('favicon-32.png', out), png(render(32, { rounded: true })));
+writeFileSync(new URL('apple-touch-icon.png', publicDir), png(render(180, { noteScale: 0.82 })));
+writeFileSync(new URL('favicon-32.png', publicDir), png(render(32, { rounded: true })));
 console.log('Wrote public/apple-touch-icon.png (180×180 RGB) and public/favicon-32.png (32×32 RGBA).');
