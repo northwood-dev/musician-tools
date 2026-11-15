@@ -15,7 +15,7 @@ export default function AddAsInstrumentSelect({ addAs, disabled = false, classNa
 
   return (
     <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${className}`}>
-      <label htmlFor={id} className="text-sm font-medium text-gray-700 dark:text-gray-300">Add as</label>
+      <label htmlFor={id} className="label-base mb-0">Add as</label>
       <div className="w-full sm:w-56">
         <select
           id={id}

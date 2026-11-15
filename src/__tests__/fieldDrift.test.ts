@@ -9,7 +9,7 @@ const SRC = join(__dirname, '..');
 
 const RECIPES: [string, RegExp[]][] = [
   ['a hand-written input (use input-base)', [/\brounded-md\b/, /\bborder-gray-300\b/, /(^|[\s'"`])p-2(?=[\s'"`]|$)/]],
-  ['a hand-written label (use label-base)', [/\bblock text-sm font-medium text-gray-700\b/]],
+  ['a hand-written label (use label-base)', [/\btext-sm font-medium text-gray-700\b/]],
 ];
 
 function sourceFiles(dir: string): string[] {
@@ -26,6 +26,8 @@ test('no field or label recipe is written by hand', () => {
     const rel = relative(SRC, file);
     readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
       for (const [what, patterns] of RECIPES) {
+        // A heading in the same type style is a section title, not a field label.
+        if (/<h[1-6]\b/.test(line)) continue;
         if (patterns.every(p => p.test(line))) offenders.push(`${rel}:${i + 1} — ${what}`);
       }
     });

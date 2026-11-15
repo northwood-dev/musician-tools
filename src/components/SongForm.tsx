@@ -136,7 +136,7 @@ export function SongForm(props: SongFormProps) {
       {/* Top quick links aggregated from all instruments */}
       {allInstrumentLinks.length > 0 && (
         <>
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">Links</div>
+          <div className="label-base">Links</div>
           <div className="flex flex-wrap gap-2">
             {allInstrumentLinks.map((lnk) => (
               // A real link (#114): opens in a new tab with no handle on the app (noopener).
@@ -373,7 +373,7 @@ export function SongForm(props: SongFormProps) {
                 <label htmlFor="song-duration" className="label-base">Duration (m:ss)</label>
                 <input
                   id="song-duration"
-                  className={`input-base ${durationError ? 'border-red-500 dark:border-red-500' : ''}`}
+                  className={`input-base ${durationError ? 'border-red-500 focus:border-red-500 dark:border-red-500 dark:focus:border-red-500' : ''}`}
                   name="durationSeconds"
                   type="text"
                   inputMode="numeric"
