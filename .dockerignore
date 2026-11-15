@@ -13,3 +13,6 @@ logs
 **/*.log
 _bmad-output
 .claude
+
+# Storybook build output (#152): local only, never part of the image.
+storybook-static

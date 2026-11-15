@@ -10,7 +10,7 @@ import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
 // "Add to my songlist" — 3 states (DL-8/DL-11), story 19.4:
 //   default  → btn-primary "Add to my songlist"
 //   added    → transient green flash "✓ Added"
-//   already  → badge-success "✓ Already in your songlist" (clickable → the existing Song)
+//   already  → green "✓ Already in your songlist" (clickable → the existing Song)
 // Never red, never a disabled-grey failure. The button is a SIBLING of the row/title
 // link (never nested in an <a>) and keeps a ≥44px hit area. Outcomes are announced
 // via role="status" (aria-live).
