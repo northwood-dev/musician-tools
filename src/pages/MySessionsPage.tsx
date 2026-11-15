@@ -915,7 +915,7 @@ function MySessionsPage() {
             {sessionsFailed
               ? 'Sessions could not be loaded.'
               : sessions === null
-                ? 'Loading...'
+                ? 'Loading…'
                 : sessions.length === 0
                   ? 'No sessions logged yet.'
                   : null}

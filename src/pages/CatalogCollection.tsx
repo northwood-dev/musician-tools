@@ -15,6 +15,7 @@ import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 import { Notice } from '../components/Notice';
 import { Page, PageTitle } from '../components/Page';
+import { EmptyState } from '../components/EmptyState';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -205,7 +206,7 @@ export default function CatalogCollection() {
       )}
 
       {count === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 py-6 text-center">This collection is empty.</p>
+        <EmptyState>This collection is empty.</EmptyState>
       ) : (
         <div className="overflow-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <table className="min-w-full text-sm">

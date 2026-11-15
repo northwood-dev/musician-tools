@@ -11,5 +11,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const List: Story = { args: { rows: 4 } };
+export const ListAnnounced: Story = { args: { rows: 4, label: 'Loading…' } };
 
 export const DetailPage: Story = { render: () => <DetailPageSkeleton /> };

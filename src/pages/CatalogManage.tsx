@@ -18,6 +18,7 @@ import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { BulkRecap } from '../components/BulkRecap';
 import { Page } from '../components/Page';
 import { Panel } from '../components/Panel';
+import { EmptyState } from '../components/EmptyState';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -430,7 +431,7 @@ export default function CatalogManage() {
           ) : collections === null ? (
             <ListSkeleton rows={4} />
           ) : collections.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 py-10 text-center">No collections yet — create the first one.</p>
+            <EmptyState>No collections yet — create the first one.</EmptyState>
           ) : (
             <ul className="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
               {collections.map(c => (
@@ -610,9 +611,7 @@ export default function CatalogManage() {
       {!error && data && (
         <div className={loading ? 'opacity-50 transition-opacity duration-150' : 'transition-opacity duration-150'} aria-busy={loading}>
           {data.total === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 py-10 text-center">
-              {search.trim() ? 'No entries match your search.' : 'The Catalog is empty — add the first entry.'}
-            </p>
+            <EmptyState>{search.trim() ? 'No entries match your search.' : 'The Catalog is empty — add the first entry.'}</EmptyState>
           ) : data.items.length === 0 ? (
             // Out-of-range page (deep-link ?page=99, or a delete emptied it): never a
             // dead-end — offer a way back to the first page.

@@ -331,7 +331,7 @@ function MyHeatmapPage() {
             {failed
               ? 'Heatmap could not be loaded.'
               : days === null
-                ? 'Loading...'
+                ? 'Loading…'
                 : days.length === 0
                   ? `No practice logged in ${year} yet.`
                   : null}
@@ -431,7 +431,7 @@ function MyHeatmapPage() {
                   : playsFailed
                     ? 'Plays could not be loaded.'
                     : daySessions === null || dayPlays === null
-                      ? 'Loading...'
+                      ? 'Loading…'
                       : daySessions.length === 0 && dayPlays.length === 0
                         ? `No practice on ${selectedDate}.`
                         : null}
