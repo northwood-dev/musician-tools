@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { songService, type AddInstrumentResult } from '../services/songService';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
-import { CloseButton } from './CloseButton';
+import { Panel } from './Panel';
 
 export type InstrumentAdded = AddInstrumentResult & { instrument: string };
 
@@ -36,7 +36,7 @@ export function BulkSetInstrument({
     setInstrument('');
   };
   // Outside click and Escape close like ✕, and like ✕ not while the add runs (#38).
-  const { buttonRef, panelRef, panelId } = useDismissablePanel({ open, onClose: close, blocked: submitting });
+  const panel = useDismissablePanel({ open, onClose: close, blocked: submitting });
 
   const submit = async () => {
     let result: AddInstrumentResult;
@@ -57,22 +57,18 @@ export function BulkSetInstrument({
   return (
     <div className="relative">
       <button
-        ref={buttonRef}
+        ref={panel.buttonRef}
         type="button"
         className="btn-primary btn-sm"
         onClick={() => (open ? close() : onOpenChange(true))}
         disabled={disabled}
         aria-expanded={open}
-        aria-controls={panelId}
+        aria-controls={panel.panelId}
       >
         Set instrument
       </button>
       {open && (
-        <div ref={panelRef} id={panelId} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-700 dark:text-gray-200">Add an instrument</p>
-            <CloseButton label="Close" onClick={close} disabled={submitting} />
-          </div>
+        <Panel panel={panel} title="Add an instrument" onClose={close} closeDisabled={submitting}>
           <select
             aria-label="Instrument to add"
             className="w-full rounded-md border border-gray-300 dark:border-gray-600 p-2 text-sm dark:bg-gray-700 dark:text-gray-100 disabled:opacity-50"
@@ -104,7 +100,7 @@ export function BulkSetInstrument({
               Add
             </button>
           </div>
-        </div>
+        </Panel>
       )}
     </div>
   );
