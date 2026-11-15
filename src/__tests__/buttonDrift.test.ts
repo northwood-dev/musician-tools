@@ -30,10 +30,10 @@ test('no button colour or size is written by hand outside the button block', () 
   const offenders: string[] = [];
   for (const file of sourceFiles(SRC)) {
     const rel = relative(SRC, file);
+    // The chip block owns its own pill colours (#159): a chip is not a button recipe.
+    if (rel === 'components/Chip.tsx') continue;
     readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
       // Variant classes (hover:, focus-visible:, dark:…) are states, not the recipe itself.
-      // A line marked `chip (#159)` belongs to the chip block, which takes it over next.
-      if (line.includes('chip (#159)')) return;
       const plain = line.replace(/(^|[\s'"`])[a-z-]+:[^\s'"`]+/g, '$1');
       for (const { what, all, unless } of RECIPES) {
         if (all.every(p => p.test(plain)) && !(unless && unless.test(plain))) offenders.push(`${rel}:${i + 1} — ${what}`);

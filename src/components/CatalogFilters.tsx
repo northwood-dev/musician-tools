@@ -1,4 +1,5 @@
 import type { CatalogFacets } from '../services/catalogService';
+import { ToggleChip } from './Chip';
 
 type FacetKey = 'genre' | 'key' | 'mode' | 'timeSignature';
 type Selected = Record<FacetKey, string[]>;
@@ -34,19 +35,9 @@ export default function CatalogFilters({
             {g.values.map(v => {
               const active = selected[g.param].includes(v);
               return (
-                <button
-                  key={v}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => onToggle(g.param, v)}
-                  className={
-                    active
-                      ? 'rounded-full px-3 py-1 text-sm transition-colors bg-brand-500 text-white hover:bg-brand-600'
-                      : 'rounded-full px-3 py-1 text-sm transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700'
-                  }
-                >
+                <ToggleChip key={v} pressed={active} onToggle={() => onToggle(g.param, v)}>
                   {v}
-                </button>
+                </ToggleChip>
               );
             })}
           </div>

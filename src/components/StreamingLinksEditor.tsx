@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type React from 'react';
 import { CATALOG_PLATFORMS, isPlatformLink, linkName, songlistLinkError, type CatalogPlatform, type StreamingLink } from '../utils/streamingLinks';
+import { Chip } from './Chip';
+import { CloseButton } from './CloseButton';
 
 type Props = {
   links: StreamingLink[];
@@ -103,27 +105,21 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
       {links.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {shown.map((link) => (
-            <div
-              key={`streaming-link-${link.url}-${link.label ?? ''}-${link.source ?? ''}`}
-              className="inline-flex items-center gap-1 rounded-md bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-800 dark:text-blue-100"
-            >
+            <Chip key={`streaming-link-${link.url}-${link.label ?? ''}-${link.source ?? ''}`}>
               {link.source === 'catalog' && (
                 <span className="rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white" title="Official link from the Catalog">Catalog</span>
               )}
               <a href={link.url} target="_blank" rel="noopener noreferrer" className="hover:underline truncate max-w-[20rem]" title={link.url}>
                 {linkName(link)}
               </a>
-              <button
-                type="button"
-                className="ml-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800 px-1"
+              <CloseButton
+                label={`Remove ${linkName(link)} link`}
                 onClick={() => onChange(links.filter(l => l !== link))}
-                aria-label={`Remove ${linkName(link)} link`}
-                title="Remove link"
                 disabled={disabled}
-              >
-                ✕
-              </button>
-            </div>
+                tone="inherit"
+                className="-my-1 -mr-2"
+              />
+            </Chip>
           ))}
         </div>
       )}

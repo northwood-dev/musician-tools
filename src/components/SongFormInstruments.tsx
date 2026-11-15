@@ -3,6 +3,7 @@ import type { SongPlay } from '../services/songPlayService';
 import { instrumentTechniquesMap, instrumentTuningsMap } from '../constants/instrumentTypes';
 import { instrumentLinkError } from '../utils/streamingLinks';
 import { CloseButton } from './CloseButton';
+import { ToggleChip } from './Chip';
 
 interface SongFormInstrumentsProps {
   // Instruments data
@@ -249,20 +250,9 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                       {instrumentTechniques.map((tech) => {
                         const selected = currentTechniques.includes(tech);
                         return (
-                          <button
-                            key={tech}
-                            type="button"
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-sm disabled:opacity-50 ${
-                              selected
-                                ? 'bg-brand-500 text-white hover:bg-brand-600' // chip (#159), not a button
-                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
-                            }`}
-                            onClick={() => onToggleTechnique(tech)}
-                            disabled={loading}
-                            title={tech}
-                          >
+                          <ToggleChip key={tech} pressed={selected} onToggle={() => onToggleTechnique(tech)} disabled={loading} title={tech}>
                             {tech}
-                          </button>
+                          </ToggleChip>
                         );
                       })}
                     </div>

@@ -14,6 +14,7 @@ import { StreamingLinksEditor } from './StreamingLinksEditor';
 import type { StreamingLink } from '../utils/streamingLinks';
 import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
+import { RemovableChip } from './Chip';
 
 type Mode = 'add' | 'edit';
 
@@ -274,17 +275,7 @@ export function SongForm(props: SongFormProps) {
               {currentGenres.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {currentGenres.map(genre => (
-                    <button
-                      key={genre}
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                      onClick={() => onToggleGenre(genre)}
-                      disabled={loading}
-                      title={genre}
-                    >
-                      <span className="truncate">{genre}</span>
-                      <span>✕</span>
-                    </button>
+                    <RemovableChip key={genre} label={genre} onRemove={() => onToggleGenre(genre)} disabled={loading} />
                   ))}
                 </div>
               )}
@@ -353,17 +344,7 @@ export function SongForm(props: SongFormProps) {
               {currentLanguages.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {currentLanguages.map(language => (
-                    <button
-                      key={language}
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
-                      onClick={() => onToggleLanguage(language)}
-                      disabled={loading}
-                      title={language}
-                    >
-                      <span className="truncate">{language}</span>
-                      <span>✕</span>
-                    </button>
+                    <RemovableChip key={language} label={language} onRemove={() => onToggleLanguage(language)} disabled={loading} />
                   ))}
                 </div>
               )}
