@@ -8,8 +8,11 @@ const BAR = 'rounded bg-gray-100 dark:bg-gray-700 animate-pulse';
 
 // `rows` matches what the surface usually shows (a page of entries, a shorter list of
 // collections); `className` lets a caller keep its own outer spacing.
-// `label` (e.g. "Loading…") makes it announce the load politely, for a page that has no
-// other loading signal; without it, the bars are visual filler only.
+// `label` (e.g. "Loading…") adds a named polite status for a page that has no other
+// loading signal. Best effort: a live region mounted together with its text is not
+// reliably announced (see Toast.tsx), but the label is always there to be read — before,
+// the plain loading line had no role at all. Without `label`, the bars are visual
+// filler only.
 export function ListSkeleton({ rows = 6, className, label }: { rows?: number; className?: string; label?: string }) {
   const bars = (
     <div className={className ? `space-y-2 ${className}` : 'space-y-2'} aria-hidden="true">
@@ -20,7 +23,7 @@ export function ListSkeleton({ rows = 6, className, label }: { rows?: number; cl
   );
   if (!label) return bars;
   return (
-    <div role="status">
+    <div role="status" aria-label={label}>
       <span className="sr-only">{label}</span>
       {bars}
     </div>

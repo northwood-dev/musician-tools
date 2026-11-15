@@ -6,7 +6,7 @@ import type { ReactNode } from 'react';
 // centred paragraph on the Catalog pages, a plain grey line on the My* pages).
 export function EmptyState({ children, action, className = '' }: { children: ReactNode; action?: ReactNode; className?: string }) {
   return (
-    <div className={`py-10 text-center text-sm text-gray-500 dark:text-gray-400 ${className}`}>
+    <div className={`px-4 py-10 text-center text-sm text-gray-500 dark:text-gray-400 ${className}`}>
       <p>{children}</p>
       {action && <div className="mt-3">{action}</div>}
     </div>

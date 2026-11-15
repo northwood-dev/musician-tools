@@ -14,7 +14,7 @@ test('an empty state shows its action, found by role', () => {
 
 test('a labelled list skeleton announces the load politely; the bars stay hidden', () => {
   render(<ListSkeleton rows={3} label="Loading…" />);
-  expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+  expect(screen.getByRole('status', { name: 'Loading…' })).toBeInTheDocument();
 });
 
 test('an unlabelled list skeleton is visual filler only (the page announces the load)', () => {

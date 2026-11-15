@@ -87,7 +87,7 @@ test('a failed Save keeps the row open with what was typed and shows the error',
 test('the initial load shows the loading state', async () => {
   renderPage();
 
-  expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+  expect(screen.getByRole('status', { name: 'Loading…' })).toBeInTheDocument();
   expect(await screen.findByText('Jazz Bass')).toBeInTheDocument();
 });
 

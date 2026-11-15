@@ -361,11 +361,13 @@ export default function SongsList(props: SongsListProps) {
             <ListSkeleton rows={6} label="Loading…" />
           ) : props.filteredSongs.length === 0 ? (
             <div className="card-base">
-              <EmptyState><EmptyListMessage
-                hasActiveFilters={props.activeFilterCount > 0}
-                hasSearch={props.searchQuery !== ''}
-                onClearFilters={props.clearAllFilters}
-              /></EmptyState>
+              <EmptyState
+                action={props.activeFilterCount > 0 && (
+                  <button type="button" className="btn-link" onClick={props.clearAllFilters}>Clear filters</button>
+                )}
+              >
+                {emptyListMessage(props.activeFilterCount > 0, props.searchQuery !== '')}
+              </EmptyState>
             </div>
           ) : (
             <div className="card-base overflow-hidden">
@@ -423,21 +425,8 @@ export default function SongsList(props: SongsListProps) {
 
 // #98: why the list is empty, with a way out of filters (the sidebar may be collapsed). A
 // songlist with no song at all gets the page's own empty screen, not this list.
-function EmptyListMessage({ hasActiveFilters, hasSearch, onClearFilters }: {
-  hasActiveFilters: boolean;
-  hasSearch: boolean;
-  onClearFilters: () => void;
-}) {
-  if (hasActiveFilters) {
-    return (
-      <>
-        No songs match your filters.{' '}
-        <button type="button" className="btn-link" onClick={onClearFilters}>
-          Clear filters
-        </button>
-      </>
-    );
-  }
-  if (hasSearch) return <>No songs match your search.</>;
-  return <>No songs saved.</>;
+function emptyListMessage(hasActiveFilters: boolean, hasSearch: boolean): string {
+  if (hasActiveFilters) return 'No songs match your filters.';
+  if (hasSearch) return 'No songs match your search.';
+  return 'No songs saved.';
 }
