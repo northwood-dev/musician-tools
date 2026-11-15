@@ -90,6 +90,14 @@ test('unauthenticated: no hamburger, no nav links, and no sign-in actions in the
 });
 
 // Profile + Sign out moved out of the main nav into a desktop account dropdown.
+// The account panel is a disclosure (#145): the button points to it with aria-controls;
+// it holds plain links and a button, no menu roles.
+const accountToggle = () => screen.getByRole('button', { name: /account menu/i });
+const accountPanel = () => {
+  const id = accountToggle().getAttribute('aria-controls');
+  return id ? document.getElementById(id) : null;
+};
+
 test('account dropdown is collapsed by default and reveals Profile + Sign out', () => {
   mockedUseAuth.mockReturnValue({ isAuthenticated: true, logout: jest.fn() });
   renderHeader();
@@ -97,15 +105,26 @@ test('account dropdown is collapsed by default and reveals Profile + Sign out', 
   // Not in the main desktop nav anymore, and hidden until the dropdown opens.
   expect(screen.queryByRole('link', { name: 'Profile' })).not.toBeInTheDocument();
 
-  const toggle = screen.getByRole('button', { name: /account menu/i });
+  const toggle = accountToggle();
   expect(toggle).toHaveAttribute('aria-expanded', 'false');
 
   fireEvent.click(toggle);
 
   expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  const menu = screen.getByRole('menu');
-  expect(within(menu).getByRole('menuitem', { name: 'Profile' })).toBeInTheDocument();
-  expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument();
+  const panel = accountPanel()!;
+  expect(panel).toBeInTheDocument();
+  expect(within(panel).getByRole('link', { name: 'Profile' })).toBeInTheDocument();
+  expect(within(panel).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+});
+
+test('#150: the account panel is a disclosure, not a menu', () => {
+  mockedUseAuth.mockReturnValue({ isAuthenticated: true, logout: jest.fn(), user: { isCurator: true } });
+  renderHeader();
+  fireEvent.click(accountToggle());
+  expect(accountToggle()).not.toHaveAttribute('aria-haspopup');
+  expect(screen.queryByRole('menu')).toBeNull();
+  expect(screen.queryByRole('menuitem')).toBeNull();
+  expect(within(accountPanel()!).getByRole('link', { name: 'Curate' })).toBeInTheDocument();
 });
 
 test('account dropdown: Escape closes it, and Sign out logs out', () => {
@@ -113,12 +132,12 @@ test('account dropdown: Escape closes it, and Sign out logs out', () => {
   mockedUseAuth.mockReturnValue({ isAuthenticated: true, logout });
   renderHeader();
 
-  fireEvent.click(screen.getByRole('button', { name: /account menu/i }));
+  fireEvent.click(accountToggle());
   fireEvent.keyDown(document.body, { key: 'Escape' });
-  expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  expect(accountPanel()).toBeNull();
 
-  fireEvent.click(screen.getByRole('button', { name: /account menu/i }));
-  fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Sign out' }));
+  fireEvent.click(accountToggle());
+  fireEvent.click(within(accountPanel()!).getByRole('button', { name: 'Sign out' }));
   expect(logout).toHaveBeenCalled();
 });
 
@@ -127,19 +146,19 @@ describe('#136: the account menu closes like the other menus', () => {
 
   test('an outside click closes it, a click inside does not', () => {
     renderHeader();
-    fireEvent.click(screen.getByRole('button', { name: /account menu/i }));
-    fireEvent.mouseDown(screen.getByRole('menuitem', { name: 'Profile' }));
-    expect(screen.getByRole('menu')).toBeInTheDocument();
+    fireEvent.click(accountToggle());
+    fireEvent.mouseDown(within(accountPanel()!).getByRole('link', { name: 'Profile' }));
+    expect(accountPanel()).toBeInTheDocument();
     fireEvent.mouseDown(document.body);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(accountPanel()).toBeNull();
   });
 
   test('Escape puts focus back on the account button', () => {
     renderHeader();
-    const toggle = screen.getByRole('button', { name: /account menu/i });
+    const toggle = accountToggle();
     fireEvent.click(toggle);
     fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(accountPanel()).toBeNull();
     expect(toggle).toHaveFocus();
   });
 });

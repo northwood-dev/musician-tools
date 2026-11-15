@@ -361,3 +361,34 @@ test('#38: pressing another bulk button closes the open menu, and the click open
   expect(screen.queryByText('Select playlists')).not.toBeInTheDocument();
   expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toBeInTheDocument();
 });
+
+describe('#149: the bulk panels are disclosures', () => {
+  const pointsToItsPanel = (button: HTMLElement) => {
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    const id = button.getAttribute('aria-controls');
+    expect(id).toBeTruthy();
+    expect(document.getElementById(id!)).toBeInTheDocument();
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByRole('menuitem')).toBeNull();
+  };
+
+  test('Set instrument points to its open panel', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    const button = screen.getByRole('button', { name: 'Set instrument' });
+    fireEvent.click(button);
+    pointsToItsPanel(button);
+    expect(document.getElementById(button.getAttribute('aria-controls')!)).toContainElement(
+      screen.getByRole('combobox', { name: 'Instrument to add' }));
+  });
+
+  test('Add to playlist points to its open panel', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    const button = screen.getByRole('button', { name: 'Add to playlist' });
+    fireEvent.click(button);
+    await screen.findByText('Select playlists');
+    pointsToItsPanel(button);
+    expect(within(document.getElementById(button.getAttribute('aria-controls')!)!).getByRole('link', { name: 'Create one' })).toBeInTheDocument();
+  });
+});
