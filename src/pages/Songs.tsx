@@ -27,7 +27,7 @@ import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Notice } from '../components/Notice';
-import { Page } from '../components/Page';
+import { Page, PageTitle } from '../components/Page';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -1892,7 +1892,8 @@ function Songs() {
       ) : page === 'list' && songs.length === 0 && !loading && !error ? (
         // Story 19.4 (DL-13): a genuinely empty songlist points to the Catalog. Only
         // when loaded with no error (degrades to the normal list/error UI otherwise).
-        <Page width="content" title="Your songlist is empty" className="text-center">
+        <Page width="content" className="text-center">
+          <PageTitle className="mb-2">Your songlist is empty</PageTitle>
           <p className="mb-6 text-gray-600 dark:text-gray-300">Browse the Catalog to fill it in seconds.</p>
           <button type="button" className="btn-primary" onClick={() => navigate('/catalog')}>Browse the Catalog</button>
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">

@@ -190,7 +190,7 @@ function MyPlaylistsPage() {
               }}
               disabled={loading}
             >
-              Create Playlist
+              Create playlist
             </button>
           )}
           className="space-y-6"

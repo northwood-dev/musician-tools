@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { Page } from './Page';
+import { Page, PageTitle } from './Page';
 
 // The page block (#155): three named widths, the page's one main title, an optional
 // description and actions.
@@ -20,4 +20,14 @@ type Story = StoryObj<typeof meta>;
 
 export const Wide: Story = {};
 export const Content: Story = { args: { width: 'content', title: 'Profile', description: undefined, actions: undefined } };
-export const Narrow: Story = { args: { width: 'narrow', title: 'Choose a new password', description: undefined, actions: undefined } };
+export const EditableTitle: Story = {
+  args: { width: 'content', title: undefined, description: undefined, actions: undefined },
+  render: (args) => (
+    <Page {...args}>
+      <div className="flex items-baseline gap-3">
+        <PageTitle>Beginner classics</PageTitle>
+        <button type="button" className="btn-link">Rename</button>
+      </div>
+    </Page>
+  ),
+};

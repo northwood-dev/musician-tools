@@ -54,8 +54,12 @@ export default function CatalogEntry() {
   }, [uid]);
 
   if (loading) {
+    // The page keeps its one h1 while loading; the skeleton stands in for what we see.
     return (
-      <DetailPageSkeleton />
+      <Page width="content">
+        <PageTitle className="sr-only">Catalog entry</PageTitle>
+        <DetailPageSkeleton />
+      </Page>
     );
   }
 
@@ -63,7 +67,7 @@ export default function CatalogEntry() {
     return (
       <Page width="content" title="Catalog entry not found">
         <p className="text-gray-600 dark:text-gray-300">{CATALOG_ENTRY_GONE_MESSAGE}</p>
-        <Link to="/catalog" className="btn-secondary">Browse the Catalog</Link>
+        <Link to="/catalog" className="btn-secondary mt-4">Browse the Catalog</Link>
       </Page>
     );
   }
@@ -72,7 +76,7 @@ export default function CatalogEntry() {
     return (
       <Page width="content" title="Something went wrong">
         <p className="text-gray-600 dark:text-gray-300">The entry could not be loaded. Please try again in a moment.</p>
-        <Link to="/catalog" className="btn-secondary">Browse the Catalog</Link>
+        <Link to="/catalog" className="btn-secondary mt-4">Browse the Catalog</Link>
       </Page>
     );
   }
@@ -83,7 +87,6 @@ export default function CatalogEntry() {
     <Page width="content">
       {/* Artist-led header (DL-18). */}
       <p className="text-sm text-gray-500 dark:text-gray-400">{entry.artist || '—'}</p>
-      {/* Artist-led header (DL-18): the artist line stays above the title. */}
       <PageTitle className="mb-4">{entry.title}</PageTitle>
 
       <div className="mb-6 space-y-3">

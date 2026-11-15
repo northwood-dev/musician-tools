@@ -14,7 +14,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Toast } from '../components/Toast';
 import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
 import { listOf } from '../utils/listOf';
-import { Page } from '../components/Page';
+import { Page, PageTitle } from '../components/Page';
 
 // Curator-only admin screen to create a Catalog entry (story 19.2). Utilitarian
 // (DL-14): reuses the design-system utilities, restricted to the INTRINSIC fields
@@ -246,7 +246,7 @@ export default function CatalogAdmin() {
 
   // Edit mode: loading / not-found interstitials (calm deep-link handling, AC8).
   if (isEdit && loading) {
-    return <Page width="content"><p className="text-gray-500 dark:text-gray-400">Loading…</p></Page>;
+    return <Page width="content"><PageTitle className="sr-only">Catalog entry</PageTitle><p className="text-gray-500 dark:text-gray-400">Loading…</p></Page>;
   }
   if (isEdit && notFound) {
     return (

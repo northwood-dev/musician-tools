@@ -2,21 +2,20 @@ import type { ReactNode } from 'react';
 
 // The page block of the design pass (#141, #155): the frame of every app page — its
 // width, its margins and its one main title (the page's level-1 heading). Six widths and
-// three margin recipes had grown per page family; three named widths remain:
-//   narrow   sign-in pages (which keep their own centred title)
+// three margin recipes had grown per page family; two named widths remain for app pages
+// (the sign-in pages and the home page keep their own centred layout, #141):
 //   content  forms, details, Profile, collection compose, aliases
 //   wide     Songlist, the My* pages, Catalog lists
 // `title` is the page's h1 (the header's logo is not a heading), `description` a line
 // under it, `actions` the buttons on the right of the title (e.g. "New entry").
-export type PageWidth = 'narrow' | 'content' | 'wide';
+export type PageWidth = 'content' | 'wide';
 
 const WIDTH: Record<PageWidth, string> = {
-  narrow: 'max-w-md',
   content: 'max-w-3xl',
   wide: 'max-w-7xl',
 };
 
-export const PAGE_TITLE = 'text-2xl font-semibold text-gray-900 dark:text-gray-100';
+const PAGE_TITLE = 'text-2xl font-semibold text-gray-900 dark:text-gray-100';
 
 // The main title on its own, for a page whose title is editable in place (a collection
 // being renamed): the page passes no `title` to <Page> and renders this where it needs it,

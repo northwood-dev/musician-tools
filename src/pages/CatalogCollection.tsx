@@ -14,7 +14,7 @@ import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 import { Notice } from '../components/Notice';
-import { Page } from '../components/Page';
+import { Page, PageTitle } from '../components/Page';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -118,8 +118,12 @@ export default function CatalogCollection() {
   };
 
   if (loading) {
+    // The page keeps its one h1 while loading; the skeleton stands in for what we see.
     return (
-      <DetailPageSkeleton />
+      <Page width="wide">
+        <PageTitle className="sr-only">Collection</PageTitle>
+        <DetailPageSkeleton />
+      </Page>
     );
   }
 
@@ -129,7 +133,7 @@ export default function CatalogCollection() {
         <p className="text-gray-600 dark:text-gray-300">
           {notFound ? 'This collection no longer exists.' : 'The collection could not be loaded. Please try again in a moment.'}
         </p>
-        <Link to="/catalog" className="btn-secondary">Browse the Catalog</Link>
+        <Link to="/catalog" className="btn-secondary mt-4">Browse the Catalog</Link>
       </Page>
     );
   }

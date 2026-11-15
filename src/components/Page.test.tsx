@@ -18,7 +18,7 @@ test('an optional description and actions sit with the title', () => {
   expect(screen.getByRole('button', { name: 'New entry' })).toBeInTheDocument();
 });
 
-test.each(['narrow', 'content', 'wide'] as const)('the %s width renders', (width) => {
+test.each(['content', 'wide'] as const)('the %s width renders', (width) => {
   render(<Page width={width} title="Profile"><p>x</p></Page>);
   expect(screen.getByRole('heading', { level: 1, name: 'Profile' })).toBeInTheDocument();
 });

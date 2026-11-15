@@ -20,7 +20,8 @@ test.each(appPages)('%s takes its frame and main title from <Page>', (rel) => {
   const lines = source.split('\n');
   const ownTitles = lines.flatMap((l, i) => (/<h1\b/.test(l) ? [`${rel}:${i + 1}`] : []));
   const ownFrames = lines.flatMap((l, i) => (/\bmax-w-(md|lg|xl|[2-7]xl)\b/.test(l) && /\bmx-auto\b/.test(l) ? [`${rel}:${i + 1}`] : []));
-  expect({ ownTitles, ownFrames }).toEqual({ ownTitles: [], ownFrames: [] });
+  const usesPage = /<Page\b/.test(source);
+  expect({ ownTitles, ownFrames, usesPage }).toEqual({ ownTitles: [], ownFrames: [], usesPage: true });
 });
 
 test('the header logo is not a heading', () => {
