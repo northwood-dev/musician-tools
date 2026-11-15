@@ -28,6 +28,7 @@ import { listOf } from '../utils/listOf';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Notice } from '../components/Notice';
 import { Page, PageTitle } from '../components/Page';
+import { RemovableChip } from '../components/Chip';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -2185,21 +2186,14 @@ function Songs() {
                         {playlists.filter(p => selectedPlaylistUids.has(p.uid) || savingPlaylistUids.has(p.uid)).map(playlist => {
                           const removing = !selectedPlaylistUids.has(playlist.uid);
                           return (
-                          <button
+                          <RemovableChip
                             key={playlist.uid}
-                            type="button"
-                            className={`inline-flex items-center gap-2 rounded-full bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600 ${removing ? 'opacity-50' : ''}`}
-                            onClick={() => handleTogglePlaylist(playlist.uid)}
-                            title={playlist.name}
-                            aria-label={removing ? `${playlist.name}, being removed — click to keep` : undefined}
-                            aria-busy={slowPlaylistUids.has(playlist.uid) || undefined}
-                          >
-                            <span className="truncate">{playlist.name}</span>
-                            {slowPlaylistUids.has(playlist.uid) && (
-                              <span aria-hidden="true" className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
-                            )}
-                            <span>✕</span>
-                          </button>
+                            label={playlist.name}
+                            onRemove={() => handleTogglePlaylist(playlist.uid)}
+                            dimmed={removing}
+                            ariaLabel={removing ? `${playlist.name}, being removed — click to keep` : undefined}
+                            busy={slowPlaylistUids.has(playlist.uid)}
+                          />
                           );
                         })}
                       </div>

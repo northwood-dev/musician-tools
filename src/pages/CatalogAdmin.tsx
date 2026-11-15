@@ -15,6 +15,7 @@ import { Toast } from '../components/Toast';
 import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
 import { listOf } from '../utils/listOf';
 import { Page, PageTitle } from '../components/Page';
+import { RemovableChip } from '../components/Chip';
 
 // Curator-only admin screen to create a Catalog entry (story 19.2). Utilitarian
 // (DL-14): reuses the design-system utilities, restricted to the INTRINSIC fields
@@ -387,10 +388,7 @@ export default function CatalogAdmin() {
         {selected.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-2">
             {selected.map(v => (
-              <span key={v} className="inline-flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs text-gray-700 dark:text-gray-200">
-                {v}
-                <button type="button" aria-label={`Remove ${v}`} className="text-gray-400 hover:text-red-500" onClick={() => change(selected.filter(x => x !== v))}>×</button>
-              </span>
+              <RemovableChip key={v} label={v} onRemove={() => change(selected.filter(x => x !== v))} />
             ))}
           </div>
         )}

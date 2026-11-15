@@ -19,6 +19,7 @@ import { BulkRecap } from '../components/BulkRecap';
 import { Page } from '../components/Page';
 import { Panel } from '../components/Panel';
 import { EmptyState } from '../components/EmptyState';
+import { Tag } from '../components/Chip';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -663,7 +664,7 @@ export default function CatalogManage() {
                           <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
                             {entry.title}
                             {entry.publishedAt == null && (
-                              <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">Draft</span>
+                              <span className="ml-2"><Tag>Draft</Tag></span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.key || '—'}</td>

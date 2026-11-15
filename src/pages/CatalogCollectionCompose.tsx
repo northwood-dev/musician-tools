@@ -22,6 +22,7 @@ import {
 import { BulkRecap } from '../components/BulkRecap';
 import { Page, PageTitle } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
+import { Tag } from '../components/Chip';
 
 // Curator Collection composer (story 20.2). Lives at /catalog/manage/collections/:uid:
 // rename / delete the Collection, see its member entries (Remove each), and Add entries
@@ -52,9 +53,7 @@ function entryLabel(e: CatalogSong): string {
 
 function DraftBadge() {
   return (
-    <span className="ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-      Draft
-    </span>
+    <span className="ml-2"><Tag>Draft</Tag></span>
   );
 }
 
