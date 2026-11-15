@@ -152,7 +152,7 @@ function SonglistLinks({ links, onChange, disabled = false }: Omit<Props, 'mode'
         />
         <button
           type="button"
-          className="btn-primary btn-sm justify-center"
+          className="btn-primary justify-center"
           onClick={add}
           disabled={disabled}
         >

@@ -19,3 +19,11 @@ test('can be disabled', () => {
   render(<CloseButton label="Close" onClick={() => {}} disabled />);
   expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
 });
+
+test('a close button without a name is refused', () => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+  // @ts-expect-error — the label is required by the type
+  expect(() => render(<CloseButton onClick={() => {}} />)).toThrow();
+  expect(() => render(<CloseButton label="  " onClick={() => {}} />)).toThrow(/needs a label/);
+  (console.error as jest.Mock).mockRestore();
+});

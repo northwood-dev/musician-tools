@@ -18,6 +18,8 @@ export function CloseButton({
   tone?: 'quiet' | 'inherit';
   className?: string;
 }) {
+  // The type makes the label required; this refuses an empty one too.
+  if (!label.trim()) throw new Error('CloseButton needs a label: it is the button\'s accessible name.');
   const colour = tone === 'inherit'
     ? 'opacity-70 hover:opacity-100 focus-visible:opacity-100'
     : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-700';

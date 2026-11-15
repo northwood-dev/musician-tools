@@ -27,7 +27,7 @@ export const WithAction: Story = {
     tone: 'warning',
     announce: 'none',
     children: 'A newer version of this song is in the Catalog.',
-    action: <button type="button" className="btn-secondary text-sm">Refresh</button>,
+    action: <button type="button" className="btn-secondary btn-sm">Refresh</button>,
   },
 };
 
@@ -35,6 +35,6 @@ export const Strip: Story = {
   args: {
     tone: 'warning',
     variant: 'strip',
-    children: <>Please verify your email to confirm your account. <button type="button" className="font-medium underline">Resend link</button></>,
+    children: <>Please verify your email to confirm your account. <button type="button" className="btn-link btn-link-inherit">Resend link</button></>,
   },
 };

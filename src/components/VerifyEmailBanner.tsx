@@ -39,7 +39,7 @@ function VerifyEmailBanner() {
         type="button"
         onClick={handleResend}
         disabled={sending}
-        className="btn-link"
+        className="btn-link btn-link-inherit"
       >
         {sending ? 'Sending...' : 'Resend link'}
       </button>

@@ -328,16 +328,20 @@ export default function CatalogCollectionCompose() {
                 <button type="button" className="btn-secondary btn-sm" onClick={() => setRenaming(false)} disabled={savingName}>Cancel</button>
               </div>
             ) : (
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                {collection.name}
-                <button type="button" className="btn-link ml-3" onClick={startRename}>
-                  Rename
-                </button>
-              </h1>
+              // The Rename button sits next to the title, not inside it: a heading's name
+              // is the collection's name only.
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{collection.name}</h1>
+                <span className="text-sm">
+                  <button type="button" className="btn-link" onClick={startRename}>
+                    Rename
+                  </button>
+                </span>
+              </div>
             )}
             <button
               type="button"
-              className="inline-flex items-center rounded-md border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 px-3 py-1.5 text-sm hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50"
+              className="btn-danger btn-sm"
               onClick={() => setConfirmOpen(true)}
               // Frozen during a batch AND while the removal dialog is open: the two
               // destructive paths must not interleave, and two stacked modals would give

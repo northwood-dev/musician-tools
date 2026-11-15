@@ -302,7 +302,7 @@ function MyPlaylistsPage() {
                     disabled={loading}
                   />
                   {songSearch && (
-                    <CloseButton label="Clear search" onClick={() => setSongSearch('')} className="absolute right-1 top-1/2 -translate-y-1/2" />
+                    <CloseButton label="Clear search" onClick={() => setSongSearch('')} disabled={loading} className="absolute right-1 top-1/2 -translate-y-1/2" />
                   )}
                 </div>
                 <div className="card-base max-h-96 overflow-y-auto">

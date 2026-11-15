@@ -252,8 +252,11 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                           <button
                             key={tech}
                             type="button"
-                            // A toggle chip, not a button: the chip block (#159) takes it over.
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-sm disabled:opacity-50 ${selected ? 'rounded-full bg-brand-500 text-white hover:bg-brand-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-sm disabled:opacity-50 ${
+                              selected
+                                ? 'bg-brand-500 text-white hover:bg-brand-600' // chip (#159), not a button
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
+                            }`}
                             onClick={() => onToggleTechnique(tech)}
                             disabled={loading}
                             title={tech}

@@ -109,7 +109,7 @@ function RegisterPage() {
               type="button"
               onClick={handleResend}
               disabled={resending}
-              className="btn-link"
+              className="btn-link btn-link-inherit"
             >
               {resending ? 'Sending...' : 'Resend the link'}
             </button>

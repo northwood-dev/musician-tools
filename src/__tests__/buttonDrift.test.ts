@@ -11,16 +11,18 @@ const SRC = join(__dirname, '..');
 // exempts lines that are not buttons (chips are #159's block).
 const RECIPES: { what: string; all: RegExp[]; unless?: RegExp }[] = [
   { what: 'a hand-written red (danger) button', all: [/\bbg-red-(600|700)\b/] },
+  { what: 'a hand-written red outline button', all: [/\bborder-red-\d+\b/, /\btext-red-\d+\b/, /\bpx-\d/] },
   { what: 'a hand-written solid brand button', all: [/\bbg-brand-500\b/, /\btext-white\b/], unless: /\brounded-full\b|text-\[10px\]/ },
   { what: 'a hand-written outline button', all: [/\brounded-md\b/, /\bborder-gray-(200|300)\b/, /\bpx-3\b/, /\bpy-1(\.5)?\b/] },
-  { what: 'a size override on a btn-* class (use btn-sm)', all: [/\bbtn-(primary|secondary|danger|link)\b/, /(^|[\s'"`])(px-\d|py-\d|text-(xs|sm|base|lg))(?=[\s'"`]|$)/] },
+  { what: 'a size override on a btn-* class (use btn-sm)', all: [/\bbtn-(primary|secondary|danger|link)\b/, /(^|[\s'"`])(p[xy]?-\d+(\.\d+)?|text-(xs|sm|base|lg))(?=[\s'"`]|$)/] },
 ];
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap(name => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return name === '__tests__' || name === 'test' ? [] : sourceFiles(path);
-    return /\.tsx?$/.test(name) && !/\.(test|stories)\.tsx?$/.test(name) ? [path] : [];
+    // Stories are scanned too: they show the block, so they must use it as the app does.
+    return /\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) ? [path] : [];
   });
 }
 
@@ -30,6 +32,8 @@ test('no button colour or size is written by hand outside the button block', () 
     const rel = relative(SRC, file);
     readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
       // Variant classes (hover:, focus-visible:, dark:…) are states, not the recipe itself.
+      // A line marked `chip (#159)` belongs to the chip block, which takes it over next.
+      if (line.includes('chip (#159)')) return;
       const plain = line.replace(/(^|[\s'"`])[a-z-]+:[^\s'"`]+/g, '$1');
       for (const { what, all, unless } of RECIPES) {
         if (all.every(p => p.test(plain)) && !(unless && unless.test(plain))) offenders.push(`${rel}:${i + 1} — ${what}`);
