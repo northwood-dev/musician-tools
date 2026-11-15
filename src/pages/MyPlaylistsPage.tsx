@@ -288,7 +288,7 @@ function MyPlaylistsPage() {
               </div>
 
               <div>
-                <label htmlFor="playlist-song-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-3">Songs</label>
+                <label htmlFor="playlist-song-search" className="label-base mb-3">Songs</label>
                 <div className="relative mb-3">
                   <input
                     id="playlist-song-search"

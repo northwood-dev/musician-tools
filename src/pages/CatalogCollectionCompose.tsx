@@ -359,7 +359,7 @@ export default function CatalogCollectionCompose() {
 
           {/* Add-by-search typeahead */}
           <div className="relative mt-6">
-            <label htmlFor="collection-search" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor="collection-search" className="label-base">
               Add an entry
             </label>
             <input

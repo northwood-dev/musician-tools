@@ -249,7 +249,7 @@ export default function SongsList(props: SongsListProps) {
         <div className="w-full lg:flex-1 min-w-0 space-y-4">
           <div className="card-base glass-effect p-4 sm:p-5">
             <div>
-              <label htmlFor="songs-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
+              <label htmlFor="songs-search" className="label-base">
                 Search
               </label>
               <div className="relative">
