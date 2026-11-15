@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TOPIC_EDIT_PARAM } from '../utils/liveNames';
 import { useInlineRowSave } from '../hooks/useInlineRowSave';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { Page } from '../components/Page';
 
 const topicRowId = (uid: string) => `topic-${uid}`;
 
@@ -132,13 +133,9 @@ function MyTopicsPage() {
         onCancel={() => setDeleteUid(null)}
       />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <Page width="wide" title="My topics" className="space-y-6">
 
         <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My topics</h2>
-          </div>
-
           <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <div className="flex flex-col gap-1">
               <label htmlFor="topic-name" className="text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400">
@@ -285,7 +282,7 @@ function MyTopicsPage() {
             </div>
           )}
         </div>
-      </div>
+      </Page>
     </div>
   );
 }

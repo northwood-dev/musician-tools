@@ -20,7 +20,8 @@ export function ListSkeleton({ rows = 6, className }: { rows?: number; className
 
 export function DetailPageSkeleton() {
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-3" aria-hidden="true">
+    // No frame of its own: the page wraps it in <Page>, so nothing jumps once loaded (#155).
+    <div className="space-y-3" aria-hidden="true">
       <div className={`h-8 w-2/3 ${BAR}`} />
       <div className={`h-24 ${BAR}`} />
     </div>

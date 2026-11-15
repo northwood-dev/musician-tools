@@ -27,6 +27,7 @@ import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Notice } from '../components/Notice';
+import { Page, PageTitle } from '../components/Page';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -1882,18 +1883,17 @@ function Songs() {
 
       {page === 'form' && notFound ? (
         // Story 18.2: deep-link to an unknown/foreign song uid → scoped 404 (story 7.5).
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <h1 className="mb-3 text-2xl font-semibold text-gray-900 dark:text-gray-100">Song not found</h1>
+        <Page width="content" title="Song not found">
           <p className="mb-6 text-gray-600 dark:text-gray-300">This song doesn't exist, or it isn't in your songlist.</p>
           <button type="button" className="btn-secondary" onClick={() => navigate('/songs')}>
             <span aria-hidden="true">←</span> Back to songlist
           </button>
-        </div>
+        </Page>
       ) : page === 'list' && songs.length === 0 && !loading && !error ? (
         // Story 19.4 (DL-13): a genuinely empty songlist points to the Catalog. Only
         // when loaded with no error (degrades to the normal list/error UI otherwise).
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <h1 className="mb-2 text-xl font-semibold text-gray-900 dark:text-gray-100">Your songlist is empty</h1>
+        <Page width="content" className="text-center">
+          <PageTitle className="mb-2">Your songlist is empty</PageTitle>
           <p className="mb-6 text-gray-600 dark:text-gray-300">Browse the Catalog to fill it in seconds.</p>
           <button type="button" className="btn-primary" onClick={() => navigate('/catalog')}>Browse the Catalog</button>
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
@@ -1902,7 +1902,7 @@ function Songs() {
           </p>
           {/* Story 20.4: preview a few Collections (self-contained, degrades to nothing). */}
           <EmptySonglistCollections />
-        </div>
+        </Page>
       ) : page === 'list' ? (
         <SongsList
           songs={songs}
@@ -2026,7 +2026,7 @@ function Songs() {
           SortHeader={SortHeader}
         />
       ) : (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Page width="content" title={editingUid ? 'Edit song' : 'Add song'}>
           {/* Story 13.1: the sticky bar lives OUTSIDE the glass card — .glass-effect
               uses backdrop-filter, which makes the card a containing block and
               would break `position: sticky` for a child (it would stick to the
@@ -2063,9 +2063,6 @@ function Songs() {
             )}
           </StickyActionBar>
           <div className="card-base glass-effect p-6">
-            <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              {editingUid ? 'Edit song' : 'Add song'}
-            </h1>
           {editingUid && cameFromDuplicate && (
             <Notice tone="info" announce="none" className="mb-4">
               If you couldn't find this song in your songlist, remember to reset your filters.
@@ -2212,7 +2209,7 @@ function Songs() {
             ) : undefined}
           />
           </div>
-        </div>
+        </Page>
       )}
     </div>
   );

@@ -8,6 +8,7 @@ import { songService, type Song } from '../services/songService';
 import { topicService, type Topic } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { buildYearGrid, computeLevels, formatLocalDate } from '../utils/heatmap';
+import { Page } from '../components/Page';
 
 // Non-punitive palette (FR18): empty days stay neutral, activity ramps green.
 // No red, no streak counters, no guilt-tripping copy anywhere on this page.
@@ -298,10 +299,10 @@ function MyHeatmapPage() {
         onConfirm={handleDeleteSession}
         onCancel={() => setDeleteSessionUid(null)}
       />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <Page width="wide" title="Practice heatmap" className="space-y-6">
         <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Practice heatmap {year}</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{year}</h2>
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -496,7 +497,7 @@ function MyHeatmapPage() {
             )}
           </div>
         )}
-      </div>
+      </Page>
     </div>
   );
 }

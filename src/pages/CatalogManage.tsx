@@ -17,6 +17,7 @@ import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSong
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { BulkRecap } from '../components/BulkRecap';
 import { CloseButton } from '../components/CloseButton';
+import { Page } from '../components/Page';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -369,17 +370,18 @@ export default function CatalogManage() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Manage the Catalog</h1>
-        <div className="flex flex-wrap items-center gap-2">
+    <Page
+      width="wide"
+      title="Manage the Catalog"
+      actions={(
+        <>
           <Link to="/catalog/manage/aliases" className="btn-secondary btn-sm shrink-0">Artist aliases</Link>
           {tab === 'entries' && (
             <Link to="/catalog/admin" className="btn-primary btn-sm shrink-0">New entry</Link>
           )}
-        </div>
-      </div>
-
+        </>
+      )}
+    >
       {/* Story 20.2 — Entries | Collections tabs. */}
       <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4" role="tablist">
         <button
@@ -702,6 +704,6 @@ export default function CatalogManage() {
       />
 
       <Toast message={toastMessage} />
-    </div>
+    </Page>
   );
 }

@@ -14,6 +14,7 @@ import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 import { Notice } from '../components/Notice';
+import { Page, PageTitle } from '../components/Page';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -117,35 +118,42 @@ export default function CatalogCollection() {
   };
 
   if (loading) {
+    // The page keeps its one h1 while loading; the skeleton stands in for what we see.
     return (
-      <DetailPageSkeleton />
+      <Page width="wide">
+        <PageTitle className="sr-only">Collection</PageTitle>
+        <DetailPageSkeleton />
+      </Page>
     );
   }
 
   if (notFound || error || !collection) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <Page width="content" title={notFound ? 'Collection not found' : 'Something went wrong'}>
         <p className="text-gray-600 dark:text-gray-300">
-          {notFound ? 'This collection no longer exists.' : 'Something went wrong.'}
+          {notFound ? 'This collection no longer exists.' : 'The collection could not be loaded. Please try again in a moment.'}
         </p>
-        <Link to="/catalog" className="btn-secondary inline-block mt-4">Browse the Catalog</Link>
-      </div>
+        <Link to="/catalog" className="btn-secondary mt-4">Browse the Catalog</Link>
+      </Page>
     );
   }
 
   const count = collection.songs.length;
 
   return (
-    // Same width as the other list screens (CatalogManage): a song table squeezed
-    // into a 2xl reading column does not read as "the Songlist display" (epic 22).
-    <div className="w-full max-w-5xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{collection.name}</h1>
-      {collection.description && (
-        <p className="mt-1 text-gray-600 dark:text-gray-300">{collection.description}</p>
+    // The wide page, like the other list screens: a song table squeezed into a reading
+    // column does not read as "the Songlist display" (epic 22, #155).
+    <Page
+      width="wide"
+      title={collection.name}
+      description={(
+        <>
+          {collection.description && <span className="block">{collection.description}</span>}
+          <span className="block">{count} {count === 1 ? 'song' : 'songs'}</span>
+        </>
       )}
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{count} {count === 1 ? 'song' : 'songs'}</p>
-
-      <div className="mt-6 mb-3 space-y-3">
+    >
+      <div className="mb-3 space-y-3">
         <AddAsInstrumentSelect addAs={addAs} disabled={bulkAdd.running || importing} />
         <button
           type="button"
@@ -272,6 +280,6 @@ export default function CatalogCollection() {
         onCancel={() => { if (!importing) setConfirmOpen(false); }}
       />
 
-    </div>
+    </Page>
   );
 }

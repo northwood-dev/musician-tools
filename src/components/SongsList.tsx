@@ -10,6 +10,7 @@ import { RowSelectionCheckbox, SelectAllCheckbox } from './SelectionCheckbox';
 import { selectionCell } from '../utils/selectionCell';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { CloseButton } from './CloseButton';
+import { Page } from './Page';
 
 export interface SongsListProps {
   // State
@@ -143,7 +144,22 @@ export default function SongsList(props: SongsListProps) {
     blocked: props.loading,
   });
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+    <Page
+      width="wide"
+      title="Songlist"
+      description="Manage your songs, filters, and playlists."
+      actions={(
+        <button
+          type="button"
+          className="btn-primary"
+          onClick={props.onAddNew}
+          disabled={props.loading}
+        >
+          Add a song
+        </button>
+      )}
+      className="space-y-6"
+    >
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         <FiltersDisclosureButton
           open={props.mobileFiltersOpen}
@@ -231,21 +247,7 @@ export default function SongsList(props: SongsListProps) {
         />
         <div className="w-full lg:flex-1 min-w-0 space-y-4">
           <div className="card-base glass-effect p-4 sm:p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Songlist</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Manage your songs, filters, and playlists.</p>
-              </div>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={props.onAddNew}
-                disabled={props.loading}
-              >
-                Add a song
-              </button>
-            </div>
-            <div className="mt-4">
+            <div>
               <label htmlFor="songs-search" className="block text-sm font-medium text-gray-700 dark:text-gray-100 mb-1">
                 Search
               </label>
@@ -416,7 +418,7 @@ export default function SongsList(props: SongsListProps) {
           )}
         </div>
       </div>
-    </div>
+    </Page>
   );
 }
 
