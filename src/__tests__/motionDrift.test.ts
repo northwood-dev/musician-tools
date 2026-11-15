@@ -69,3 +69,8 @@ test('the guard catches what it should (probe)', () => {
   expect(unsafeMotion('dark:motion-safe:transition-colors scroll-smooth')).toEqual(['scroll-smooth']);
   expect(unsafeMotion('transition-none animate-none')).toEqual([]);
 });
+
+test('no motion property is forced with !important (#170)', () => {
+  const css = readFileSync(join(SRC, 'index.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  expect(css.match(/\b(animation|transition|scroll-behavior)[\w-]*\s*:[^;]*!important/g) ?? []).toEqual([]);
+});
