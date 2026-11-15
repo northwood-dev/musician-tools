@@ -543,3 +543,28 @@ describe('#49: entries found to be gone are marked on their row', () => {
     expect(screen.getByLabelText('Select Gone by Ghost')).toBeDisabled();
   });
 });
+
+test('#132: a click on a mixed select-all clears this page only; another page keeps its selection', async () => {
+  svc.listCatalog.mockResolvedValue({ items: twoRows as never, total: 30, page: 1, limit: 24 });
+  renderCatalog();
+  await screen.findByText('Zombie');
+  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+
+  svc.listCatalog.mockResolvedValue({
+    items: [{ uid: 'c', title: 'Gone', artist: 'Ghost' }, { uid: 'd', title: 'Boom', artist: 'Crash' }] as never,
+    total: 30, page: 2, limit: 24,
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+  await screen.findByText('Boom');
+  fireEvent.click(screen.getByLabelText('Select Boom by Crash'));
+
+  const selectAll = screen.getByRole('checkbox', { name: 'Select all' });
+  expect(selectAll).toBePartiallyChecked();
+  expect(screen.getByText('2 songs selected')).toBeInTheDocument();
+
+  fireEvent.click(selectAll);
+
+  expect(screen.getByLabelText('Select Boom by Crash')).not.toBeChecked();
+  expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
+  expect(screen.getByText('1 song selected')).toBeInTheDocument(); // Zombie, on page 1
+});

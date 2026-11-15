@@ -117,7 +117,7 @@ export default function CatalogCollectionCompose() {
   const userToggle = (uid: string) => { setRemoveRecap(null); selection.toggle(uid); };
   const userSelectAll = (uids: string[]) => {
     setRemoveRecap(null);
-    if (selection.allDisplayedSelected(uids)) selection.clear();
+    if (selection.anyDisplayedSelected(uids)) selection.clear();
     else selection.selectOnly(uids); // not paginated: select-all REPLACES
   };
 

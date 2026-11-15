@@ -269,3 +269,20 @@ describe('#98: Songlist labels once filters are used', () => {
     expect(screen.getByPlaceholderText('Search by title, artist, or album...')).toHaveValue('alpha');
   });
 });
+
+describe('#132: a click on a mixed select-all clears the selection', () => {
+  test('one song checked: the header is mixed, and a click leaves no song checked', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+
+    const selectAll = screen.getByRole('checkbox', { name: 'Select all' });
+    expect(selectAll).toBePartiallyChecked();
+
+    fireEvent.click(selectAll);
+
+    expect(screen.getByRole('checkbox', { name: /Alpha/ })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Beta/ })).not.toBeChecked();
+    expect(selectAll).not.toBeChecked();
+    expect(selectAll).not.toBePartiallyChecked();
+  });
+});

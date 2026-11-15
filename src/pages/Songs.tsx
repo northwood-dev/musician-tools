@@ -1689,7 +1689,7 @@ function Songs() {
   // Select-all is "replace": exactly the displayed (filtered) songs — matches the prior
   // `new Set(displayed)`, so a selection filtered out of view is dropped.
   const toggleSelectAll = () => {
-    if (displayedSongs.every(song => selectedSongs.has(song.uid))) songSelection.clear();
+    if (songSelection.anyDisplayedSelected(displayedSongs.map(song => song.uid))) songSelection.clear();
     else songSelection.selectOnly(displayedSongs.map(song => song.uid));
   };
 

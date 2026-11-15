@@ -172,7 +172,7 @@ export default function Catalog() {
   // selection made on another page survives.
   const userSelectAll = () => {
     bulkAdd.setRecap(null);
-    if (allSelectableSelected) selection.removeMany(selectableUids);
+    if (selection.anyDisplayedSelected(selectableUids)) selection.removeMany(selectableUids);
     else selection.addMany(selectableUids);
   };
 

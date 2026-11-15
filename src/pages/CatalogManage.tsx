@@ -213,7 +213,7 @@ export default function CatalogManage() {
   // Select-all is "within": union/subtract only the displayed (paginated) uids, so a
   // selection made on another page survives — composed from the shared primitives.
   const toggleSelectAll = () => {
-    if (displayedUids.every(u => selection.isSelected(u))) selection.removeMany(displayedUids);
+    if (selection.anyDisplayedSelected(displayedUids)) selection.removeMany(displayedUids);
     else selection.addMany(displayedUids);
   };
 
