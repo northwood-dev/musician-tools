@@ -322,15 +322,15 @@ export default function CatalogCollectionCompose() {
                   onKeyDown={e => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setRenaming(false); }}
                   autoFocus
                 />
-                <button type="button" className="btn-primary text-sm" onClick={saveRename} disabled={savingName}>
+                <button type="button" className="btn-primary btn-sm" onClick={saveRename} disabled={savingName}>
                   {savingName ? 'Saving…' : 'Save'}
                 </button>
-                <button type="button" className="btn-secondary text-sm" onClick={() => setRenaming(false)} disabled={savingName}>Cancel</button>
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setRenaming(false)} disabled={savingName}>Cancel</button>
               </div>
             ) : (
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
                 {collection.name}
-                <button type="button" className="ml-3 text-sm font-normal text-brand-600 dark:text-brand-400 hover:underline" onClick={startRename}>
+                <button type="button" className="btn-link ml-3" onClick={startRename}>
                   Rename
                 </button>
               </h1>
@@ -399,7 +399,7 @@ export default function CatalogCollectionCompose() {
           <BulkActionBar count={selection.size} noun="entry" nounPlural="entries">
             <button
               type="button"
-              className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 disabled:opacity-50"
+              className="btn-danger btn-sm"
               onClick={() => setConfirmRemoveOpen(true)}
               disabled={removing || deleting || confirmOpen}
             >

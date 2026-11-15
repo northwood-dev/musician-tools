@@ -16,6 +16,7 @@ import { useGlobalToast } from '../contexts/GlobalToastContext';
 import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSonglist';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { BulkRecap } from '../components/BulkRecap';
+import { CloseButton } from '../components/CloseButton';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -372,9 +373,9 @@ export default function CatalogManage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Manage the Catalog</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Link to="/catalog/manage/aliases" className="btn-secondary text-sm shrink-0">Artist aliases</Link>
+          <Link to="/catalog/manage/aliases" className="btn-secondary btn-sm shrink-0">Artist aliases</Link>
           {tab === 'entries' && (
-            <Link to="/catalog/admin" className="btn-primary text-sm shrink-0">New entry</Link>
+            <Link to="/catalog/admin" className="btn-primary btn-sm shrink-0">New entry</Link>
           )}
         </div>
       </div>
@@ -414,7 +415,7 @@ export default function CatalogManage() {
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateCollection(); }}
             />
-            <button type="button" className="btn-primary text-sm shrink-0" onClick={handleCreateCollection} disabled={creating || !newName.trim()}>
+            <button type="button" className="btn-primary btn-sm shrink-0" onClick={handleCreateCollection} disabled={creating || !newName.trim()}>
               {creating ? 'Creating…' : 'New collection'}
             </button>
           </div>
@@ -468,7 +469,7 @@ export default function CatalogManage() {
           <button
             ref={addMenu.buttonRef}
             type="button"
-            className="btn-primary text-sm px-3 py-1.5"
+            className="btn-primary btn-sm"
             onClick={toggleAddMenu}
             disabled={adding || deleting}
             aria-expanded={addMenuOpen}
@@ -484,27 +485,20 @@ export default function CatalogManage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-gray-700 dark:text-gray-200">Select a collection</p>
-                <button
-                  type="button"
-                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  onClick={() => setAddMenuOpen(false)}
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
+                <CloseButton label="Close" onClick={() => setAddMenuOpen(false)} />
               </div>
 
               {menuError ? (
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   Could not load the collections.{' '}
-                  <button type="button" className="text-brand-600 dark:text-brand-400 hover:underline" onClick={loadMenuCollections}>Retry</button>
+                  <button type="button" className="btn-link" onClick={loadMenuCollections}>Retry</button>
                 </div>
               ) : menuCollections === null ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
               ) : menuCollections.length === 0 ? (
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   No collections yet.{' '}
-                  <button type="button" className="text-brand-600 dark:text-brand-400 hover:underline" onClick={() => patchParams({ tab: 'collections' })}>
+                  <button type="button" className="btn-link" onClick={() => patchParams({ tab: 'collections' })}>
                     Create one
                   </button>
                 </p>
@@ -527,14 +521,14 @@ export default function CatalogManage() {
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
-                      className="text-sm px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="btn-secondary btn-sm"
                       onClick={() => setAddMenuOpen(false)}
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
-                      className="text-sm px-3 py-1 rounded-md bg-brand-500 text-white hover:bg-brand-600 disabled:opacity-50"
+                      className="btn-primary btn-sm"
                       onClick={handleAddSelectedToCollection}
                       disabled={!pickedCollection || adding}
                     >
@@ -548,7 +542,7 @@ export default function CatalogManage() {
         </div>
         <button
           type="button"
-          className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 text-sm hover:bg-red-700 disabled:opacity-50"
+          className="btn-danger btn-sm"
           onClick={() => setConfirmOpen(true)}
           disabled={deleting || adding}
         >
@@ -559,7 +553,7 @@ export default function CatalogManage() {
             only other way to untick it. This is the escape hatch. */}
         <button
           type="button"
-          className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="btn-secondary btn-sm"
           onClick={() => selection.clear()}
           disabled={deleting || adding}
         >

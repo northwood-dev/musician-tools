@@ -168,7 +168,7 @@ export default function CatalogCollection() {
       <BulkActionBar count={selection.size} noun="song" nounPlural="songs" className="mb-4">
         <button
           type="button"
-          className="btn-primary text-sm px-3 py-1.5"
+          className="btn-primary btn-sm"
           onClick={() => { if (addAs.requireChoice()) setConfirmAddOpen(true); }}
           disabled={bulkAdd.running || importing}
         >
@@ -176,7 +176,7 @@ export default function CatalogCollection() {
         </button>
         <button
           type="button"
-          className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+          className="btn-secondary btn-sm"
           onClick={() => { bulkAdd.setRecap(null); selection.clear(); }}
           disabled={bulkAdd.running}
         >

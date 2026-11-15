@@ -114,7 +114,7 @@ export default function CatalogSourceBanner({
           action={(
             <button
               type="button"
-              className="btn-secondary text-sm min-h-[44px]"
+              className="btn-secondary btn-sm min-h-[44px]"
               onClick={() => setConfirmOpen(true)}
               disabled={refreshing}
             >

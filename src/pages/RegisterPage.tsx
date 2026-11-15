@@ -109,7 +109,7 @@ function RegisterPage() {
               type="button"
               onClick={handleResend}
               disabled={resending}
-              className="font-medium underline hover:no-underline disabled:opacity-60"
+              className="btn-link"
             >
               {resending ? 'Sending...' : 'Resend the link'}
             </button>

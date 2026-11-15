@@ -715,7 +715,7 @@ function MySessionsPage() {
             <div className="flex items-center justify-between flex-wrap gap-2 rounded-lg bg-sky-50 dark:bg-sky-900/40 border border-sky-200 dark:border-sky-700/60 px-3 py-2">
               <span className="text-sm text-gray-700 dark:text-gray-200">Editing session of {editingSessionLabel}</span>
               <div className="flex gap-2">
-                <button type="button" className="btn-secondary text-sm" onClick={resetForm} disabled={loading}>
+                <button type="button" className="btn-secondary btn-sm" onClick={resetForm} disabled={loading}>
                   Cancel edit
                 </button>
                 {/* The history (and its Delete buttons) is hidden while editing,
@@ -723,7 +723,7 @@ function MySessionsPage() {
                 <button
                   type="button"
                   aria-label={`Delete session of ${editingSessionLabel}`}
-                  className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
+                  className="btn-danger btn-sm"
                   onClick={() => setDeleteSessionUid(editingSessionUid)}
                   disabled={loading}
                 >
@@ -865,7 +865,7 @@ function MySessionsPage() {
                   <button
                     type="button"
                     aria-label={`Remove entry ${index + 1}`}
-                    className="shrink-0 inline-flex items-center justify-center rounded-md bg-red-600 text-white px-3 py-2 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="shrink-0 justify-center btn-danger"
                     onClick={() => removeEntry(entry.key)}
                     disabled={loading}
                   >
@@ -931,7 +931,7 @@ function MySessionsPage() {
                       <button
                         type="button"
                         aria-label={`Edit session of ${session.date}`}
-                        className="btn-secondary text-sm"
+                        className="btn-secondary btn-sm"
                         onClick={() => startEditSession(session)}
                         disabled={loading}
                       >
@@ -940,7 +940,7 @@ function MySessionsPage() {
                       <button
                         type="button"
                         aria-label={`Delete session of ${session.date}`}
-                        className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
+                        className="btn-danger btn-sm"
                         onClick={() => setDeleteSessionUid(session.uid)}
                         disabled={loading}
                       >

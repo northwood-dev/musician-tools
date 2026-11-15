@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { SongPlay } from '../services/songPlayService';
 import { instrumentTechniquesMap, instrumentTuningsMap } from '../constants/instrumentTypes';
 import { instrumentLinkError } from '../utils/streamingLinks';
+import { CloseButton } from './CloseButton';
 
 interface SongFormInstrumentsProps {
   // Instruments data
@@ -121,7 +122,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                 {onMarkAsPlayedNow && mode === 'edit' && (
                   <button
                     type="button"
-                    className="inline-flex items-center rounded-md bg-brand-500 text-white px-2 py-1 text-sm hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    className="btn-primary btn-sm whitespace-nowrap"
                     onClick={(e) => {
                       e.stopPropagation();
                       onMarkAsPlayedNow(instrumentType);
@@ -132,21 +133,13 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                     Mark as played
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="inline-flex items-center rounded-md bg-gray-200 text-gray-800 px-2 py-1 text-sm hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 border border-gray-300 dark:border-gray-600"
-                  onClick={(e) => {
+                <CloseButton label={`Remove ${instrumentType}`} onClick={(e) => {
                     e.stopPropagation();
                     onChangeInstruments(currentInstruments.filter(i => i !== instrumentType));
                     const next = new Set(expandedInstruments);
                     next.delete(instrumentType);
                     setExpandedInstruments(next);
-                  }}
-                  disabled={loading}
-                  title="Remove this instrument"
-                >
-                  ✕
-                </button>
+                  }} disabled={loading} />
                 <span className="text-gray-600 dark:text-gray-400 px-2">
                   {isExpanded ? '▾' : '▸'}
                 </span>
@@ -259,11 +252,8 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                           <button
                             key={tech}
                             type="button"
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-sm disabled:opacity-50 ${
-                              selected
-                                ? 'bg-brand-500 text-white hover:bg-brand-600'
-                                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'
-                            }`}
+                            // A toggle chip, not a button: the chip block (#159) takes it over.
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-sm disabled:opacity-50 ${selected ? 'rounded-full bg-brand-500 text-white hover:bg-brand-600' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
                             onClick={() => onToggleTechnique(tech)}
                             disabled={loading}
                             title={tech}
@@ -294,21 +284,13 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                           >
                             {link.label || link.url}
                           </a>
-                          <button
-                            type="button"
-                            className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                            onClick={() => {
+                          <CloseButton label="Remove link" onClick={() => {
                               const currentLinks = instrumentLinks?.[instrumentType] ?? [];
                               const nextLinks = currentLinks.filter((_, i) => i !== idx);
                               if (onSetInstrumentLinksForInstrument) {
                                 onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
                               }
-                            }}
-                            disabled={loading}
-                            aria-label="Remove link"
-                          >
-                            ✕
-                          </button>
+                            }} disabled={loading} />
                         </div>
                       ))}
                     </div>
@@ -333,7 +315,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
                       />
                       <button
                         type="button"
-                        className="inline-flex items-center rounded-md bg-brand-500 text-white px-2 py-1 text-sm hover:bg-brand-600 disabled:opacity-50"
+                        className="btn-primary btn-sm"
                         onClick={() => {
                           const val = newLinkInputs[instrumentType] || { label: '', url: '' };
                           const url = (val.url || '').trim();

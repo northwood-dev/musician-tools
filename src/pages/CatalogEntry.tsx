@@ -111,7 +111,7 @@ export default function CatalogEntry() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-secondary text-xs"
+                className="btn-secondary btn-sm"
               >
                 {link.label}
               </a>

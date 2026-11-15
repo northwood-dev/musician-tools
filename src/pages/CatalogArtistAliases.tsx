@@ -156,7 +156,7 @@ export default function CatalogArtistAliases() {
                   <td className="px-3 py-2 text-right">
                     <button
                       type="button"
-                      className="btn-secondary text-xs min-h-[44px]"
+                      className="btn-secondary btn-sm min-h-[44px]"
                       aria-label={`Remove alias ${row.alias}`}
                       onClick={() => setToRemove(row)}
                     >

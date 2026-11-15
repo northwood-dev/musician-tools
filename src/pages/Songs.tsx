@@ -1898,7 +1898,7 @@ function Songs() {
           <button type="button" className="btn-primary" onClick={() => navigate('/catalog')}>Browse the Catalog</button>
           <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
             or{' '}
-            <button type="button" className="text-brand-600 dark:text-brand-400 hover:underline" onClick={() => navigate('/songs/new')}>add a song manually</button>
+            <button type="button" className="btn-link" onClick={() => navigate('/songs/new')}>add a song manually</button>
           </p>
           {/* Story 20.4: preview a few Collections (self-contained, degrades to nothing). */}
           <EmptySonglistCollections />
@@ -2034,7 +2034,7 @@ function Songs() {
           <StickyActionBar>
             <button
               type="button"
-              className="btn-secondary text-sm"
+              className="btn-secondary btn-sm"
               onClick={() => { void backToList(); }}
             >
               <span aria-hidden="true">←</span> Back to songlist

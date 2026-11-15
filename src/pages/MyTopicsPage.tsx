@@ -224,7 +224,7 @@ function MyTopicsPage() {
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
-                                className="btn-secondary text-sm"
+                                className="btn-secondary btn-sm"
                                 onClick={row.cancel}
                                 disabled={loading || row.savingRow}
                               >
@@ -232,7 +232,7 @@ function MyTopicsPage() {
                               </button>
                               <button
                                 type="button"
-                                className="btn-primary text-sm"
+                                className="btn-primary btn-sm"
                                 onClick={row.saveAndClose}
                                 disabled={loading || row.savingRow || !row.form.name.trim()}
                               >
@@ -258,7 +258,7 @@ function MyTopicsPage() {
                                 <button
                                   type="button"
                                   aria-label={`Edit ${item.name}`}
-                                  className="btn-secondary text-sm"
+                                  className="btn-secondary btn-sm"
                                   onClick={() => row.openRow(item.uid, rowFormOf(item))}
                                   disabled={loading || row.savingRow}
                                 >
@@ -267,7 +267,7 @@ function MyTopicsPage() {
                                 <button
                                   type="button"
                                   aria-label={`Delete ${item.name}`}
-                                  className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-1.5 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 disabled:opacity-50"
+                                  className="btn-danger btn-sm"
                                   onClick={() => setDeleteUid(item.uid)}
                                   disabled={loading || row.savingRow}
                                 >

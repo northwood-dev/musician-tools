@@ -100,7 +100,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
         <div className="hidden lg:flex p-2 items-center justify-center">
           <button
             type="button"
-            className="btn-secondary text-xs px-2 py-1"
+            className="btn-secondary btn-sm"
             aria-label="Expand sidebar"
             onClick={() => props.setSidebarExpanded(true)}
           >
@@ -119,7 +119,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               {props.hasActiveFilters && (
                 <button
                   type="button"
-                  className="btn-secondary text-xs px-2 py-1"
+                  className="btn-secondary btn-sm"
                   onClick={props.clearAllFilters}
                 >
                   Clear all
@@ -128,7 +128,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             </div>
             <button
               type="button"
-              className="hidden lg:inline-flex btn-secondary text-xs px-2 py-1"
+              className="hidden lg:inline-flex btn-secondary btn-sm"
               aria-label="Collapse sidebar"
               onClick={() => props.setSidebarExpanded(false)}
             >
@@ -179,7 +179,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 <div className="pt-2">
                   <button
                     type="button"
-                    className="btn-secondary text-xs"
+                    className="btn-secondary btn-sm"
                     onClick={() => {
                       props.setInstrumentFilter('');
                       props.setMyInstrumentFilter('');
@@ -219,7 +219,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                   <div className="pt-1">
                     <button
                       type="button"
-                      className="btn-secondary text-xs"
+                      className="btn-secondary btn-sm"
                       onClick={() => props.setPlaylistFilter('')}
                     >
                       Clear filter
@@ -385,7 +385,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                     <div className="mt-3">
                       <button
                         type="button"
-                        className="btn-secondary text-xs"
+                        className="btn-secondary btn-sm"
                         onClick={() => props.toggleTechniqueFilter('')}
                       >
                         Clear filters
@@ -459,7 +459,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                     <div className="mt-3">
                       <button
                         type="button"
-                        className="btn-secondary text-xs"
+                        className="btn-secondary btn-sm"
                         onClick={() => props.toggleGenreFilter('')}
                       >
                         Clear filters
@@ -542,7 +542,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 <div className="mt-3">
                   <button
                     type="button"
-                    className="btn-secondary text-xs"
+                    className="btn-secondary btn-sm"
                     onClick={() => props.toggleLanguageFilter('')}
                   >
                     Clear filters

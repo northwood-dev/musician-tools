@@ -153,7 +153,7 @@ describe('#47: closing the picker without adding clears its checkmarks', () => {
   test('✕ clears the checkmarks', async () => {
     await pickWarmups();
 
-    fireEvent.click(screen.getByRole('button', { name: '✕' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
     await expectPickerClosedAndBlank();
   });
@@ -258,7 +258,7 @@ test('Cancel and ✕ are disabled while Add is running', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
   await waitFor(() => expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled());
-  expect(screen.getByRole('button', { name: '✕' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled();
   await act(async () => { finishAdd(); });
 });
 

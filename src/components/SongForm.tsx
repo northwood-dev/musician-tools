@@ -145,7 +145,7 @@ export function SongForm(props: SongFormProps) {
                 href={lnk.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center rounded-md bg-brand-500 text-white px-3 py-1 text-sm hover:bg-brand-600"
+                className="btn-primary btn-sm"
                 title={`${lnk.label || lnk.url} • ${lnk.type}`}
               >
                 <span className="mr-2 inline-flex items-center rounded bg-white/20 px-2 py-0.5 text-xs">{lnk.type}</span>
@@ -191,7 +191,7 @@ export function SongForm(props: SongFormProps) {
             <button
               type="button"
               onClick={onEditDuplicate}
-              className="mt-1 font-medium text-brand-600 dark:text-brand-400 hover:underline"
+              className="btn-link mt-1"
               disabled={loading}
             >
               Edit this song →
@@ -202,7 +202,7 @@ export function SongForm(props: SongFormProps) {
       <div className="flex items-center gap-3">
         <button
           type="button"
-          className="btn-secondary text-xs"
+          className="btn-secondary btn-sm"
           onClick={onAutoFillMetadata}
           disabled={loading || metadataLoading || !form.title || !form.artist}
         >
@@ -574,7 +574,7 @@ export function SongForm(props: SongFormProps) {
           {mode === 'edit' && onDelete && (
             <button
               type="button"
-              className="inline-flex items-center rounded-md bg-red-600 text-white px-3 py-2 hover:bg-red-700 disabled:opacity-50"
+              className="btn-danger"
               onClick={onDelete}
               disabled={loading}
             >
