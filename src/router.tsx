@@ -22,6 +22,8 @@ import CatalogEntry from './pages/CatalogEntry';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import StyleguidePage from './pages/StyleguidePage';
+import { isDevBuild } from './utils/buildMode';
 
 // Story 18.1 — data-router route tree. Exact equivalent of the previous <Routes>:
 // same paths, same auth redirects (RequireAuth -> /login ; GuestOnly -> /songs ;
@@ -91,6 +93,10 @@ export const routes: RouteObject[] = [
               { path: 'register', element: <RegisterPage /> },
             ],
           },
+          // #152 — the design pass's demo page, dev builds only: in production the path
+          // doesn't exist and falls to the catch-all. isDevBuild is a build-time constant,
+          // so the route and its page are dropped from the production bundle.
+          ...(isDevBuild ? [{ path: 'dev/styleguide', element: <StyleguidePage /> }] : []),
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       }],
