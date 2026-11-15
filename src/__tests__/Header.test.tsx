@@ -121,3 +121,25 @@ test('account dropdown: Escape closes it, and Sign out logs out', () => {
   fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Sign out' }));
   expect(logout).toHaveBeenCalled();
 });
+
+describe('#136: the account menu closes like the other menus', () => {
+  beforeEach(() => mockedUseAuth.mockReturnValue({ isAuthenticated: true, logout: jest.fn() }));
+
+  test('an outside click closes it, a click inside does not', () => {
+    renderHeader();
+    fireEvent.click(screen.getByRole('button', { name: /account menu/i }));
+    fireEvent.mouseDown(screen.getByRole('menuitem', { name: 'Profile' }));
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  test('Escape puts focus back on the account button', () => {
+    renderHeader();
+    const toggle = screen.getByRole('button', { name: /account menu/i });
+    fireEvent.click(toggle);
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(toggle).toHaveFocus();
+  });
+});

@@ -286,3 +286,78 @@ describe('#132: a click on a mixed select-all clears the selection', () => {
     expect(selectAll).not.toBePartiallyChecked();
   });
 });
+
+describe('#134: the Set instrument menu closes like its ✕ on an outside click and on Escape', () => {
+  const openSetInstrument = async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
+    return screen.getByRole('combobox', { name: 'Instrument to add' });
+  };
+  const menuOpen = () => screen.queryByRole('combobox', { name: 'Instrument to add' }) !== null;
+
+  test('an outside click closes it', async () => {
+    await openSetInstrument();
+    fireEvent.mouseDown(screen.getByText('Beta'));
+    expect(menuOpen()).toBe(false);
+  });
+
+  test('a click inside (choosing an instrument) leaves it open', async () => {
+    const select = await openSetInstrument();
+    fireEvent.mouseDown(select);
+    expect(menuOpen()).toBe(true);
+  });
+
+  test('Escape closes it and puts focus back on the Set instrument button', async () => {
+    await openSetInstrument();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(menuOpen()).toBe(false);
+    expect(screen.getByRole('button', { name: 'Set instrument' })).toHaveFocus();
+  });
+
+  test('closing drops the unconfirmed choice, as ✕ does', async () => {
+    const select = await openSetInstrument();
+    fireEvent.change(select, { target: { value: 'Bass' } });
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
+    expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toHaveValue('');
+  });
+
+  test('while the request runs, an outside click and Escape leave it open', async () => {
+    mockedSongs.addInstrumentToSongs.mockReturnValue(new Promise(() => {}));
+    renderSongs();
+    await selectSong('Alpha');
+    await setInstrument('Bass');
+
+    fireEvent.mouseDown(screen.getByText('Beta'));
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(menuOpen()).toBe(true);
+  });
+
+  test('the button says whether its menu is open', async () => {
+    renderSongs();
+    await selectSong('Alpha');
+    const button = screen.getByRole('button', { name: 'Set instrument' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+test('#38: pressing another bulk button closes the open menu, and the click opens the other', async () => {
+  renderSongs();
+  await selectSong('Alpha');
+  fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
+
+  const addToPlaylist = screen.getByRole('button', { name: 'Add to playlist' });
+  fireEvent.mouseDown(addToPlaylist); // a real click starts with a press outside Set instrument
+  fireEvent.click(addToPlaylist);
+  expect(screen.queryByRole('combobox', { name: 'Instrument to add' })).not.toBeInTheDocument();
+  expect(await screen.findByText('Select playlists')).toBeInTheDocument();
+
+  const setInstrumentButton = screen.getByRole('button', { name: 'Set instrument' });
+  fireEvent.mouseDown(setInstrumentButton);
+  fireEvent.click(setInstrumentButton);
+  expect(screen.queryByText('Select playlists')).not.toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Instrument to add' })).toBeInTheDocument();
+});

@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { prefersDarkMode } from '../utils/theme';
+import { useDismissableMenu } from '../hooks/useDismissableMenu';
 
 // Single source of truth for the main nav links, mapped for both the desktop bar
 // and the mobile menu. Account items (Profile, Sign out) live in the account
@@ -21,7 +22,6 @@ function Header() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
   const [darkMode, setDarkMode] = useState(prefersDarkMode);
 
   useEffect(() => {
@@ -56,24 +56,8 @@ function Header() {
     return () => window.removeEventListener('keydown', onKey);
   }, [mobileMenuOpen]);
 
-  // Close the account dropdown on Escape or a click outside it.
-  useEffect(() => {
-    if (!accountMenuOpen) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setAccountMenuOpen(false);
-    };
-    const onClick = (event: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
-        setAccountMenuOpen(false);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    document.addEventListener('mousedown', onClick);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      document.removeEventListener('mousedown', onClick);
-    };
-  }, [accountMenuOpen]);
+  // Close the account dropdown on Escape or a click outside it, like the bulk menus (#38).
+  const accountMenu = useDismissableMenu({ open: accountMenuOpen, onClose: () => setAccountMenuOpen(false) });
 
   const handleLogout = async () => {
     await logout();
@@ -142,8 +126,9 @@ function Header() {
                visitors get no header CTAs — Sign in / Create account live on the
                HomePage instead, to keep the mobile header from overflowing. */}
             {isAuthenticated && (
-              <div className="relative hidden lg:block" ref={accountMenuRef}>
+              <div className="relative hidden lg:block">
                 <button
+                  ref={accountMenu.buttonRef}
                   type="button"
                   onClick={() => setAccountMenuOpen(open => !open)}
                   className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 flex items-center justify-center transition-colors"
@@ -155,6 +140,7 @@ function Header() {
                 </button>
                 {accountMenuOpen && (
                   <div
+                    ref={accountMenu.menuRef}
                     role="menu"
                     className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg py-1 dark:border-gray-700 dark:bg-gray-800 z-50"
                   >
