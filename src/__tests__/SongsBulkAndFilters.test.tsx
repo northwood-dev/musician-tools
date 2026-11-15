@@ -368,6 +368,8 @@ describe('#149: the bulk panels are disclosures', () => {
     const id = button.getAttribute('aria-controls');
     expect(id).toBeTruthy();
     expect(document.getElementById(id!)).toBeInTheDocument();
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByRole('menuitem')).toBeNull();
   };
 
   test('Set instrument points to its open panel', async () => {
@@ -387,6 +389,6 @@ describe('#149: the bulk panels are disclosures', () => {
     fireEvent.click(button);
     await screen.findByText('Select playlists');
     pointsToItsPanel(button);
-    expect(document.getElementById(button.getAttribute('aria-controls')!)).toHaveTextContent('Select playlists');
+    expect(within(document.getElementById(button.getAttribute('aria-controls')!)!).getByRole('link', { name: 'Create one' })).toBeInTheDocument();
   });
 });

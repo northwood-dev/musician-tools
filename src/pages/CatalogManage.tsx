@@ -14,7 +14,7 @@ import { useRowSelection } from '../hooks/useRowSelection';
 import { runBounded, BatchSkippedError } from '../utils/runBounded';
 import { useGlobalToast } from '../contexts/GlobalToastContext';
 import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSonglist';
-import { useDismissableMenu } from '../hooks/useDismissableMenu';
+import { useDismissablePanel } from '../hooks/useDismissablePanel';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -79,7 +79,7 @@ export default function CatalogManage() {
   const [pickedCollection, setPickedCollection] = useState<string>('');
   const [adding, setAdding] = useState(false);
   // Outside click and Escape (wherever focus is) close the menu like its ✕ (#38).
-  const addMenu = useDismissableMenu({ open: addMenuOpen, onClose: () => setAddMenuOpen(false) });
+  const addMenu = useDismissablePanel({ open: addMenuOpen, onClose: () => setAddMenuOpen(false) });
   const addingRef = useRef(false); // in-flight guard: two fast clicks read the same render
   const [addRecap, setAddRecap] = useState<AddRecap | null>(null);
   const menuAbortRef = useRef<AbortController | null>(null);
@@ -477,7 +477,7 @@ export default function CatalogManage() {
           </button>
           {addMenuOpen && (
             <div
-              ref={addMenu.menuRef}
+              ref={addMenu.panelRef}
               id={addMenu.panelId}
               className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3"
             >

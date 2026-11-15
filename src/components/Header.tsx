@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { prefersDarkMode } from '../utils/theme';
-import { useDismissableMenu } from '../hooks/useDismissableMenu';
+import { useDismissablePanel } from '../hooks/useDismissablePanel';
 
 // Single source of truth for the main nav links, mapped for both the desktop bar
 // and the mobile menu. Account items (Profile, Sign out) live in the account
@@ -57,7 +57,7 @@ function Header() {
   }, [mobileMenuOpen]);
 
   // Close the account dropdown on Escape or a click outside it, like the bulk menus (#38).
-  const accountMenu = useDismissableMenu({ open: accountMenuOpen, onClose: () => setAccountMenuOpen(false) });
+  const accountMenu = useDismissablePanel({ open: accountMenuOpen, onClose: () => setAccountMenuOpen(false) });
 
   const handleLogout = async () => {
     await logout();
@@ -140,7 +140,7 @@ function Header() {
                 </button>
                 {accountMenuOpen && (
                   <div
-                    ref={accountMenu.menuRef}
+                    ref={accountMenu.panelRef}
                     id={accountMenu.panelId}
                     className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg py-1 dark:border-gray-700 dark:bg-gray-800 z-50"
                   >

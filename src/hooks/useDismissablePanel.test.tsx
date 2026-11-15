@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { useDismissableMenu } from './useDismissableMenu';
+import { useDismissablePanel } from './useDismissablePanel';
 
 // A button that opens a menu, as the bulk bar and the header build them (#38).
 function Menu({ blocked = false }: { blocked?: boolean }) {
   const [open, setOpen] = useState(false);
-  const { buttonRef, menuRef, panelId } = useDismissableMenu({ open, onClose: () => setOpen(false), blocked });
+  const { buttonRef, panelRef, panelId } = useDismissablePanel({ open, onClose: () => setOpen(false), blocked });
   return (
     <div>
       <p>Elsewhere on the page</p>
       <button ref={buttonRef} type="button" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen(o => !o)}>Open menu</button>
       {open && (
-        <div ref={menuRef} id={panelId} role="group" aria-label="The menu">
+        <div ref={panelRef} id={panelId} role="group" aria-label="The menu">
           <button type="button">Inside</button>
         </div>
       )}

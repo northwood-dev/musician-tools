@@ -508,5 +508,6 @@ test('#149: Add to collection is a disclosure, not a menu, and points to its pan
   expect(button).not.toHaveAttribute('aria-haspopup');
   expect(button).toHaveAttribute('aria-expanded', 'true');
   const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
-  expect(panel).toHaveTextContent('Select a collection');
+  expect(panel).not.toBeNull();
+  expect(within(panel!).getByRole('button', { name: /Beginner classics/ })).toBeInTheDocument();
 });
