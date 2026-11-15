@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import { prefersDarkMode } from '../utils/theme';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
+import { Panel } from './Panel';
 
 // Single source of truth for the main nav links, mapped for both the desktop bar
 // and the mobile menu. Account items (Profile, Sign out) live in the account
@@ -139,11 +140,7 @@ function Header() {
                   <span className="text-lg" aria-hidden="true">👤</span>
                 </button>
                 {accountMenuOpen && (
-                  <div
-                    ref={accountMenu.panelRef}
-                    id={accountMenu.panelId}
-                    className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg py-1 dark:border-gray-700 dark:bg-gray-800 z-50"
-                  >
+                  <Panel panel={accountMenu} size="sm">
                     {user?.isCurator && (
                       <Link
                         to="/catalog/manage"
@@ -167,7 +164,7 @@ function Header() {
                     >
                       Sign out
                     </button>
-                  </div>
+                  </Panel>
                 )}
               </div>
             )}

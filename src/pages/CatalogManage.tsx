@@ -16,8 +16,8 @@ import { useGlobalToast } from '../contexts/GlobalToastContext';
 import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSonglist';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { BulkRecap } from '../components/BulkRecap';
-import { CloseButton } from '../components/CloseButton';
 import { Page } from '../components/Page';
+import { Panel } from '../components/Panel';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -480,16 +480,7 @@ export default function CatalogManage() {
             Add to collection
           </button>
           {addMenuOpen && (
-            <div
-              ref={addMenu.panelRef}
-              id={addMenu.panelId}
-              className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm text-gray-700 dark:text-gray-200">Select a collection</p>
-                <CloseButton label="Close" onClick={() => setAddMenuOpen(false)} />
-              </div>
-
+            <Panel panel={addMenu} title="Select a collection" onClose={() => setAddMenuOpen(false)}>
               {menuError ? (
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   Could not load the collections.{' '}
@@ -539,7 +530,7 @@ export default function CatalogManage() {
                   </div>
                 </>
               )}
-            </div>
+            </Panel>
           )}
         </div>
         <button

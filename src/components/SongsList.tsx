@@ -11,6 +11,7 @@ import { selectionCell } from '../utils/selectionCell';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { CloseButton } from './CloseButton';
 import { Page } from './Page';
+import { Panel } from './Panel';
 
 export interface SongsListProps {
   // State
@@ -282,11 +283,7 @@ export default function SongsList(props: SongsListProps) {
                 Add to playlist
               </button>
               {props.bulkPlaylistOpen && (
-                <div ref={playlistMenu.panelRef} id={playlistMenu.panelId} className="absolute right-0 mt-2 w-72 rounded-md border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800 shadow-lg z-20 p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-700 dark:text-gray-200">Select playlists</p>
-                    <CloseButton label="Close" onClick={props.closeBulkPlaylistPicker} disabled={props.loading} />
-                  </div>
+                <Panel panel={playlistMenu} title="Select playlists" onClose={props.closeBulkPlaylistPicker} closeDisabled={props.loading}>
                   {props.playlists.length === 0 && props.playlistsLoadStatus !== 'loaded' ? (
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       <PlaylistsLoadMessage status={props.playlistsLoadStatus} onRetry={props.onRetryPlaylists} />
@@ -335,7 +332,7 @@ export default function SongsList(props: SongsListProps) {
                       </div>
                     </>
                   )}
-                </div>
+                </Panel>
               )}
             </div>
             {/* #98: a real instrument only, as with no filter: a play with no instrument feeds no session. */}
