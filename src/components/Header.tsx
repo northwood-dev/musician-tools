@@ -88,9 +88,9 @@ function Header() {
               </div>
               {/* Keep the title visible down to ~360px (all common phones); only the
                   very narrowest screens fall back to the ♪ icon alone */}
-              <h1 className="text-xl font-bold text-gradient hidden min-[360px]:block whitespace-nowrap">
+              <span className="text-xl font-bold text-gradient hidden min-[360px]:block whitespace-nowrap">
                 Musician Tools
-              </h1>
+              </span>
             </Link>
 
             {/* Navigation (desktop ≥ lg) — flush left, with breathing room after the title */}

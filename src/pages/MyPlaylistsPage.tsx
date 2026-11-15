@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { CloseButton } from '../components/CloseButton';
+import { Page } from '../components/Page';
 
 const initialPlaylist: CreatePlaylistDTO = {
   name: '',
@@ -173,29 +174,29 @@ function MyPlaylistsPage() {
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
       {page === 'list' ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <Page
+          width="wide"
+          title="My playlists"
+          description="Organize your songs by mood or practice focus."
+          actions={(
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setForm(initialPlaylist);
+                setEditingUid(null);
+                setSongSearch('');
+                setPage('form');
+              }}
+              disabled={loading}
+            >
+              Create Playlist
+            </button>
+          )}
+          className="space-y-6"
+        >
 
           <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">My Playlists</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Organize your songs by mood or practice focus.</p>
-              </div>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  setForm(initialPlaylist);
-                  setEditingUid(null);
-                  setSongSearch('');
-                  setPage('form');
-                }}
-                disabled={loading}
-              >
-                Create Playlist
-              </button>
-            </div>
-
             {loading ? (
               <p className="text-sm text-gray-600 dark:text-gray-400">Loading...</p>
             ) : playlists.length === 0 ? (
@@ -255,13 +256,10 @@ function MyPlaylistsPage() {
               </div>
             )}
           </div>
-        </div>
+        </Page>
       ) : (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Page width="content" title={editingUid ? 'Edit playlist' : 'Create playlist'}>
           <div className="card-base glass-effect p-6 space-y-6">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{editingUid ? 'Edit playlist' : 'Create playlist'}</p>
-            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="playlist-name" className="label-base">Name</label>
@@ -355,7 +353,7 @@ function MyPlaylistsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </Page>
       )}
     </div>
   );

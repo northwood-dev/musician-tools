@@ -14,6 +14,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Toast } from '../components/Toast';
 import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
 import { listOf } from '../utils/listOf';
+import { Page } from '../components/Page';
 
 // Curator-only admin screen to create a Catalog entry (story 19.2). Utilitarian
 // (DL-14): reuses the design-system utilities, restricted to the INTRINSIC fields
@@ -245,15 +246,14 @@ export default function CatalogAdmin() {
 
   // Edit mode: loading / not-found interstitials (calm deep-link handling, AC8).
   if (isEdit && loading) {
-    return <div className="max-w-3xl mx-auto px-4 py-6 text-gray-500 dark:text-gray-400">Loading…</div>;
+    return <Page width="content"><p className="text-gray-500 dark:text-gray-400">Loading…</p></Page>;
   }
   if (isEdit && notFound) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Catalog entry not found</h1>
+      <Page width="content" title="Catalog entry not found">
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">It may have been removed from the Catalog.</p>
         <Link to="/catalog/manage" className="text-brand-600 dark:text-brand-400 hover:underline">← Back to manage</Link>
-      </div>
+      </Page>
     );
   }
 
@@ -399,7 +399,11 @@ export default function CatalogAdmin() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <Page
+      width="content"
+      title={isEdit ? 'Edit catalog entry' : 'Curate the Catalog'}
+      description={isEdit ? 'Update this shared song entry. Only intrinsic song fields — no instrument settings.' : 'Add a shared song entry. Only intrinsic song fields — no instrument settings.'}
+    >
       {/* Sticky action bar (autosave means there's nothing to cancel — just leave).
           Must stay OUTSIDE the glass card (see StickyActionBar's gotcha note). */}
       <StickyActionBar>
@@ -417,8 +421,6 @@ export default function CatalogAdmin() {
           )}
         </div>
       </StickyActionBar>
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1">{isEdit ? 'Edit catalog entry' : 'Curate the Catalog'}</h1>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{isEdit ? 'Update this shared song entry. Only intrinsic song fields — no instrument settings.' : 'Add a shared song entry. Only intrinsic song fields — no instrument settings.'}</p>
 
       <form onSubmit={e => e.preventDefault()} className="card-base p-4 sm:p-6 space-y-4">
         {/* Artist first (DL-18), then Title — same field order as the Song edit form. */}
@@ -541,6 +543,6 @@ export default function CatalogAdmin() {
       )}
 
       <Toast message={toastMessage} />
-    </div>
+    </Page>
   );
 }

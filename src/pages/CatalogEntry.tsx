@@ -8,6 +8,7 @@ import { useSonglistMatcher } from '../hooks/useSonglistMatcher';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
+import { Page, PageTitle } from '../components/Page';
 
 // Read-only detail of a Catalog entry (story 19.3). Intrinsic fields only (DL-17) +
 // clickable streaming links. A deep-link to a removed/unknown entry shows a calm
@@ -60,29 +61,30 @@ export default function CatalogEntry() {
 
   if (notFound) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <Page width="content" title="Catalog entry not found">
         <p className="text-gray-600 dark:text-gray-300">{CATALOG_ENTRY_GONE_MESSAGE}</p>
-        <Link to="/catalog" className="btn-secondary inline-block mt-4">Browse the Catalog</Link>
-      </div>
+        <Link to="/catalog" className="btn-secondary">Browse the Catalog</Link>
+      </Page>
     );
   }
 
   if (error || !entry) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-        <Link to="/catalog" className="btn-secondary inline-block mt-4">Browse the Catalog</Link>
-      </div>
+      <Page width="content" title="Something went wrong">
+        <p className="text-gray-600 dark:text-gray-300">The entry could not be loaded. Please try again in a moment.</p>
+        <Link to="/catalog" className="btn-secondary">Browse the Catalog</Link>
+      </Page>
     );
   }
 
   const links = entry.streamingLinks || [];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
+    <Page width="content">
       {/* Artist-led header (DL-18). */}
       <p className="text-sm text-gray-500 dark:text-gray-400">{entry.artist || '—'}</p>
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">{entry.title}</h1>
+      {/* Artist-led header (DL-18): the artist line stays above the title. */}
+      <PageTitle className="mb-4">{entry.title}</PageTitle>
 
       <div className="mb-6 space-y-3">
         <AddAsInstrumentSelect addAs={addAs} />
@@ -121,6 +123,6 @@ export default function CatalogEntry() {
       )}
 
       <Link to="/catalog" className="inline-block mt-8 text-sm text-brand-600 dark:text-brand-400 hover:underline">← Browse the Catalog</Link>
-    </div>
+    </Page>
   );
 }

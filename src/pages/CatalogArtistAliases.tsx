@@ -7,6 +7,7 @@ import { artistAliasService, ArtistAliasConflictError } from '../services/artist
 import type { ArtistAliasWithCount } from '../services/artistAliasService';
 import { searchKey } from '../utils/searchKey';
 import { Notice } from '../components/Notice';
+import { Page } from '../components/Page';
 
 // #76: curators manage the artist aliases search uses. To change one, remove it and add it
 // again. The count of Catalog entries is what makes a broken alias visible: the artist is free
@@ -94,11 +95,11 @@ export default function CatalogArtistAliases() {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">Artist aliases</h1>
-      <p className="mt-1 mb-6 text-sm text-gray-600 dark:text-gray-300">
-        Typing an alias in full also searches for its artist, in the Catalog and in every Songlist. It never decides that two songs are the same.
-      </p>
+    <Page
+      width="content"
+      title="Artist aliases"
+      description="Typing an alias in full also searches for its artist, in the Catalog and in every Songlist. It never decides that two songs are the same."
+    >
 
       <form onSubmit={handleAdd} noValidate className="card-base p-4 mb-6 grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
         <div>
@@ -181,6 +182,6 @@ export default function CatalogArtistAliases() {
         onConfirm={handleRemove}
         onCancel={() => { if (!removing) setToRemove(null); }}
       />
-    </div>
+    </Page>
   );
 }

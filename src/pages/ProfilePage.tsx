@@ -4,6 +4,7 @@ import { profileService, type Profile } from '../services/profileService';
 import { RateLimitError } from '../services/rateLimit';
 import { FormError } from '../components/FormError';
 import { Notice } from '../components/Notice';
+import { Page } from '../components/Page';
 
 function ProfilePage() {
   const { patchUser } = useAuth();
@@ -133,8 +134,7 @@ function ProfilePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-10 space-y-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Profile</h1>
+    <Page width="content" title="Profile" className="space-y-8">
 
       {loadError && (
         <Notice tone="error">{loadError}</Notice>
@@ -237,7 +237,7 @@ function ProfilePage() {
           </button>
         </form>
       </section>
-    </div>
+    </Page>
   );
 }
 

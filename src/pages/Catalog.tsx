@@ -15,6 +15,7 @@ import { BulkActionBar } from '../components/BulkActionBar';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
+import { Page } from '../components/Page';
 
 const EMPTY_FACETS: CatalogFacets = { genre: [], key: [], mode: [], timeSignature: [] };
 const asArr = (s: string): string[] => (s ? s.split(',').filter(Boolean) : []);
@@ -177,8 +178,7 @@ export default function Catalog() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">Catalog</h1>
+    <Page width="wide" title="Catalog">
 
       <AddAsInstrumentSelect addAs={addAs} disabled={bulkAdd.running} className="mb-4" />
 
@@ -320,6 +320,6 @@ export default function Catalog() {
         onConfirm={handleAddSelected}
         onCancel={() => { if (!bulkAdd.running) setConfirmAddOpen(false); }}
       />
-    </div>
+    </Page>
   );
 }

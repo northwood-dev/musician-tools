@@ -15,6 +15,7 @@ import { digitsOnly } from '../utils/digitsOnly';
 import { secondsToWholeMinutes } from '../utils/duration';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Toast } from '../components/Toast';
+import { Page } from '../components/Page';
 
 type EntryDraft = {
   key: number;
@@ -700,7 +701,7 @@ function MySessionsPage() {
       {/* The shared toast keeps its live region mounted itself (#153). */}
       <Toast message={toastMessage} />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <Page width="wide" title="My sessions" className="space-y-6">
 
         {/* relative z-20: the entry picker dropdown overflows the card bottom —
             this lifts the whole form card above the History card so the dropdown
@@ -953,7 +954,7 @@ function MySessionsPage() {
             </ul>
           )}
         </div>
-      </div>
+      </Page>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { useInlineRowSave } from '../hooks/useInlineRowSave';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { Page } from '../components/Page';
 
 type InstrumentRowForm = { name: string; type: string; brand: string; model: string };
 
@@ -106,13 +107,9 @@ function MyInstrumentsPage() {
         onCancel={() => setDeleteUid(null)}
       />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <Page width="wide" title="My instruments" className="space-y-6">
 
         <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">My instruments</h2>
-          </div>
-
           <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-5 gap-2">
             <select
               value={type}
@@ -270,7 +267,7 @@ function MyInstrumentsPage() {
             </div>
           )}
         </div>
-      </div>
+      </Page>
     </div>
   );
 }

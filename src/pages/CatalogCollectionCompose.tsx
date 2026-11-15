@@ -20,6 +20,7 @@ import {
   useScrollHighlightIntoView,
 } from '../utils/comboboxKeyboard';
 import { BulkRecap } from '../components/BulkRecap';
+import { Page, PageTitle } from '../components/Page';
 
 // Curator Collection composer (story 20.2). Lives at /catalog/manage/collections/:uid:
 // rename / delete the Collection, see its member entries (Remove each), and Add entries
@@ -285,10 +286,13 @@ export default function CatalogCollectionCompose() {
   const memberUids = collection?.songs.map(s => s.uid) ?? [];
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 py-6">
+    <Page width="content">
       <Link to="/catalog/manage?tab=collections" className="text-sm text-brand-600 dark:text-brand-400 hover:underline">
         ← Back to collections
       </Link>
+
+      {/* The page keeps its one h1 before the collection is known (loading, gone, error). */}
+      {!collection && <PageTitle className="sr-only">Collection</PageTitle>}
 
       {loading && !collection && !notFound && (
         <ListSkeleton rows={5} className="mt-4" />
@@ -314,6 +318,7 @@ export default function CatalogCollectionCompose() {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             {renaming ? (
               <div className="flex items-center gap-2">
+                <PageTitle className="sr-only">{collection.name}</PageTitle>
                 <input
                   className="input-base"
                   aria-label="Collection name"
@@ -331,7 +336,7 @@ export default function CatalogCollectionCompose() {
               // The Rename button sits next to the title, not inside it: a heading's name
               // is the collection's name only.
               <div className="flex items-baseline gap-3">
-                <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{collection.name}</h1>
+                <PageTitle>{collection.name}</PageTitle>
                 <span className="text-sm">
                   <button type="button" className="btn-link" onClick={startRename}>
                     Rename
@@ -511,6 +516,6 @@ export default function CatalogCollectionCompose() {
       />
 
       <Toast message={toastMessage} />
-    </div>
+    </Page>
   );
 }
