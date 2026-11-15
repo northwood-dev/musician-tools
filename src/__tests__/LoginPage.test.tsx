@@ -95,3 +95,13 @@ describe('LoginPage — errors are announced (#127)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });
+
+test('the same credential error twice is announced twice (a new alert each time) (#147)', async () => {
+  mockedUseAuth.mockReturnValue({ login: jest.fn().mockRejectedValue(new Error('Invalid email or password')) });
+  renderPage();
+  fillAndSubmit();
+  const first = await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+  await waitFor(() => expect(screen.getByRole('alert')).not.toBe(first));
+  expect(screen.getByRole('alert')).toHaveTextContent('Invalid email or password');
+});

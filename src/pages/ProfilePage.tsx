@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { profileService, type Profile } from '../services/profileService';
 import { RateLimitError } from '../services/rateLimit';
+import { FormError } from '../components/FormError';
 
 function ProfilePage() {
   const { patchUser } = useAuth();
@@ -147,7 +148,7 @@ function ProfilePage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">Your handle: <span className="font-mono">{profile.handle}</span></p>
         )}
         <form onSubmit={handleSaveName} className="space-y-3">
-          {nameError && <p key={nameAttempt} role="alert" className="text-sm text-red-600 dark:text-red-400">{nameError}</p>}
+          <FormError message={nameError} attempt={nameAttempt} />
           <input
             className="input-base"
             type="text"
@@ -179,7 +180,7 @@ function ProfilePage() {
           </p>
         ) : (
           <form onSubmit={handleRequestEmailChange} className="space-y-3">
-            {emailError && <p className={emailRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={emailRateLimited ? 'status' : 'alert'}>{emailError}</p>}
+            <FormError message={emailError} rateLimited={emailRateLimited} />
             {emailMsg && <p className="text-sm text-green-700 dark:text-green-400">{emailMsg}</p>}
             <input
               className="input-base"
@@ -201,7 +202,7 @@ function ProfilePage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Password</h2>
         <form onSubmit={handleChangePassword} className="space-y-3">
-          {pwError && <p key={pwAttempt} className={pwRateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={pwRateLimited ? 'status' : 'alert'}>{pwError}</p>}
+          <FormError message={pwError} rateLimited={pwRateLimited} attempt={pwAttempt} />
           <input
             className="input-base"
             type="password"

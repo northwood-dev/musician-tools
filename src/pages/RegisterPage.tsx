@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
 import { RateLimitError } from '../services/rateLimit';
+import { FormError } from '../components/FormError';
 
 function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -118,11 +119,7 @@ function RegisterPage() {
         ) : (
         <>
         {/* Error Message */}
-        {error && (
-          <div key={attempt} role="alert" className="rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
-            {error}
-          </div>
-        )}
+        <FormError message={error} attempt={attempt} />
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

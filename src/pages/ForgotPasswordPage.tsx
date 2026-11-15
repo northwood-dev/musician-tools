@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { passwordResetService } from '../services/passwordResetService';
 import { RateLimitError } from '../services/rateLimit';
+import { FormError } from '../components/FormError';
 
 // Public, pre-auth (story 7.10). The response is intentionally generic — we never
 // reveal whether the email exists.
@@ -47,7 +48,7 @@ function ForgotPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <p className={rateLimited ? 'text-sm text-amber-700 dark:text-amber-300' : 'text-sm text-red-600 dark:text-red-400'} role={rateLimited ? 'status' : 'alert'}>{error}</p>}
+            <FormError message={error} rateLimited={rateLimited} />
             <input
               className="input-base"
               type="email"

@@ -30,3 +30,14 @@ test('a red error is announced at once (role="alert") (#127)', async () => {
   fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong');
 });
+
+test('the same error twice is announced twice (a new alert each time) (#147)', async () => {
+  svc.requestReset.mockRejectedValue(new Error('Something went wrong'));
+  render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>);
+  fireEvent.change(screen.getByPlaceholderText(/enter your email/i), { target: { value: 'ada@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
+  const first = await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
+  await waitFor(() => expect(screen.getByRole('alert')).not.toBe(first));
+  expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
+});

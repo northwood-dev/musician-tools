@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { passwordResetService } from '../services/passwordResetService';
+import { FormError } from '../components/FormError';
 
 // Public page reached from the email link (?token=…) — story 7.10.
 function ResetPasswordPage() {
@@ -58,7 +59,7 @@ function ResetPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <p key={attempt} role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+            <FormError message={error} attempt={attempt} />
             <input
               className="input-base"
               type="password"
