@@ -102,7 +102,7 @@ describe('#84: the song search of the playlist form finds a song as the Songlist
   const openFormAndSearch = async (query: string) => {
     render(<MyPlaylistsPage />);
     fireEvent.click(await screen.findByRole('button', { name: /create playlist/i }));
-    fireEvent.change(screen.getByPlaceholderText('Search songs...'), { target: { value: query } });
+    fireEvent.change(screen.getByPlaceholderText('Search songs…'), { target: { value: query } });
   };
 
   test('"acdc" finds AC/DC, and only it', async () => {

@@ -41,7 +41,7 @@ function VerifyEmailBanner() {
         disabled={sending}
         className="btn-link btn-link-inherit"
       >
-        {sending ? 'Sending...' : 'Resend link'}
+        {sending ? 'Sending…' : 'Resend link'}
       </button>
       {message && <span className="ml-3 opacity-90">{message}</span>}
     </Notice>

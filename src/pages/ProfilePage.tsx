@@ -160,7 +160,7 @@ function ProfilePage() {
             disabled={savingName}
           />
           <button type="submit" className="btn-primary" disabled={savingName}>
-            {savingName ? 'Saving...' : 'Save name'}
+            {savingName ? 'Saving…' : 'Save name'}
           </button>
         </form>
       </section>
@@ -194,7 +194,7 @@ function ProfilePage() {
               disabled={savingEmail}
             />
             <button type="submit" className="btn-primary" disabled={savingEmail}>
-              {savingEmail ? 'Sending...' : 'Change email'}
+              {savingEmail ? 'Sending…' : 'Change email'}
             </button>
           </form>
         )}
@@ -233,7 +233,7 @@ function ProfilePage() {
             disabled={savingPw}
           />
           <button type="submit" className="btn-primary" disabled={savingPw}>
-            {savingPw ? 'Changing...' : 'Change password'}
+            {savingPw ? 'Changing…' : 'Change password'}
           </button>
         </form>
       </section>

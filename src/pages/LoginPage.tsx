@@ -103,7 +103,7 @@ function LoginPage() {
               disabled={resending}
               className="btn-link btn-link-inherit"
             >
-              {resending ? 'Sending...' : 'Resend verification email'}
+              {resending ? 'Sending…' : 'Resend verification email'}
             </button>
             {resendMessage && <span className="block opacity-90">{resendMessage}</span>}
           </Notice>
@@ -165,7 +165,7 @@ function LoginPage() {
             className="btn-primary w-full justify-center"
             disabled={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Signing in…' : 'Sign in'}
           </button>
 
           {/* Below Sign in so the tab order is login → password → Sign in

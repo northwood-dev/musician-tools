@@ -144,7 +144,7 @@ function EntryRefPicker({
         aria-label={`Entry ${index + 1}`}
         {...comboboxInputAria(listId, open, active)}
         autoComplete="off"
-        placeholder="Search a song or topic..."
+        placeholder="Search a song or topic…"
         value={display}
         onFocus={e => { setSearching(false); setActive(-1); setOpen(true); e.target.select(); }}
         onChange={e => { setSearchText(e.target.value); setSearching(true); setActive(-1); setOpen(true); }}

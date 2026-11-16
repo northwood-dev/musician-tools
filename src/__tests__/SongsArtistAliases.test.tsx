@@ -37,7 +37,7 @@ const songs = [
 ];
 
 const search = (text: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album...'), { target: { value: text } });
+  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album…'), { target: { value: text } });
 
 beforeEach(() => {
   jest.clearAllMocks();

@@ -60,7 +60,7 @@ function ForgotPasswordPage() {
               disabled={loading}
             />
             <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
-              {loading ? 'Sending...' : 'Send reset link'}
+              {loading ? 'Sending…' : 'Send reset link'}
             </button>
           </form>
         )}
