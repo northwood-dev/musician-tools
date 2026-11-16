@@ -59,3 +59,19 @@ test('empty state when there are no collections', async () => {
   renderCollectionsTab();
   await screen.findByText('No collections yet — create the first one.');
 });
+
+// #181: the Entries / Collections tabs follow the standard tabs pattern (shared <Tabs>).
+test('the Curate tabs work from the keyboard and show the selected tab\'s panel', async () => {
+  renderCollectionsTab();
+  await screen.findByText('Rock 90s');
+  expect(screen.getByRole('tablist', { name: 'Curate sections' })).toBeInTheDocument();
+  const collections = screen.getByRole('tab', { name: 'Collections' });
+  expect(collections).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('tabpanel', { name: 'Collections' })).toHaveTextContent('Rock 90s');
+
+  fireEvent.keyDown(collections, { key: 'ArrowLeft' });
+  const entries = await screen.findByRole('tab', { name: 'Entries', selected: true });
+  expect(entries).toHaveFocus();
+  expect(await screen.findByRole('tabpanel', { name: 'Entries' })).toHaveTextContent(/All entries/);
+  expect(screen.queryByText('Rock 90s')).not.toBeInTheDocument();
+});

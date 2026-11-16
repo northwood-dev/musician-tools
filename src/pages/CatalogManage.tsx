@@ -17,6 +17,7 @@ import { describeAbandonedWork, worthReporting } from '../hooks/useBulkAddToSong
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import { BulkRecap } from '../components/BulkRecap';
 import { Page } from '../components/Page';
+import { Tabs } from '../components/Tabs';
 import { Panel } from '../components/Panel';
 import { EmptyState } from '../components/EmptyState';
 import { Tag } from '../components/Chip';
@@ -384,28 +385,13 @@ export default function CatalogManage() {
         </>
       )}
     >
-      {/* Story 20.2 — Entries | Collections tabs. */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-4" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'entries'}
-          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 ${tab === 'entries' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-          onClick={() => patchParams({ tab: null })}
-        >
-          Entries
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'collections'}
-          className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 ${tab === 'collections' ? 'border-brand-500 text-brand-600 dark:text-brand-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-          onClick={() => patchParams({ tab: 'collections' })}
-        >
-          Collections
-        </button>
-      </div>
-
+      {/* Story 20.2 — Entries | Collections tabs (#181: the shared <Tabs>). */}
+      <Tabs
+        label="Curate sections"
+        tabs={[{ value: 'entries', label: 'Entries' }, { value: 'collections', label: 'Collections' }]}
+        value={tab}
+        onChange={v => patchParams({ tab: v === 'collections' ? 'collections' : null })}
+      >
       {tab === 'collections' && (
         <div>
           {/* New collection */}
@@ -682,6 +668,7 @@ export default function CatalogManage() {
         </div>
       )}
       </>)}
+      </Tabs>
 
       <ConfirmDialog
         isOpen={confirmOpen}
