@@ -14,3 +14,7 @@ if (typeof window !== 'undefined' && !window.matchMedia) {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+import { installConsoleGuard } from './consoleGuard';
+
+// #174: fail a test that prints forbidden console noise (see consoleGuard.ts).
+installConsoleGuard();

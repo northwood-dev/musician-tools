@@ -53,12 +53,13 @@ jest.mock('../pages/CatalogCollectionCompose', () => ({ __esModule: true, defaul
 
 import { routes } from '../router';
 import { useAuth } from '../contexts/AuthContext';
+import { DATA_ROUTER_FUTURE, PROVIDER_FUTURE } from '../routerFuture';
 const mockAuth = useAuth as jest.Mock;
 
 function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  const router = createMemoryRouter(routes, { initialEntries: [path], future: DATA_ROUTER_FUTURE });
   // StrictMode like main.tsx (see src/test/renderSongs.tsx): effects run twice, as in dev.
-  render(<StrictMode><RouterProvider router={router} /></StrictMode>);
+  render(<StrictMode><RouterProvider router={router} future={PROVIDER_FUTURE} /></StrictMode>);
   return router;
 }
 

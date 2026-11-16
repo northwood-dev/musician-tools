@@ -4,6 +4,7 @@ import LoginPage from '../pages/LoginPage';
 import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
 import { RateLimitError } from '../services/rateLimit';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -19,7 +20,7 @@ const mockedUseAuth = useAuth as jest.Mock;
 const svc = verificationService as jest.Mocked<typeof verificationService>;
 
 function renderPage() {
-  return render(<MemoryRouter><LoginPage /></MemoryRouter>);
+  return render(<MemoryRouter future={ROUTER_FUTURE}><LoginPage /></MemoryRouter>);
 }
 
 function fillAndSubmit({ email = 'a@b.com', password = 'password123' } = {}) {

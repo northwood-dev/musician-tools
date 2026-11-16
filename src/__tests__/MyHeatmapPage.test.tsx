@@ -5,6 +5,7 @@ import { practiceSessionService } from '../services/practiceSessionService';
 import { songService } from '../services/songService';
 import { topicService } from '../services/topicService';
 import { buildYearGrid, formatLocalDate } from '../utils/heatmap';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/practiceSessionService', () => ({
   // Keep the real pure helpers (e.g. sumSessionMinutes); only the API object is mocked
@@ -49,7 +50,7 @@ beforeEach(() => {
 
 // <Link> requires a Router context since 3.2
 function renderPage() {
-  return render(<MemoryRouter><MyHeatmapPage /></MemoryRouter>);
+  return render(<MemoryRouter future={ROUTER_FUTURE}><MyHeatmapPage /></MemoryRouter>);
 }
 
 test('today\'s cell carries a discreet marker, other days do not (field feedback)', async () => {

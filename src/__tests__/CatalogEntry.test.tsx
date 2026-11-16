@@ -4,6 +4,7 @@ import CatalogEntry from '../pages/CatalogEntry';
 import CatalogCollection from '../pages/CatalogCollection';
 import { catalogService, CatalogNotFoundError } from '../services/catalogService';
 import type { Song } from '../services/songService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/catalogService', () => {
   const actual = jest.requireActual('../services/catalogService');
@@ -13,7 +14,7 @@ jest.mock('../services/catalogService', () => {
 const svc = catalogService as jest.Mocked<typeof catalogService>;
 
 const renderAt = (uid: string) => render(
-  <MemoryRouter initialEntries={[`/catalog/${uid}`]}>
+  <MemoryRouter future={ROUTER_FUTURE} initialEntries={[`/catalog/${uid}`]}>
     <Routes>
       <Route path="/catalog/:uid" element={<CatalogEntry />} />
       <Route path="/catalog" element={<div>browse-marker</div>} />
@@ -92,7 +93,7 @@ describe('Add as instrument', () => {
     first.unmount();
 
     render(
-      <MemoryRouter initialEntries={['/catalog/collections/col1']}>
+      <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/collections/col1']}>
         <Routes><Route path="/catalog/collections/:uid" element={<CatalogCollection />} /></Routes>
       </MemoryRouter>
     );
