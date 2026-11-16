@@ -392,282 +392,282 @@ export default function CatalogManage() {
         value={tab}
         onChange={v => patchParams({ tab: v === 'collections' ? 'collections' : null })}
       >
-      {tab === 'collections' && (
-        <div>
-          {/* New collection */}
-          <div className="flex items-center gap-2 mb-4">
-            <input
-              type="text"
-              className="input-base"
-              aria-label="New collection name"
-              placeholder="New collection name…"
-              value={newName}
-              onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleCreateCollection(); }}
-            />
-            <button type="button" className="btn-primary btn-sm shrink-0" onClick={handleCreateCollection} disabled={creating || !newName.trim()}>
-              {creating ? 'Creating…' : 'New collection'}
+        {tab === 'collections' && (
+          <div>
+            {/* New collection */}
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                className="input-base"
+                aria-label="New collection name"
+                placeholder="New collection name…"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCreateCollection(); }}
+              />
+              <button type="button" className="btn-primary btn-sm shrink-0" onClick={handleCreateCollection} disabled={creating || !newName.trim()}>
+                {creating ? 'Creating…' : 'New collection'}
+              </button>
+            </div>
+
+            {collectionsError ? (
+              <div className="text-center py-10">
+                <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
+                <button type="button" className="btn-secondary mt-3" onClick={() => setCollectionsToken(t => t + 1)}>Retry</button>
+              </div>
+            ) : collections === null ? (
+              <ListSkeleton rows={4} />
+            ) : collections.length === 0 ? (
+              <EmptyState>No collections yet — create the first one.</EmptyState>
+            ) : (
+              <ul className="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
+                {collections.map(c => (
+                  <li key={c.uid}>
+                    <button
+                      type="button"
+                      className="w-full text-left flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                      onClick={() => navigate(`/catalog/manage/collections/${c.uid}`)}
+                    >
+                      <span className="font-medium text-gray-900 dark:text-gray-100 truncate">{c.name}</span>
+                      <span className="shrink-0 text-sm text-gray-500 dark:text-gray-400">{c.songCount} {c.songCount === 1 ? 'entry' : 'entries'}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {tab === 'entries' && (<>
+        <input
+          type="search"
+          aria-label="Search the catalog"
+          className="input-base"
+          placeholder="Search by title or artist…"
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+        />
+
+        {/* Bulk-action bar: the shared Songlist-style shell (22.1). It hides itself when
+            nothing is selected, so there is no guard here. */}
+        <BulkActionBar count={selected.size} noun="entry" nounPlural="entries" className="mt-4">
+          {/* Story 22.2 — push the selection into an existing Collection. The menu is
+              `absolute` inside this `relative` wrapper (mirror of the Songlist playlist
+              picker): the bar is a .glass-effect card, whose backdrop-filter makes it a
+              containing block — a `fixed` menu would anchor to the bar, not the viewport. */}
+          <div className="relative">
+            <button
+              ref={addMenu.buttonRef}
+              type="button"
+              className="btn-primary btn-sm"
+              onClick={toggleAddMenu}
+              disabled={adding || deleting}
+              aria-expanded={addMenuOpen}
+              aria-controls={addMenu.panelId}
+            >
+              Add to collection
+            </button>
+            {addMenuOpen && (
+              <Panel panel={addMenu} title="Select a collection" onClose={() => setAddMenuOpen(false)}>
+                {menuError ? (
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Could not load the collections.{' '}
+                    <button type="button" className="btn-link" onClick={loadMenuCollections}>Retry</button>
+                  </div>
+                ) : menuCollections === null ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+                ) : menuCollections.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No collections yet.{' '}
+                    <button type="button" className="btn-link" onClick={() => patchParams({ tab: 'collections' })}>
+                      Create one
+                    </button>
+                  </p>
+                ) : (
+                  <>
+                    <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
+                      {menuCollections.map(c => (
+                        <button
+                          key={c.uid}
+                          type="button"
+                          aria-pressed={pickedCollection === c.uid}
+                          className={`w-full flex items-center justify-between gap-2 text-left p-2 rounded min-h-[44px] ${pickedCollection === c.uid ? 'bg-brand-100 dark:bg-brand-900/40' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                          onClick={() => setPickedCollection(c.uid)}
+                        >
+                          <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{c.name}</span>
+                          <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">{c.songCount}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        className="btn-secondary btn-sm"
+                        onClick={() => setAddMenuOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm"
+                        onClick={handleAddSelectedToCollection}
+                        disabled={!pickedCollection || adding}
+                      >
+                        {adding ? 'Adding…' : 'Add'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </Panel>
+            )}
+          </div>
+          <button
+            type="button"
+            className="btn-danger btn-sm"
+            onClick={() => setConfirmOpen(true)}
+            disabled={deleting || adding}
+          >
+            Delete selected
+          </button>
+          {/* The selection survives pagination and a search change, so an entry left
+              ticked by a failed batch can scroll out of reach — its row checkbox is the
+              only other way to untick it. This is the escape hatch. */}
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            onClick={() => selection.clear()}
+            disabled={deleting || adding}
+          >
+            Clear selection
+          </button>
+        </BulkActionBar>
+
+        {/* Recap of the last bulk add. Deliberately a SIBLING of the bar, not a child:
+            the bar unmounts at zero selection and a fully successful batch empties the
+            selection, so a recap inside it would disappear as it is written. Persistent
+            (not a toast — lesson 20.4) and segmented: an already-member entry is an
+            outcome, never a failure. */}
+        {addRecap && (
+          <BulkRecap
+            // Keyed on severity: a live region whose role mutates in place is not
+            // reliably re-announced — remounting it is.
+            key={addRecap.failed > 0 ? 'recap-alert' : 'recap-status'}
+            negative={addRecap.failed > 0}
+            onDismiss={() => setAddRecap(null)}
+            className="mt-4"
+            message={<>
+              {addRecap.collectionGone
+                // Every single call 404'd on the collection: another curator deleted it.
+                // Retrying cannot work, so don't offer it.
+                ? `"${addRecap.collectionName}" no longer exists — nothing was added. Pick another collection.`
+                : addRecap.added === 0 && addRecap.failed === 0 && addRecap.unknown === 0
+                  // A no-op batch says so plainly instead of a degraded "0 added".
+                  ? `All ${addRecap.alreadyIn} ${addRecap.alreadyIn === 1 ? 'entry was' : 'entries were'} already in "${addRecap.collectionName}".`
+                  : [
+                      `${addRecap.added} added`,
+                      addRecap.alreadyIn > 0 ? `${addRecap.alreadyIn} already in` : null,
+                      addRecap.failed > 0 ? `${addRecap.failed} failed` : null,
+                      addRecap.unknown > 0 ? `${addRecap.unknown} unclear` : null,
+                    ].filter(Boolean).join(' · ') + ` — "${addRecap.collectionName}".`}
+              {addRecap.failed > 0 && !addRecap.collectionGone && ' The failed entries are still selected, so you can retry.'}
+            </>}
+          />
+        )}
+
+        <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200 mt-6 mb-2" aria-live="polite">
+          {search.trim() ? `Results (${total})` : `All entries (${total})`}
+        </h2>
+
+        {loading && !data && (
+          <ListSkeleton rows={6} />
+        )}
+
+        {error && (
+          <div className="text-center py-10">
+            <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
+            <button
+              type="button"
+              className="btn-secondary mt-3"
+              onClick={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}
+            >
+              Retry
             </button>
           </div>
+        )}
 
-          {collectionsError ? (
-            <div className="text-center py-10">
-              <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-              <button type="button" className="btn-secondary mt-3" onClick={() => setCollectionsToken(t => t + 1)}>Retry</button>
-            </div>
-          ) : collections === null ? (
-            <ListSkeleton rows={4} />
-          ) : collections.length === 0 ? (
-            <EmptyState>No collections yet — create the first one.</EmptyState>
-          ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
-              {collections.map(c => (
-                <li key={c.uid}>
-                  <button
-                    type="button"
-                    className="w-full text-left flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                    onClick={() => navigate(`/catalog/manage/collections/${c.uid}`)}
-                  >
-                    <span className="font-medium text-gray-900 dark:text-gray-100 truncate">{c.name}</span>
-                    <span className="shrink-0 text-sm text-gray-500 dark:text-gray-400">{c.songCount} {c.songCount === 1 ? 'entry' : 'entries'}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {tab === 'entries' && (<>
-      <input
-        type="search"
-        aria-label="Search the catalog"
-        className="input-base"
-        placeholder="Search by title or artist…"
-        value={searchInput}
-        onChange={e => setSearchInput(e.target.value)}
-      />
-
-      {/* Bulk-action bar: the shared Songlist-style shell (22.1). It hides itself when
-          nothing is selected, so there is no guard here. */}
-      <BulkActionBar count={selected.size} noun="entry" nounPlural="entries" className="mt-4">
-        {/* Story 22.2 — push the selection into an existing Collection. The menu is
-            `absolute` inside this `relative` wrapper (mirror of the Songlist playlist
-            picker): the bar is a .glass-effect card, whose backdrop-filter makes it a
-            containing block — a `fixed` menu would anchor to the bar, not the viewport. */}
-        <div className="relative">
-          <button
-            ref={addMenu.buttonRef}
-            type="button"
-            className="btn-primary btn-sm"
-            onClick={toggleAddMenu}
-            disabled={adding || deleting}
-            aria-expanded={addMenuOpen}
-            aria-controls={addMenu.panelId}
-          >
-            Add to collection
-          </button>
-          {addMenuOpen && (
-            <Panel panel={addMenu} title="Select a collection" onClose={() => setAddMenuOpen(false)}>
-              {menuError ? (
-                <div className="text-sm text-gray-600 dark:text-gray-300">
-                  Could not load the collections.{' '}
-                  <button type="button" className="btn-link" onClick={loadMenuCollections}>Retry</button>
-                </div>
-              ) : menuCollections === null ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
-              ) : menuCollections.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No collections yet.{' '}
-                  <button type="button" className="btn-link" onClick={() => patchParams({ tab: 'collections' })}>
-                    Create one
-                  </button>
-                </p>
-              ) : (
-                <>
-                  <div className="max-h-48 overflow-y-auto space-y-1 mb-3">
-                    {menuCollections.map(c => (
-                      <button
-                        key={c.uid}
-                        type="button"
-                        aria-pressed={pickedCollection === c.uid}
-                        className={`w-full flex items-center justify-between gap-2 text-left p-2 rounded min-h-[44px] ${pickedCollection === c.uid ? 'bg-brand-100 dark:bg-brand-900/40' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                        onClick={() => setPickedCollection(c.uid)}
-                      >
-                        <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{c.name}</span>
-                        <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">{c.songCount}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => setAddMenuOpen(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-primary btn-sm"
-                      onClick={handleAddSelectedToCollection}
-                      disabled={!pickedCollection || adding}
-                    >
-                      {adding ? 'Adding…' : 'Add'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </Panel>
-          )}
-        </div>
-        <button
-          type="button"
-          className="btn-danger btn-sm"
-          onClick={() => setConfirmOpen(true)}
-          disabled={deleting || adding}
-        >
-          Delete selected
-        </button>
-        {/* The selection survives pagination and a search change, so an entry left
-            ticked by a failed batch can scroll out of reach — its row checkbox is the
-            only other way to untick it. This is the escape hatch. */}
-        <button
-          type="button"
-          className="btn-secondary btn-sm"
-          onClick={() => selection.clear()}
-          disabled={deleting || adding}
-        >
-          Clear selection
-        </button>
-      </BulkActionBar>
-
-      {/* Recap of the last bulk add. Deliberately a SIBLING of the bar, not a child:
-          the bar unmounts at zero selection and a fully successful batch empties the
-          selection, so a recap inside it would disappear as it is written. Persistent
-          (not a toast — lesson 20.4) and segmented: an already-member entry is an
-          outcome, never a failure. */}
-      {addRecap && (
-        <BulkRecap
-          // Keyed on severity: a live region whose role mutates in place is not
-          // reliably re-announced — remounting it is.
-          key={addRecap.failed > 0 ? 'recap-alert' : 'recap-status'}
-          negative={addRecap.failed > 0}
-          onDismiss={() => setAddRecap(null)}
-          className="mt-4"
-          message={<>
-            {addRecap.collectionGone
-              // Every single call 404'd on the collection: another curator deleted it.
-              // Retrying cannot work, so don't offer it.
-              ? `"${addRecap.collectionName}" no longer exists — nothing was added. Pick another collection.`
-              : addRecap.added === 0 && addRecap.failed === 0 && addRecap.unknown === 0
-                // A no-op batch says so plainly instead of a degraded "0 added".
-                ? `All ${addRecap.alreadyIn} ${addRecap.alreadyIn === 1 ? 'entry was' : 'entries were'} already in "${addRecap.collectionName}".`
-                : [
-                    `${addRecap.added} added`,
-                    addRecap.alreadyIn > 0 ? `${addRecap.alreadyIn} already in` : null,
-                    addRecap.failed > 0 ? `${addRecap.failed} failed` : null,
-                    addRecap.unknown > 0 ? `${addRecap.unknown} unclear` : null,
-                  ].filter(Boolean).join(' · ') + ` — "${addRecap.collectionName}".`}
-            {addRecap.failed > 0 && !addRecap.collectionGone && ' The failed entries are still selected, so you can retry.'}
-          </>}
-        />
-      )}
-
-      <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200 mt-6 mb-2" aria-live="polite">
-        {search.trim() ? `Results (${total})` : `All entries (${total})`}
-      </h2>
-
-      {loading && !data && (
-        <ListSkeleton rows={6} />
-      )}
-
-      {error && (
-        <div className="text-center py-10">
-          <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-          <button
-            type="button"
-            className="btn-secondary mt-3"
-            onClick={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {!error && data && (
-        <div className={loading ? 'opacity-50 motion-safe:transition-opacity motion-safe:duration-150' : 'motion-safe:transition-opacity motion-safe:duration-150'} aria-busy={loading}>
-          {data.total === 0 ? (
-            <EmptyState>{search.trim() ? 'No entries match your search.' : 'The Catalog is empty — add the first entry.'}</EmptyState>
-          ) : data.items.length === 0 ? (
-            // Out-of-range page (deep-link ?page=99, or a delete emptied it): never a
-            // dead-end — offer a way back to the first page.
-            <div className="py-10 text-center">
-              <p className="text-gray-500 dark:text-gray-400 mb-3">This page is empty.</p>
-              <button type="button" className="btn-secondary" onClick={() => patchParams({ page: null })}>Back to first page</button>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-auto max-h-[65vh] rounded-lg border border-gray-200 dark:border-gray-700">
-                <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
-                    <tr className="text-left text-gray-500 dark:text-gray-400">
-                      <th className={selectionCell('px-3 py-2 w-12 text-center')}>
-                        <SelectAllCheckbox
-                          allSelected={allDisplayedSelected}
-                          someSelected={someDisplayedSelected}
-                          onToggle={toggleSelectAll}
-                          disabled={adding || deleting}
-                        />
-                      </th>
-                      <th className="px-3 py-2 font-medium">Artist</th>
-                      <th className="px-3 py-2 font-medium">Title</th>
-                      <th className="px-3 py-2 font-medium">Key</th>
-                      <th className="px-3 py-2 font-medium">Mode</th>
-                      <th className="px-3 py-2 font-medium text-right">Time signature</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.items.map(entry => {
-                      const isSel = selected.has(entry.uid);
-                      return (
-                        <tr
-                          key={entry.uid}
-                          onClick={() => navigate(`/catalog/admin/${entry.uid}`)}
-                          className={`border-t border-gray-100 dark:border-gray-700 cursor-pointer ${isSel ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
-                        >
-                          {/* Checkbox cell: selection only — the primitive stops propagation
-                              so ticking it doesn't open the entry. */}
-                          <td className={selectionCell('px-3 py-2 w-12 text-center')}>
-                            <RowSelectionCheckbox
-                              checked={isSel}
-                              onChange={() => selection.toggle(entry.uid)}
-                              label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
-                              disabled={adding || deleting}
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">{entry.artist || '—'}</td>
-                          <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
-                            {entry.title}
-                            {entry.publishedAt == null && (
-                              <span className="ml-2"><Tag>Draft</Tag></span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.key || '—'}</td>
-                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.mode || '—'}</td>
-                          <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap text-right">{entry.timeSignature || '—'}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+        {!error && data && (
+          <div className={loading ? 'opacity-50 motion-safe:transition-opacity motion-safe:duration-150' : 'motion-safe:transition-opacity motion-safe:duration-150'} aria-busy={loading}>
+            {data.total === 0 ? (
+              <EmptyState>{search.trim() ? 'No entries match your search.' : 'The Catalog is empty — add the first entry.'}</EmptyState>
+            ) : data.items.length === 0 ? (
+              // Out-of-range page (deep-link ?page=99, or a delete emptied it): never a
+              // dead-end — offer a way back to the first page.
+              <div className="py-10 text-center">
+                <p className="text-gray-500 dark:text-gray-400 mb-3">This page is empty.</p>
+                <button type="button" className="btn-secondary" onClick={() => patchParams({ page: null })}>Back to first page</button>
               </div>
-              <Pagination page={page} totalPages={totalPages} onPageChange={p => patchParams({ page: String(p) })} />
-            </>
-          )}
-        </div>
-      )}
-      </>)}
+            ) : (
+              <>
+                <div className="overflow-auto max-h-[65vh] rounded-lg border border-gray-200 dark:border-gray-700">
+                  <table className="min-w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+                      <tr className="text-left text-gray-500 dark:text-gray-400">
+                        <th className={selectionCell('px-3 py-2 w-12 text-center')}>
+                          <SelectAllCheckbox
+                            allSelected={allDisplayedSelected}
+                            someSelected={someDisplayedSelected}
+                            onToggle={toggleSelectAll}
+                            disabled={adding || deleting}
+                          />
+                        </th>
+                        <th className="px-3 py-2 font-medium">Artist</th>
+                        <th className="px-3 py-2 font-medium">Title</th>
+                        <th className="px-3 py-2 font-medium">Key</th>
+                        <th className="px-3 py-2 font-medium">Mode</th>
+                        <th className="px-3 py-2 font-medium text-right">Time signature</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.items.map(entry => {
+                        const isSel = selected.has(entry.uid);
+                        return (
+                          <tr
+                            key={entry.uid}
+                            onClick={() => navigate(`/catalog/admin/${entry.uid}`)}
+                            className={`border-t border-gray-100 dark:border-gray-700 cursor-pointer ${isSel ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/40 dark:hover:bg-blue-900/60' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
+                          >
+                            {/* Checkbox cell: selection only — the primitive stops propagation
+                                so ticking it doesn't open the entry. */}
+                            <td className={selectionCell('px-3 py-2 w-12 text-center')}>
+                              <RowSelectionCheckbox
+                                checked={isSel}
+                                onChange={() => selection.toggle(entry.uid)}
+                                label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
+                                disabled={adding || deleting}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100 whitespace-nowrap">{entry.artist || '—'}</td>
+                            <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
+                              {entry.title}
+                              {entry.publishedAt == null && (
+                                <span className="ml-2"><Tag>Draft</Tag></span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.key || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{entry.mode || '—'}</td>
+                            <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap text-right">{entry.timeSignature || '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination page={page} totalPages={totalPages} onPageChange={p => patchParams({ page: String(p) })} />
+              </>
+            )}
+          </div>
+        )}
+        </>)}
       </Tabs>
 
       <ConfirmDialog

@@ -27,9 +27,11 @@ export function Disclosure({
   const bodyId = useId();
   return (
     <div className={className}>
-      <div className={`flex items-center h-11 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 motion-safe:transition-colors ${open ? 'rounded-t-md' : 'rounded-md'}`}>
+      {/* The row lights up when its title or arrow is hovered, not its `aside` controls. */}
+      <div className={`flex items-center h-11 text-sm font-semibold text-gray-800 dark:text-gray-100 has-[>[data-toggle]:hover]:bg-gray-50 dark:has-[>[data-toggle]:hover]:bg-gray-700 motion-safe:transition-colors ${open ? 'rounded-t-md' : 'rounded-md'}`}>
         <button
           type="button"
+          data-toggle
           className="flex-1 self-stretch flex items-center px-3 text-left"
           aria-expanded={open}
           aria-controls={open ? bodyId : undefined}
@@ -39,7 +41,7 @@ export function Disclosure({
         </button>
         {aside && <div className="flex items-center gap-2 font-normal">{aside}</div>}
         <span
-          aria-hidden="true"
+          data-toggle
           onClick={onToggle}
           className="self-stretch flex items-center px-3 cursor-pointer select-none"
         >

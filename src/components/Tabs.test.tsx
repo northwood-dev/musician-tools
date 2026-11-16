@@ -26,6 +26,7 @@ test('the tab list is named, and the selected tab shows its panel', () => {
   const panel = screen.getByRole('tabpanel', { name: 'Alpha' });
   expect(panel).toHaveTextContent('Content of a');
   expect(alpha).toHaveAttribute('aria-controls', panel.id);
+  expect(panel).toHaveAttribute('tabindex', '0'); // reachable even when its content has nothing focusable
 });
 
 test('clicking a tab selects it', () => {
