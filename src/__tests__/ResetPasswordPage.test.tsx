@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
 import { passwordResetService } from '../services/passwordResetService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/passwordResetService', () => ({
   passwordResetService: { requestReset: jest.fn(), reset: jest.fn() },
@@ -10,7 +11,7 @@ const svc = passwordResetService as jest.Mocked<typeof passwordResetService>;
 
 function renderAt(url: string) {
   return render(
-    <MemoryRouter initialEntries={[url]}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={[url]}>
       <ResetPasswordPage />
     </MemoryRouter>
   );

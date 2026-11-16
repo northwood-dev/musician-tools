@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { render } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import Songs from '../pages/Songs';
+import { DATA_ROUTER_FUTURE, PROVIDER_FUTURE } from '../routerFuture';
 
 // Story 18.2 — the Songs page now uses useBlocker + useParams, so it must be rendered
 // inside a DATA router (createMemoryRouter), not <MemoryRouter>, with the same 3 song
@@ -20,8 +21,8 @@ export function renderSongs(initialPath = '/songs', { strict = true } = {}) {
       { path: '/songs/new', element: <Songs /> },
       { path: '/songs/:uid', element: <Songs /> },
     ],
-    { initialEntries: [initialPath] },
+    { initialEntries: [initialPath], future: DATA_ROUTER_FUTURE },
   );
-  const tree = <RouterProvider router={router} />;
+  const tree = <RouterProvider router={router} future={PROVIDER_FUTURE} />;
   return { ...render(strict ? <StrictMode>{tree}</StrictMode> : tree), router };
 }

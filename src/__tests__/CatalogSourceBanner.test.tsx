@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import CatalogSourceBanner from '../components/CatalogSourceBanner';
 import { songService, RefreshFromCatalogError } from '../services/songService';
 import type { Song } from '../services/songService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 // Story 21.2 — Catalog provenance + drift/Refresh on the Song fiche.
 jest.mock('../services/songService', () => {
@@ -24,7 +25,7 @@ const renderBanner = (
   beforeRefresh?: () => Promise<boolean>,
 ) => render(
   <StrictMode>
-    <MemoryRouter>
+    <MemoryRouter future={ROUTER_FUTURE}>
       <CatalogSourceBanner songUid="s1" onRefreshed={onRefreshed} beforeRefresh={beforeRefresh} />
     </MemoryRouter>
   </StrictMode>

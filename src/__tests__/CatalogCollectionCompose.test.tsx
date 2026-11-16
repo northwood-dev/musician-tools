@@ -5,6 +5,7 @@ import CatalogCollectionCompose from '../pages/CatalogCollectionCompose';
 import { GlobalToastProvider } from '../contexts/GlobalToastProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogService, CollectionNotFoundError } from '../services/catalogService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 // Story 20.2 — the curator Collection composer (/catalog/manage/collections/:uid).
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
@@ -31,7 +32,7 @@ const detail = {
 
 const renderCompose = () => render(
   <StrictMode>
-    <MemoryRouter initialEntries={['/catalog/manage/collections/col1']}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage/collections/col1']}>
       <Routes>
         <Route path="/catalog/manage/collections/:uid" element={<CatalogCollectionCompose />} />
         <Route path="/catalog/manage" element={<div>hub-marker</div>} />
@@ -292,7 +293,7 @@ function ComposePage() {
 const renderAbandonableCompose = () => render(
   <StrictMode>
     <GlobalToastProvider>
-      <MemoryRouter initialEntries={['/catalog/manage/collections/col1']}>
+      <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage/collections/col1']}>
         <Routes>
           <Route path="/catalog/manage/collections/:uid" element={<ComposePage />} />
         </Routes>

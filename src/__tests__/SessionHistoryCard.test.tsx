@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { SessionHistoryCard } from '../components/SessionHistoryCard';
 import type { LiveNames } from '../utils/liveNames';
 import type { PracticeSession } from '../services/practiceSessionService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 function makeSession(items: PracticeSession['items']): PracticeSession {
   return { uid: 's1', date: '2026-06-21', instrumentType: 'Guitar', items };
@@ -10,7 +11,7 @@ function makeSession(items: PracticeSession['items']): PracticeSession {
 
 function renderCard(session: PracticeSession, liveNames: Partial<LiveNames> = {}) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={ROUTER_FUTURE}>
       <ul>
         <SessionHistoryCard session={session} liveNames={{ songs: new Map(), topics: new Map(), ...liveNames }} />
       </ul>

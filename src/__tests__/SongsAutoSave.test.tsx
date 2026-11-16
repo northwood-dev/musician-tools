@@ -213,10 +213,14 @@ describe('Songs — auto-create at debounce (story 17.2)', () => {
 describe('Songs — empty-title Seuil 1 on leave (story 17.2)', () => {
   test('emptying the title of a fresh auto-created song deletes it silently on leave', async () => {
     createSong.mockResolvedValueOnce({ uid: 'new-3', title: 'Temp', artist: '', instrument: [] });
-    renderSongs();
+    const { router } = renderSongs();
     fireEvent.click(await screen.findByRole('button', { name: /add a song/i }));
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Temp' } });
     await waitFor(() => expect(createSong).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    // The page moves to the new song's URL in a transition (#174): wait for it, as a
+    // user would see the song open before leaving it.
+    await waitFor(() => expect(router.state.location.pathname).toBe('/songs/new-3'));
+    expect(await screen.findByText(/Saved/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: /back to songlist/i }));

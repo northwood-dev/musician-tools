@@ -25,7 +25,7 @@ test('#34: the row Add button sends the instrument chosen at the top of the page
   localStorage.removeItem('catalogAddAsInstrument');
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
   svc.addToSonglist.mockResolvedValue({ uid: 'song-1', title: 'Zombie' } as Song);
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByText('Zombie');
 
   fireEvent.change(screen.getByLabelText('Add as'), { target: { value: 'Bass' } });
@@ -38,7 +38,7 @@ test('#34: the row Add button sends the instrument chosen at the top of the page
 test('#34: the row Add button with nothing chosen sends nothing, and does not open the row', async () => {
   localStorage.removeItem('catalogAddAsInstrument');
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByText('Zombie');
 
   fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
@@ -50,14 +50,14 @@ test('#34: the row Add button with nothing chosen sends nothing, and does not op
 
 test('renders the list with the "All songs" title (no query)', async () => {
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries', key: 'Em', bpm: 84 }]));
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByText('Zombie');
   expect(screen.getByText('All songs')).toBeInTheDocument();
 });
 
 test('typing a search debounces into a fetch and switches the title to Results (n)', async () => {
   svc.listCatalog.mockResolvedValue(resp([]));
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await waitFor(() => expect(svc.listCatalog).toHaveBeenCalled());
 
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }], 1));
@@ -69,13 +69,13 @@ test('typing a search debounces into a fetch and switches the title to Results (
 
 test('empty results show the no-match message when a query is active', async () => {
   svc.listCatalog.mockResolvedValue(resp([]));
-  render(<MemoryRouter initialEntries={['/catalog?search=zzz']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog?search=zzz']}><Catalog /></MemoryRouter>);
   await screen.findByText('No songs match your search.');
 });
 
 test('a fetch error shows Retry, and Retry actually refetches (not a no-op)', async () => {
   svc.listCatalog.mockRejectedValueOnce(new Error('boom'));
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByText('Something went wrong.');
   const callsAfterError = svc.listCatalog.mock.calls.length;
 
@@ -91,7 +91,7 @@ test('a fetch error shows Retry, and Retry actually refetches (not a no-op)', as
 test('shows the Collections rail above the list when there is no query', async () => {
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }], 1));
   svc.listCollections.mockResolvedValue([{ uid: 'col1', name: 'Rock 90s', description: null, songCount: 3 }]);
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByText('Zombie');
   expect(await screen.findByRole('link', { name: 'Open the Rock 90s collection' })).toBeInTheDocument();
 });
@@ -99,7 +99,7 @@ test('shows the Collections rail above the list when there is no query', async (
 test('the Collections rail folds away once a query is typed', async () => {
   svc.listCatalog.mockResolvedValue(resp([], 0));
   svc.listCollections.mockResolvedValue([{ uid: 'col1', name: 'Rock 90s', description: null, songCount: 3 }]);
-  render(<MemoryRouter initialEntries={['/catalog?search=zombie']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog?search=zombie']}><Catalog /></MemoryRouter>);
   await screen.findByText('Results (0)');
   expect(screen.queryByRole('link', { name: 'Open the Rock 90s collection' })).toBeNull();
 });
@@ -110,7 +110,7 @@ test('a 0-song collection is not shown in the rail (no dead-end tile)', async ()
     { uid: 'col1', name: 'Rock 90s', description: null, songCount: 3 },
     { uid: 'empty', name: 'Empty Set', description: null, songCount: 0 },
   ]);
-  render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByRole('link', { name: 'Open the Rock 90s collection' });
   expect(screen.queryByRole('link', { name: 'Open the Empty Set collection' })).toBeNull();
 });
@@ -122,6 +122,7 @@ test('a 0-song collection is not shown in the rail (no dead-end tile)', async ()
 import { SongConflictError } from '../services/songService';
 import { CatalogNotFoundError } from '../services/catalogService';
 import { songService } from '../services/songService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/songService', () => {
   const actual = jest.requireActual('../services/songService');
@@ -137,7 +138,7 @@ const twoRows = [
   { uid: 'b', title: 'Creep', artist: 'Radiohead', key: 'G' },
 ];
 
-const renderCatalog = () => render(<MemoryRouter initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+const renderCatalog = () => render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
 
 const addBoth = async () => {
   fireEvent.click(screen.getByLabelText('Select all'));

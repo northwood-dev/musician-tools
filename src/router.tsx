@@ -22,6 +22,7 @@ import CatalogEntry from './pages/CatalogEntry';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import { DATA_ROUTER_FUTURE } from './routerFuture';
 
 // Story 18.1 — data-router route tree. Exact equivalent of the previous <Routes>:
 // same paths, same auth redirects (RequireAuth -> /login ; GuestOnly -> /songs ;
@@ -98,5 +99,5 @@ export const routes: RouteObject[] = [
 ];
 
 export const router = createBrowserRouter(routes, {
-  future: { v7_relativeSplatPath: true },
+  future: DATA_ROUTER_FUTURE,
 });

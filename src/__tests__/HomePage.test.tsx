@@ -2,13 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import HomePage from '../pages/HomePage';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 const mockedUseAuth = useAuth as jest.Mock;
 
 function renderHome() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={ROUTER_FUTURE}>
       <HomePage />
     </MemoryRouter>
   );

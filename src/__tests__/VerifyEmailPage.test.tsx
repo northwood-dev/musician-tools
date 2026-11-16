@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import VerifyEmailPage from '../pages/VerifyEmailPage';
 import { useAuth } from '../contexts/AuthContext';
 import { verificationService } from '../services/verificationService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../services/verificationService', () => ({
@@ -14,7 +15,7 @@ const svc = verificationService as jest.Mocked<typeof verificationService>;
 
 function renderAt(url: string) {
   return render(
-    <MemoryRouter initialEntries={[url]}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={[url]}>
       <VerifyEmailPage />
     </MemoryRouter>
   );

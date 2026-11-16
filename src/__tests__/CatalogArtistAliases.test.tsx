@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import CatalogArtistAliases from '../pages/CatalogArtistAliases';
 import { useAuth } from '../contexts/AuthContext';
 import { artistAliasService, ArtistAliasConflictError } from '../services/artistAliasService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 jest.mock('../services/artistAliasService', () => {
@@ -22,7 +23,7 @@ const BROKEN = { uid: 'b', alias: 'XYZ', artist: 'Renamed Band', entryCount: 0 }
 
 const renderPage = () => render(
   <StrictMode>
-    <MemoryRouter initialEntries={['/catalog/manage/aliases']}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage/aliases']}>
       <Routes>
         <Route path="/catalog/manage/aliases" element={<CatalogArtistAliases />} />
         <Route path="/" element={<div>home-marker</div>} />

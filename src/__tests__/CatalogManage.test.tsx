@@ -5,6 +5,7 @@ import CatalogManage from '../pages/CatalogManage';
 import { GlobalToastProvider } from '../contexts/GlobalToastProvider';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogService, CatalogNotFoundError, CollectionNotFoundError } from '../services/catalogService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 // Complete mock derived from the real service's keys — a page calling one more method
@@ -31,7 +32,7 @@ const twoEntries = {
 // StrictMode so the fetch effect's double-mount can't regress (lesson from 19.4).
 const renderManage = () => render(
   <StrictMode>
-    <MemoryRouter initialEntries={['/catalog/manage']}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage']}>
       <Routes>
         <Route path="/catalog/manage" element={<CatalogManage />} />
         <Route path="/catalog/admin/:uid" element={<div>edit-marker</div>} />
@@ -175,7 +176,7 @@ test('an out-of-range page offers a way back to the first page', async () => {
   cat.listCatalog.mockResolvedValue({ items: [], total: 25, page: 2, limit: 24 });
   render(
     <StrictMode>
-      <MemoryRouter initialEntries={['/catalog/manage?page=2']}>
+      <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage?page=2']}>
         <Routes>
           <Route path="/catalog/manage" element={<CatalogManage />} />
         </Routes>
@@ -410,7 +411,7 @@ function ManagePage() {
 const renderAbandonable = () => render(
   <StrictMode>
     <GlobalToastProvider>
-      <MemoryRouter initialEntries={['/catalog/manage']}>
+      <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage']}>
         <Routes>
           <Route path="/catalog/manage" element={<ManagePage />} />
         </Routes>

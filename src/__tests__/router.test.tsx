@@ -34,6 +34,7 @@ jest.mock('../pages/CatalogEntry', () => ({ __esModule: true, default: () => <di
 
 import { routes } from '../router';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTER_FUTURE } from '../routerFuture';
 const mockAuth = useAuth as jest.Mock;
 
 // Render the SAME `routes` array via the component router (useRoutes + <MemoryRouter>)
@@ -45,7 +46,7 @@ function RoutedApp() {
 function renderAt(path: string, isAuthenticated: boolean) {
   mockAuth.mockReturnValue({ isAuthenticated, loading: false, user: null });
   render(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={[path]}>
       <RoutedApp />
     </MemoryRouter>,
   );

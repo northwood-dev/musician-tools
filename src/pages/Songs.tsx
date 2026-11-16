@@ -1638,15 +1638,9 @@ function Songs() {
       return;
     }
 
-    console.log('>>> Frontend: Calling lookupMetadata with:', {
-      title: form.title.trim(),
-      artist: form.artist.trim()
-    });
-
     setMetadataLoading(true);
     try {
       const meta = await songService.lookupMetadata(form.title.trim(), form.artist.trim());
-      console.log('>>> Frontend: Metadata response:', meta);
       setMetadataSource(meta?.source || null);
 
       // Check if meta has any useful data
@@ -1660,14 +1654,9 @@ function Songs() {
         return;
       }
 
-      console.log('>>> Frontend: Album from API:', meta.album);
-      console.log('>>> Frontend: Genres from API:', meta.genres);
-
       const mergedGenres = (Array.isArray(form.genre) && form.genre.length > 0)
         ? form.genre
         : (Array.isArray(meta.genres) && meta.genres.length > 0 ? meta.genres : form.genre);
-
-      console.log('>>> Frontend: Merged genres:', mergedGenres);
 
       // Fill form with all available data from meta
       setForm(prev => ({

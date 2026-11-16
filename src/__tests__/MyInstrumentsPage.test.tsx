@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { leavePage, renderPageWithLeaveLink } from '../testUtils/renderPageWithLeaveLink';
 import MyInstrumentsPage from '../pages/MyInstrumentsPage';
 import { instrumentService, type Instrument } from '../services/instrumentService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/instrumentService', () => ({
   instrumentService: {
@@ -19,7 +20,7 @@ const jazzBass: Instrument = { uid: 'i1', name: 'Jazz Bass', type: 'Bass', brand
 
 function renderPage() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={ROUTER_FUTURE}>
       <MyInstrumentsPage />
     </MemoryRouter>
   );

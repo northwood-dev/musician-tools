@@ -6,6 +6,7 @@ import { catalogService, CatalogNotFoundError } from '../services/catalogService
 import { SongConflictError } from '../services/songService';
 import type { CatalogSong } from '../services/catalogService';
 import type { Song } from '../services/songService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/catalogService', () => {
   const actual = jest.requireActual('../services/catalogService');
@@ -23,7 +24,7 @@ const SONG = { uid: 'song-1', title: 'Zombie' } as Song;
 const renderBtn = (existingSong: Song | null = null) =>
   render(
     <StrictMode>
-      <MemoryRouter>
+      <MemoryRouter future={ROUTER_FUTURE}>
         <CatalogAddButton entry={ENTRY} existingSong={existingSong} addAs={{ requireChoice: () => ({ instrument: 'Bass' }) }} />
       </MemoryRouter>
     </StrictMode>,

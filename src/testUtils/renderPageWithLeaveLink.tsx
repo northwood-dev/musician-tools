@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
+import { ROUTER_FUTURE } from '../routerFuture';
 import GlobalToastProvider from '../contexts/GlobalToastProvider';
 
 // Renders a page under the global toast and a router, next to a link that leaves it, so a
@@ -8,7 +9,7 @@ import GlobalToastProvider from '../contexts/GlobalToastProvider';
 export function renderPageWithLeaveLink(page: ReactElement) {
   return render(
     <GlobalToastProvider>
-      <MemoryRouter initialEntries={['/page']}>
+      <MemoryRouter initialEntries={['/page']} future={ROUTER_FUTURE}>
         <Link to="/elsewhere">Leave</Link>
         <Routes>
           <Route path="/page" element={page} />

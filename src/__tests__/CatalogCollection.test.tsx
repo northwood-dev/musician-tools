@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogCollection from '../pages/CatalogCollection';
 import { catalogService, CatalogNotFoundError, CollectionNotFoundError } from '../services/catalogService';
 import type { Song } from '../services/songService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 // Story 20.4 — user-facing Collection detail + whole-collection import.
 jest.mock('../services/catalogService', () => {
@@ -25,7 +26,7 @@ const detail = {
 
 const renderDetail = () => render(
   <StrictMode>
-    <MemoryRouter initialEntries={['/catalog/collections/col1']}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/collections/col1']}>
       <Routes>
         <Route path="/catalog/collections/:uid" element={<CatalogCollection />} />
         <Route path="/catalog" element={<div>catalog-marker</div>} />

@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
 import { passwordResetService } from '../services/passwordResetService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/passwordResetService', () => ({
   passwordResetService: { requestReset: jest.fn(), reset: jest.fn() },
@@ -12,7 +13,7 @@ beforeEach(() => jest.clearAllMocks());
 
 test('submitting an email shows the generic confirmation (no existence reveal)', async () => {
   svc.requestReset.mockResolvedValue(undefined);
-  render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE}><ForgotPasswordPage /></MemoryRouter>);
 
   fireEvent.change(screen.getByPlaceholderText(/enter your email/i), { target: { value: 'ada@example.com' } });
   fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
@@ -25,7 +26,7 @@ test('submitting an email shows the generic confirmation (no existence reveal)',
 
 test('a red error is announced at once (role="alert") (#127)', async () => {
   svc.requestReset.mockRejectedValue(new Error('Something went wrong'));
-  render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE}><ForgotPasswordPage /></MemoryRouter>);
   fireEvent.change(screen.getByPlaceholderText(/enter your email/i), { target: { value: 'ada@example.com' } });
   fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong');
@@ -33,7 +34,7 @@ test('a red error is announced at once (role="alert") (#127)', async () => {
 
 test('the same error twice is announced twice (a new alert each time) (#147)', async () => {
   svc.requestReset.mockRejectedValue(new Error('Something went wrong'));
-  render(<MemoryRouter><ForgotPasswordPage /></MemoryRouter>);
+  render(<MemoryRouter future={ROUTER_FUTURE}><ForgotPasswordPage /></MemoryRouter>);
   fireEvent.change(screen.getByPlaceholderText(/enter your email/i), { target: { value: 'ada@example.com' } });
   fireEvent.click(screen.getByRole('button', { name: /send reset link/i }));
   const first = await screen.findByRole('alert');

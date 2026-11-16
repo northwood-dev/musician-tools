@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthProvider'
 import { GlobalToastProvider } from './contexts/GlobalToastProvider'
 import { router } from './router'
 import './index.css'
+import { PROVIDER_FUTURE } from './routerFuture'
 
 // Story 18.1 — data-router. AuthProvider stays ABOVE the router so useAuth() is
 // available in every route element (auth is a client context, not a route loader).
@@ -18,7 +19,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
       <GlobalToastProvider>
-        <RouterProvider router={router} future={{ v7_startTransition: true }} />
+        <RouterProvider router={router} future={PROVIDER_FUTURE} />
       </GlobalToastProvider>
     </AuthProvider>
   </StrictMode>,

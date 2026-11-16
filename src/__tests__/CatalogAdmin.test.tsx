@@ -5,6 +5,7 @@ import CatalogAdmin from '../pages/CatalogAdmin';
 import { useAuth } from '../contexts/AuthContext';
 import { songService } from '../services/songService';
 import { catalogService, CatalogConflictError, CatalogNotFoundError } from '../services/catalogService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 // Keep the real error classes (needed for `instanceof`), mock the methods.
@@ -20,7 +21,7 @@ jest.mock('../services/songService', () => ({
 const mockedUseAuth = useAuth as jest.Mock;
 const cat = catalogService as jest.Mocked<typeof catalogService>;
 
-const renderAdmin = () => render(<MemoryRouter><CatalogAdmin /></MemoryRouter>);
+const renderAdmin = () => render(<MemoryRouter future={ROUTER_FUTURE}><CatalogAdmin /></MemoryRouter>);
 
 const routeTree = (
   <Routes>
@@ -32,7 +33,7 @@ const routeTree = (
 );
 const renderAt = (path: string) => render(
   <StrictMode>
-    <MemoryRouter initialEntries={[path]}>{routeTree}</MemoryRouter>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={[path]}>{routeTree}</MemoryRouter>
   </StrictMode>
 );
 
@@ -54,7 +55,7 @@ test('a curator sees the entry form (Artist + Title, no Save button)', () => {
 test('a non-curator is redirected to home — no form rendered', () => {
   mockedUseAuth.mockReturnValue({ user: { uid: 'u2', isCurator: false } });
   render(
-    <MemoryRouter initialEntries={['/catalog/admin']}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/admin']}>
       <Routes>
         <Route path="/catalog/admin" element={<CatalogAdmin />} />
         <Route path="/" element={<div>home-marker</div>} />

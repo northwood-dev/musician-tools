@@ -4,6 +4,7 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import CatalogManage from '../pages/CatalogManage';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogService } from '../services/catalogService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 // Story 20.2 — the Collections tab of the curator hub (/catalog/manage?tab=collections).
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
@@ -19,7 +20,7 @@ const cat = catalogService as jest.Mocked<typeof catalogService>;
 // StrictMode so the fetch effect's double-mount can't regress (lesson from 19.4).
 const renderCollectionsTab = () => render(
   <StrictMode>
-    <MemoryRouter initialEntries={['/catalog/manage?tab=collections']}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage?tab=collections']}>
       <Routes>
         <Route path="/catalog/manage" element={<CatalogManage />} />
         <Route path="/catalog/manage/collections/:uid" element={<div>compose-marker</div>} />

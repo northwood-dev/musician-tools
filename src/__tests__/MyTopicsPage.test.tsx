@@ -3,6 +3,7 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { leavePage, renderPageWithLeaveLink } from '../testUtils/renderPageWithLeaveLink';
 import MyTopicsPage from '../pages/MyTopicsPage';
 import { topicService, type Topic } from '../services/topicService';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/topicService', () => ({
   topicService: {
@@ -32,7 +33,7 @@ function LocationProbe() {
 // #16: the page reads ?edit=<uid>, so it renders under a router.
 function renderPage(path = '/my-topics') {
   return render(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter future={ROUTER_FUTURE} initialEntries={[path]}>
       <MyTopicsPage />
       <LocationProbe />
     </MemoryRouter>

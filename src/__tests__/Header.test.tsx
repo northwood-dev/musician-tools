@@ -2,13 +2,14 @@ import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
+import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 const mockedUseAuth = useAuth as jest.Mock;
 
 function renderHeader() {
   return render(
-    <MemoryRouter>
+    <MemoryRouter future={ROUTER_FUTURE}>
       <Header />
     </MemoryRouter>
   );
