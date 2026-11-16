@@ -15,13 +15,26 @@ export function forbiddenConsoleMessage(args: unknown[]): string | null {
   return FORBIDDEN_CONSOLE.some(p => p.test(text)) ? text : null;
 }
 
+// Forbidden messages are RECORDED, not thrown on the spot: a throw from inside
+// console.error would land in React's update path (an act warning fires while React
+// applies an async update), where it can be swallowed or break that update — the test
+// might then pass anyway. Each test instead fails at its end if it printed one; a message
+// that lands after a test has ended fails the next test, or the file.
 export function installConsoleGuard() {
+  const seen: string[] = [];
   for (const level of ['warn', 'error'] as const) {
     const original = console[level].bind(console);
     console[level] = (...args: unknown[]) => {
       const forbidden = forbiddenConsoleMessage(args);
-      if (forbidden) throw new Error(`Forbidden console.${level} in a test (#174): ${forbidden.slice(0, 200)}`);
+      if (forbidden) seen.push(`console.${level}: ${forbidden.slice(0, 300)}`);
       original(...args);
     };
   }
+  const check = () => {
+    if (seen.length === 0) return;
+    const messages = seen.splice(0);
+    throw new Error(`Forbidden console output in a test (#174):\n${messages.join('\n')}`);
+  };
+  afterEach(check);
+  afterAll(check);
 }
