@@ -46,15 +46,15 @@ export default function SonglistCatalogSuggestions({
   return (
     <section aria-labelledby={headingId} className="mt-4 border-t border-gray-200 dark:border-gray-700 pt-4 text-left">
       <h2 id={headingId} className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">From the Catalog</h2>
-      {state.status === 'loading' && (
-        <p className="text-sm text-gray-500 dark:text-gray-400" aria-live="polite">Searching the Catalog…</p>
-      )}
-      {state.status === 'error' && (
-        <p className="text-sm text-gray-600 dark:text-gray-300" role="status">Couldn't search the Catalog right now.</p>
-      )}
-      {state.status === 'done' && state.items.length === 0 && (
-        <p className="text-sm text-gray-600 dark:text-gray-300" role="status">Nothing in the Catalog either.</p>
-      )}
+      {/* One live region, mounted with the block: only its text changes, so screen readers
+          announce it reliably (the Toast's rule). The page's toast announces an add. */}
+      <p aria-live="polite" className={`text-sm text-gray-600 dark:text-gray-300 ${state.status === 'done' && state.items.length > 0 ? 'sr-only' : ''}`}>
+        {state.status === 'loading' && 'Searching the Catalog…'}
+        {state.status === 'error' && "Couldn't search the Catalog right now."}
+        {state.status === 'done' && (state.items.length === 0
+          ? 'Nothing in the Catalog either.'
+          : `${state.total} found in the Catalog.`)}
+      </p>
       {state.status === 'done' && state.items.length > 0 && (
         <>
           <AddAsInstrumentSelect addAs={addAs} className="mb-3" />

@@ -15,7 +15,7 @@ import { Panel } from './Panel';
 import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
 import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
-import { findDuplicateSong } from '../utils/songDuplicate';
+import { findExistingIn } from '../hooks/useSonglistMatcher';
 
 export interface SongsListProps {
   // State
@@ -145,6 +145,7 @@ export interface SongsListProps {
 }
 
 export default function SongsList(props: SongsListProps) {
+  const trimmedSearch = props.searchQuery.trim(); // #191 / #192: what an empty search offers to find or create
   // The bulk Add to playlist menu closes like its ✕ on an outside click or Escape, and
   // like its ✕ not while the page is loading (#38).
   const playlistMenu = useDismissablePanel({
@@ -374,16 +375,16 @@ export default function SongsList(props: SongsListProps) {
               >
                 {emptyListMessage(props.activeFilterCount > 0, props.searchQuery !== '')}
               </EmptyState>
-              {props.songs.length > 0 && props.searchQuery.trim().length >= 2 && (
+              {props.songs.length > 0 && trimmedSearch.length >= 2 && (
                 <div className="px-4 pb-4">
                   <SonglistCatalogSuggestions
-                    search={props.searchQuery.trim()}
-                    findExisting={entry => findDuplicateSong(props.songs, { title: entry.title, artist: entry.artist ?? null })}
+                    search={trimmedSearch}
+                    findExisting={entry => findExistingIn(props.songs, entry)}
                     onAdded={props.onAddedFromCatalog}
                     preferredInstrument={isRealInstrument(props.instrumentFilter) ? props.instrumentFilter : undefined}
                   />
-                  <button type="button" className="btn-link mt-4" onClick={() => props.onAddNewWithTitle(props.searchQuery.trim())}>
-                    Add "{props.searchQuery.trim()}" as a new song
+                  <button type="button" className="btn-link mt-4" onClick={() => props.onAddNewWithTitle(trimmedSearch)}>
+                    Add "{trimmedSearch}" as a new song
                   </button>
                 </div>
               )}

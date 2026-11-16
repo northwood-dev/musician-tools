@@ -89,6 +89,34 @@ test('with active filters, only the text is sent, the filters message stays, and
   expect(cat.listCatalog).toHaveBeenLastCalledWith({ search: 'wonder', limit: 5 }, expect.anything());
 });
 
+test('"Add as" follows the instrument filter when it changes while the suggestions are shown', async () => {
+  localStorage.setItem('songsInstrumentFilter', 'Guitar');
+  renderSongs();
+  await search('wonder');
+  const block = await screen.findByRole('region', { name: 'From the Catalog' });
+  expect(await within(block).findByLabelText('Add as')).toHaveValue('Guitar');
+  const sidebarSelect = within(screen.getByRole('complementary')).getByDisplayValue('Guitar');
+  fireEvent.change(sidebarSelect, { target: { value: 'Bass' } });
+  await waitFor(() => expect(within(screen.getByRole('region', { name: 'From the Catalog' })).getByLabelText('Add as')).toHaveValue('Bass'));
+});
+
+test('a late answer to an older search never replaces the newer results', async () => {
+  let answerOld: (v: unknown) => void = () => {};
+  cat.listCatalog
+    .mockImplementationOnce(() => new Promise(r => { answerOld = r; }) as never)
+    .mockResolvedValueOnce({ items: [entry('c9', 'Wonderwall', 'Oasis')], total: 1, page: 1, limit: 5 });
+  renderSongs();
+  await screen.findByText('Yesterday');
+  await search('wonde');
+  await waitFor(() => expect(cat.listCatalog).toHaveBeenCalledTimes(1));
+  await search('wonderwall');
+  const block = await screen.findByRole('region', { name: 'From the Catalog' });
+  expect(await within(block).findByText('Wonderwall')).toBeInTheDocument();
+  await act(async () => { answerOld({ items: [entry('c8', 'Wonder', 'Shawn Mendes')], total: 1, page: 1, limit: 5 }); });
+  expect(within(block).queryByText('Wonder')).not.toBeInTheDocument();
+  expect(within(block).getByText('Wonderwall')).toBeInTheDocument();
+});
+
 test('a Catalog entry already in the songlist (hidden by a filter) says so and leads to the song', async () => {
   localStorage.setItem('songsInstrumentFilter', 'Guitar');
   songs.getAllSongs.mockResolvedValue([makeSong({ uid: 's9', title: 'Wonderwall', artist: 'Oasis' })]);
@@ -111,6 +139,8 @@ test('adding an entry puts the song in the list, in place of the suggestions', a
   expect(screen.getByText('Wonderwall')).toBeInTheDocument();
   expect(screen.queryByText('No songs match your search.')).not.toBeInTheDocument();
   expect(router.state.location.pathname).toBe('/songs'); // stays on the Songlist
+  // The block unmounts with its own status, so the page's toast announces the add.
+  expect(screen.getByRole('status', { name: 'Notification' })).toHaveTextContent('"Wonderwall" added to your songlist');
 });
 
 test('nothing in the Catalog either is said plainly', async () => {

@@ -29,6 +29,7 @@ import { ErrorBanner } from '../components/ErrorBanner';
 import { Notice } from '../components/Notice';
 import { Page, PageTitle } from '../components/Page';
 import { RemovableChip } from '../components/Chip';
+import { withSongIfAbsent } from '../hooks/useSonglistMatcher';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -833,7 +834,7 @@ function Songs() {
   // UNLESS the form already represents it (loadedFormUidRef) — so an auto-create
   // navigate('/songs/:uid') doesn't reload & clobber the just-typed form.
   useEffect(() => {
-    if (page === 'list') { loadedFormUidRef.current = undefined; setNotFound(false); setFormReady(false); deletingRef.current = false; return; }
+    if (page === 'list') { loadedFormUidRef.current = undefined; setNotFound(false); setFormReady(false); deletingRef.current = false; setAddBaselineJson(null); return; }
     if (isNewSongRoute) {
       if (loadedFormUidRef.current !== '__new__') {
         // #192: a title prefilled from an empty search isn't a user edit — it becomes the
@@ -1909,7 +1910,9 @@ function Songs() {
           loading={loading}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          onAddedFromCatalog={song => setSongs(prev => (prev.some(s => s.uid === song.uid) ? prev : [song, ...prev]))}
+          // #191: the added song joins the list (it matches the search, so it replaces the
+          // suggestions); the page's toast announces it, since the block unmounts with it.
+          onAddedFromCatalog={song => { setSongs(prev => withSongIfAbsent(prev, song)); showToast(`"${song.title}" added to your songlist`); }}
           instrumentFilter={instrumentFilter}
           setInstrumentFilter={setInstrumentFilter}
           myInstrumentFilter={myInstrumentFilter}

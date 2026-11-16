@@ -9,6 +9,15 @@ import { findDuplicateSong } from '../utils/songDuplicate';
 // (no userUid on the browse query); the server stays the source of truth (409 on Add).
 // Degrades gracefully: if the songlist can't load, no flags are shown (buttons stay
 // "Add"; the server 409 still protects against a real duplicate).
+// The two rules every "add from the Catalog" place shares (Catalog page, Songlist
+// suggestions #191): which of my songs a Catalog entry already is, and the list with a
+// newly added song in it (first, never twice).
+export const findExistingIn = (songs: Song[], entry: { title: string; artist?: string | null }): Song | null =>
+  findDuplicateSong(songs, { title: entry.title, artist: entry.artist ?? null });
+
+export const withSongIfAbsent = (songs: Song[], song: Song): Song[] =>
+  songs.some(s => s.uid === song.uid) ? songs : [song, ...songs];
+
 export function useSonglistMatcher() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [reloadToken, setReloadToken] = useState(0);
@@ -28,14 +37,13 @@ export function useSonglistMatcher() {
   const refresh = useCallback(() => setReloadToken(t => t + 1), []);
 
   const findExisting = useCallback(
-    (entry: { title: string; artist?: string | null }): Song | null =>
-      findDuplicateSong(songs, { title: entry.title, artist: entry.artist ?? null }),
+    (entry: { title: string; artist?: string | null }): Song | null => findExistingIn(songs, entry),
     [songs],
   );
 
   // Called after a successful Add so subsequent rows reflect the new song.
   const addToCache = useCallback(
-    (song: Song) => setSongs(prev => (prev.some(s => s.uid === song.uid) ? prev : [song, ...prev])),
+    (song: Song) => setSongs(prev => withSongIfAbsent(prev, song)),
     [],
   );
 
