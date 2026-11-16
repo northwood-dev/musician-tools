@@ -135,6 +135,8 @@ export interface SongsListProps {
   // Callbacks
   onEdit: (song: Song) => void;
   onAddNew: () => void;
+  // #192: open the add form with this title prefilled (from an empty search).
+  onAddNewWithTitle: (title: string) => void;
   
   // Additional handlers
   getLastPlayedForSong: (uid: string) => string | undefined;
@@ -380,6 +382,9 @@ export default function SongsList(props: SongsListProps) {
                     onAdded={props.onAddedFromCatalog}
                     preferredInstrument={isRealInstrument(props.instrumentFilter) ? props.instrumentFilter : undefined}
                   />
+                  <button type="button" className="btn-link mt-4" onClick={() => props.onAddNewWithTitle(props.searchQuery.trim())}>
+                    Add "{props.searchQuery.trim()}" as a new song
+                  </button>
                 </div>
               )}
             </div>

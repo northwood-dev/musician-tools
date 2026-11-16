@@ -1,4 +1,4 @@
-import { screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { act, screen, fireEvent, within, waitFor } from '@testing-library/react';
 import { renderSongs } from '../test/renderSongs';
 import { makeSong } from '../test/makeSong';
 import { songService } from '../services/songService';
@@ -74,7 +74,7 @@ test('fewer than 2 characters asks the Catalog nothing', async () => {
   await screen.findByText('Yesterday');
   await search('w');
   await screen.findByText('No songs match your search.');
-  await new Promise(r => setTimeout(r, 500));
+  await act(() => new Promise(r => setTimeout(r, 500)));
   expect(cat.listCatalog).not.toHaveBeenCalled();
   expect(screen.queryByRole('region', { name: 'From the Catalog' })).not.toBeInTheDocument();
 });
@@ -132,4 +132,52 @@ test('a failed Catalog search shows a calm line, and the Songlist still works', 
   expect(await within(block).findByText("Couldn't search the Catalog right now.")).toBeInTheDocument();
   await search('yes');
   expect(await screen.findByText('Yesterday')).toBeInTheDocument();
+});
+
+// #192: "Add "<text>" as a new song" — the title is prefilled, but nothing is created
+// until the user changes something.
+describe('Add "<text>" as a new song', () => {
+  test('is offered whatever the Catalog returns, even when its search fails', async () => {
+    cat.listCatalog.mockRejectedValue(new Error('network'));
+    renderSongs();
+    await screen.findByText('Yesterday');
+    await search('My own tune');
+    expect(await screen.findByRole('button', { name: 'Add "My own tune" as a new song' })).toBeInTheDocument();
+  });
+
+  test('opens the add form with the title prefilled', async () => {
+    const { router } = renderSongs();
+    await screen.findByText('Yesterday');
+    await search('My own tune');
+    fireEvent.click(await screen.findByRole('button', { name: 'Add "My own tune" as a new song' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/songs/new'));
+    expect(await screen.findByLabelText('Title')).toHaveValue('My own tune');
+  });
+
+  test('leaving the prefilled form untouched creates nothing', async () => {
+    const { router } = renderSongs();
+    await screen.findByText('Yesterday');
+    await search('My own tune');
+    fireEvent.click(await screen.findByRole('button', { name: 'Add "My own tune" as a new song' }));
+    expect(await screen.findByLabelText('Title')).toHaveValue('My own tune');
+    await act(() => new Promise(r => setTimeout(r, 1500))); // longer than the auto-save delay
+    expect(songs.createSong).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /back to songlist/i }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/songs'));
+    await act(() => new Promise(r => setTimeout(r, 300)));
+    expect(songs.createSong).not.toHaveBeenCalled();
+  });
+
+  test('the first change creates the song, keeping the prefilled title', async () => {
+    songs.createSong.mockResolvedValue(makeSong({ uid: 'n2', title: 'My own tune', artist: 'Me' }));
+    renderSongs();
+    await screen.findByText('Yesterday');
+    await search('My own tune');
+    fireEvent.click(await screen.findByRole('button', { name: 'Add "My own tune" as a new song' }));
+    expect(await screen.findByLabelText('Title')).toHaveValue('My own tune');
+    fireEvent.change(screen.getByLabelText('Artist'), { target: { value: 'Me' } });
+    await waitFor(() => expect(songs.createSong).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    expect(songs.createSong.mock.calls[0][0]).toEqual(expect.objectContaining({ title: 'My own tune', artist: 'Me' }));
+    expect(await screen.findByText(/Saved/)).toBeInTheDocument();
+  });
 });
