@@ -14,6 +14,8 @@ import { Page } from './Page';
 import { Panel } from './Panel';
 import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
+import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
+import { findDuplicateSong } from '../utils/songDuplicate';
 
 export interface SongsListProps {
   // State
@@ -24,6 +26,8 @@ export interface SongsListProps {
   
   // Search & filters
   searchQuery: string;
+  // #191: a song added from the Catalog suggestions of an empty search.
+  onAddedFromCatalog: (song: Song) => void;
   instrumentFilter: string;
   myInstrumentFilter: string;
   instrumentDifficultyFilter: number | '';
@@ -368,6 +372,16 @@ export default function SongsList(props: SongsListProps) {
               >
                 {emptyListMessage(props.activeFilterCount > 0, props.searchQuery !== '')}
               </EmptyState>
+              {props.songs.length > 0 && props.searchQuery.trim().length >= 2 && (
+                <div className="px-4 pb-4">
+                  <SonglistCatalogSuggestions
+                    search={props.searchQuery.trim()}
+                    findExisting={entry => findDuplicateSong(props.songs, { title: entry.title, artist: entry.artist ?? null })}
+                    onAdded={props.onAddedFromCatalog}
+                    preferredInstrument={isRealInstrument(props.instrumentFilter) ? props.instrumentFilter : undefined}
+                  />
+                </div>
+              )}
             </div>
           ) : (
             <div className="card-base overflow-hidden">

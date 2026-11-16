@@ -1901,6 +1901,7 @@ function Songs() {
           loading={loading}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          onAddedFromCatalog={song => setSongs(prev => (prev.some(s => s.uid === song.uid) ? prev : [song, ...prev]))}
           instrumentFilter={instrumentFilter}
           setInstrumentFilter={setInstrumentFilter}
           myInstrumentFilter={myInstrumentFilter}

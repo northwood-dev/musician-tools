@@ -47,8 +47,11 @@ export interface AddAsInstrument {
   selectRef: React.RefObject<HTMLSelectElement | null>;
 }
 
-export function useAddAsInstrument(): AddAsInstrument {
-  const [choice, setChoice] = useState<string | null>(readRememberedChoice);
+// `preferred` (#191): a page that already knows the instrument (the Songlist filtered on
+// Guitar) makes it the starting choice, over the remembered one. Not saved until chosen.
+export function useAddAsInstrument(preferred?: string): AddAsInstrument {
+  const [choice, setChoice] = useState<string | null>(() =>
+    preferred && isKnownChoice(preferred) ? preferred : readRememberedChoice());
   const [needsChoice, setNeedsChoice] = useState(false);
   const selectRef = useRef<HTMLSelectElement | null>(null);
 
