@@ -111,7 +111,7 @@ function RegisterPage() {
               disabled={resending}
               className="btn-link btn-link-inherit"
             >
-              {resending ? 'Sending...' : 'Resend the link'}
+              {resending ? 'Sending…' : 'Resend the link'}
             </button>
             {resendMessage && <span className="block text-gray-600 dark:text-gray-300">{resendMessage}</span>}
             <Link to="/login" className="block text-brand-600 dark:text-brand-400 font-medium hover:text-brand-700 dark:hover:text-brand-300">
@@ -186,7 +186,7 @@ function RegisterPage() {
             className="btn-primary w-full justify-center"
             disabled={loading}
           >
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading ? 'Creating account…' : 'Create account'}
           </button>
         </form>
         </>

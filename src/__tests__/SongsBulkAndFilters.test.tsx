@@ -56,7 +56,7 @@ const filterOnNoInstrument = async () => {
   await filterOnInstrument((option as HTMLOptionElement).value);
 };
 const search = (text: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album...'), { target: { value: text } });
+  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album…'), { target: { value: text } });
 const setInstrument = async (instrument: string) => {
   fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
   fireEvent.change(await screen.findByRole('combobox', { name: 'Instrument to add' }), { target: { value: instrument } });
@@ -266,7 +266,7 @@ describe('#98: Songlist labels once filters are used', () => {
 
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Search by title, artist, or album...')).toHaveValue('alpha');
+    expect(screen.getByPlaceholderText('Search by title, artist, or album…')).toHaveValue('alpha');
   });
 });
 

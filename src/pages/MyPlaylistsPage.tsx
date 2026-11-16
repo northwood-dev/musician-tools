@@ -295,7 +295,7 @@ function MyPlaylistsPage() {
                   <input
                     id="playlist-song-search"
                     type="text"
-                    placeholder="Search songs..."
+                    placeholder="Search songs…"
                     value={songSearch}
                     onChange={(e) => setSongSearch(e.target.value)}
                     className="input-base w-full pr-10"
