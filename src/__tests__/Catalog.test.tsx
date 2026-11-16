@@ -1,4 +1,5 @@
 import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { ROUTER_FUTURE } from '../routerFuture';
 import { MemoryRouter } from 'react-router-dom';
 import Catalog from '../pages/Catalog';
 import { catalogService } from '../services/catalogService';
@@ -122,7 +123,6 @@ test('a 0-song collection is not shown in the rail (no dead-end tile)', async ()
 import { SongConflictError } from '../services/songService';
 import { CatalogNotFoundError } from '../services/catalogService';
 import { songService } from '../services/songService';
-import { ROUTER_FUTURE } from '../routerFuture';
 
 jest.mock('../services/songService', () => {
   const actual = jest.requireActual('../services/songService');

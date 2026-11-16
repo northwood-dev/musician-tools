@@ -25,6 +25,7 @@ const cat = catalogService as jest.Mocked<typeof catalogService>;
 // it, so wait for that request itself before the test ends.
 const renderAdmin = async () => {
   render(<MemoryRouter future={ROUTER_FUTURE}><CatalogAdmin /></MemoryRouter>);
+  expect(cat.getFacets).toHaveBeenCalled();
   await act(() => cat.getFacets.mock.results[0].value);
 };
 
