@@ -167,6 +167,7 @@ describe('Songs — auto-create at debounce (story 17.2)', () => {
     await new Promise(r => setTimeout(r, 1500));
     expect(createSong).toHaveBeenCalledTimes(1);
     resolveCreate({ uid: 'new-2', title: 'InFlight', artist: 'X', instrument: [] });
+    await screen.findByText(/Saved ✓/);
   });
 
   test('leaving while a create is in flight keeps the song without stranding editing or a false toast (HIGH regression)', async () => {

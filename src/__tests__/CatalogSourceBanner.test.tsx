@@ -1,5 +1,5 @@
 import { StrictMode } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CatalogSourceBanner from '../components/CatalogSourceBanner';
 import { songService, RefreshFromCatalogError } from '../services/songService';
@@ -32,11 +32,13 @@ const renderBanner = (
 );
 
 // Confirm the drift dialog's "Refresh" (the LAST button so labelled) to trigger a refresh.
+// The refresh settles a few promises after the click (beforeRefresh, the POST), so the click
+// runs inside an async act that lets it finish.
 const confirmRefresh = async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }));
   await screen.findByText(/Update key, BPM/);
   const confirmButtons = screen.getAllByRole('button', { name: 'Refresh' });
-  fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+  await act(async () => { fireEvent.click(confirmButtons[confirmButtons.length - 1]); });
 };
 
 beforeEach(() => {

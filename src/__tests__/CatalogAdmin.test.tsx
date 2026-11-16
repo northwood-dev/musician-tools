@@ -21,7 +21,12 @@ jest.mock('../services/songService', () => ({
 const mockedUseAuth = useAuth as jest.Mock;
 const cat = catalogService as jest.Mocked<typeof catalogService>;
 
-const renderAdmin = () => render(<MemoryRouter future={ROUTER_FUTURE}><CatalogAdmin /></MemoryRouter>);
+// The form loads the artist/album autocomplete in the background; nothing on screen shows
+// it, so wait for that request itself before the test ends.
+const renderAdmin = async () => {
+  render(<MemoryRouter future={ROUTER_FUTURE}><CatalogAdmin /></MemoryRouter>);
+  await act(() => cat.getFacets.mock.results[0].value);
+};
 
 const routeTree = (
   <Routes>
@@ -44,9 +49,9 @@ beforeEach(() => {
   cat.getFacets.mockResolvedValue({ genre: [], key: [], mode: [], timeSignature: [], artist: ['Oasis'], album: [] });
 });
 
-test('a curator sees the entry form (Artist + Title, no Save button)', () => {
+test('a curator sees the entry form (Artist + Title, no Save button)', async () => {
   mockedUseAuth.mockReturnValue({ user: { uid: 'u1', isCurator: true } });
-  renderAdmin();
+  await renderAdmin();
   expect(screen.getByLabelText('Artist')).toBeInTheDocument();
   expect(screen.getByLabelText('Title')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /^Save/ })).toBeNull();
@@ -66,9 +71,9 @@ test('a non-curator is redirected to home — no form rendered', () => {
   expect(screen.queryByLabelText('Title')).toBeNull();
 });
 
-test('the form does NOT render instrument/personal fields (DL-17)', () => {
+test('the form does NOT render instrument/personal fields (DL-17)', async () => {
   mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
-  renderAdmin();
+  await renderAdmin();
   expect(screen.queryByLabelText(/instrument/i)).toBeNull();
   expect(screen.queryByLabelText(/tuning/i)).toBeNull();
 });

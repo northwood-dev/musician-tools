@@ -2,9 +2,12 @@
 // patterns fails the test that printed it, so the noise fixed in #174 can't creep back:
 //   - the React Router v7 "Future Flag" warning: tests must use the app's router options
 //     (ROUTER_FUTURE), the same as the app;
+//   - React's "not wrapped in act(...)" warning: a test must wait for the visible result of
+//     the update it triggers (findBy…, waitFor, or act around an async action), not end early;
 // Ordinary errors (the logs of error-path tests) are left alone.
 export const FORBIDDEN_CONSOLE: RegExp[] = [
   /React Router Future Flag Warning/,
+  /not wrapped in act/,
 ];
 
 export function forbiddenConsoleMessage(args: unknown[]): string | null {

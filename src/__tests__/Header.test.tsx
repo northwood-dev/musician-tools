@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../contexts/AuthContext';
 import { ROUTER_FUTURE } from '../routerFuture';
@@ -7,10 +7,16 @@ import { ROUTER_FUTURE } from '../routerFuture';
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 const mockedUseAuth = useAuth as jest.Mock;
 
+// Shows where the router is, so a test can wait for the navigation that follows Sign out.
+function CurrentPath() {
+  return <output data-testid="current-path">{useLocation().pathname}</output>;
+}
+
 function renderHeader() {
   return render(
     <MemoryRouter future={ROUTER_FUTURE}>
       <Header />
+      <CurrentPath />
     </MemoryRouter>
   );
 }
@@ -64,7 +70,7 @@ test('clicking a mobile link closes the menu', () => {
   expect(screen.getAllByRole('link', { name: 'Heatmap' })).toHaveLength(1);
 });
 
-test('authenticated mobile: Sign out lives inside the menu and logs out', () => {
+test('authenticated mobile: Sign out lives inside the menu and logs out', async () => {
   const logout = jest.fn().mockResolvedValue(undefined);
   mockedUseAuth.mockReturnValue({ isAuthenticated: true, logout });
   renderHeader();
@@ -75,6 +81,7 @@ test('authenticated mobile: Sign out lives inside the menu and logs out', () => 
 
   fireEvent.click(signOut);
   expect(logout).toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/login'));
 });
 
 test('unauthenticated: no hamburger, no nav links, and no sign-in actions in the header', () => {
@@ -128,7 +135,7 @@ test('#150: the account panel is a disclosure, not a menu', () => {
   expect(within(accountPanel()!).getByRole('link', { name: 'Curate' })).toBeInTheDocument();
 });
 
-test('account dropdown: Escape closes it, and Sign out logs out', () => {
+test('account dropdown: Escape closes it, and Sign out logs out', async () => {
   const logout = jest.fn().mockResolvedValue(undefined);
   mockedUseAuth.mockReturnValue({ isAuthenticated: true, logout });
   renderHeader();
@@ -140,6 +147,7 @@ test('account dropdown: Escape closes it, and Sign out logs out', () => {
   fireEvent.click(accountToggle());
   fireEvent.click(within(accountPanel()!).getByRole('button', { name: 'Sign out' }));
   expect(logout).toHaveBeenCalled();
+  await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/login'));
 });
 
 describe('#136: the account menu closes like the other menus', () => {

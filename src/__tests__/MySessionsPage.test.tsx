@@ -101,8 +101,9 @@ async function addEntry(index: number, ref: string, minutes?: string) {
   }
 }
 
-test('renders a labelled form with today (local) pre-filled and future dates blocked', () => {
+test('renders a labelled form with today (local) pre-filled and future dates blocked', async () => {
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('No sessions logged yet.'); // the page has finished loading
 
   const dateInput = screen.getByLabelText('Date');
   expect(dateInput).toHaveValue(todayLocalDate());
@@ -114,8 +115,9 @@ test('renders a labelled form with today (local) pre-filled and future dates blo
   expect(screen.getByLabelText('Note')).toBeInTheDocument();
 });
 
-test('submit is disabled until an instrument is selected', () => {
+test('submit is disabled until an instrument is selected', async () => {
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('No sessions logged yet.'); // the page has finished loading
 
   const submit = screen.getByRole('button', { name: 'Log session' });
   expect(submit).toBeDisabled();
@@ -248,8 +250,9 @@ test('blocks future dates client-side without calling the API', async () => {
 });
 
 
-test('the toast live region is mounted before any submission', () => {
+test('the toast live region is mounted before any submission', async () => {
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
+  await screen.findByText('No sessions logged yet.'); // the page has finished loading
 
   const toast = screen.getByRole('status', { name: 'Notification' });
   expect(toast).toBeInTheDocument();

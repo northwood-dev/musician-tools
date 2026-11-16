@@ -331,6 +331,7 @@ test('double-clicking Add fires a single batch', async () => {
 
   await waitFor(() => expect(cat.addSongToCollection).toHaveBeenCalledTimes(2)); // 2 entries, ONE batch
   releases.forEach(r => r());
+  expect(await screen.findByRole('status', { name: 'Bulk action result' })).toHaveTextContent(/2 added/);
 });
 
 test('a deleted collection is named as the cause, and retrying is not suggested', async () => {

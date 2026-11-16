@@ -1,4 +1,4 @@
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent, within, act } from '@testing-library/react';
 import { renderSongs } from '../test/renderSongs';
 
 jest.mock('../services/songService', () => ({
@@ -57,10 +57,12 @@ const filterOnNoInstrument = async () => {
 };
 const search = (text: string) =>
   fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album…'), { target: { value: text } });
+// The add settles a promise after the click (the request, then the panel closing and the
+// toast), so the click runs inside an async act that lets it finish.
 const setInstrument = async (instrument: string) => {
   fireEvent.click(screen.getByRole('button', { name: 'Set instrument' }));
   fireEvent.change(await screen.findByRole('combobox', { name: 'Instrument to add' }), { target: { value: instrument } });
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Add' })); });
 };
 
 describe('#71: Set instrument adds an instrument to the selected songs', () => {
