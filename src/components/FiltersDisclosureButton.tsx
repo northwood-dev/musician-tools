@@ -1,3 +1,5 @@
+import { DisclosureArrow } from './Disclosure';
+
 export interface FiltersDisclosureButtonProps {
   open: boolean;
   onToggle: () => void;
@@ -19,7 +21,7 @@ export default function FiltersDisclosureButton({ open, onToggle, activeFilterCo
       className="lg:hidden w-full card-base glass-effect flex items-center justify-between px-3 h-10 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 motion-safe:transition-colors"
     >
       <span>{label}</span>
-      <span className="text-xl" aria-hidden="true">{open ? '▾' : '▸'}</span>
+      <DisclosureArrow open={open} />
     </button>
   );
 }

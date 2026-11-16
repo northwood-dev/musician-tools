@@ -15,6 +15,7 @@ import type { StreamingLink } from '../utils/streamingLinks';
 import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { RemovableChip } from './Chip';
+import { Disclosure } from './Disclosure';
 
 type Mode = 'add' | 'edit';
 
@@ -213,266 +214,259 @@ export function SongForm(props: SongFormProps) {
           {metadataSource ? `Metadata found: ${metadataSource}` : 'Title + artist required'}
         </p>
       </div>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700">
-        <button
-          type="button"
-          className={`w-full flex items-center justify-between px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100 overflow-hidden ${detailsAccordionOpen ? 'rounded-t-md' : 'rounded-md'}`}
-          onClick={() => setDetailsAccordionOpen(!detailsAccordionOpen)}
-          aria-expanded={detailsAccordionOpen}
-        >
-          <span className="font-medium">Details</span>
-          <span>{detailsAccordionOpen ? '▾' : '▸'}</span>
-        </button>
-        {detailsAccordionOpen && (
-          <div className="mt-0 space-y-4 p-3 bg-gray-50 dark:bg-gray-800 overflow-visible rounded-b-md">
-            <div>
-              <label htmlFor="genres-search" className="label-base">Genres</label>
-              <div className="relative z-30">
-                <input
-                  id="genres-search"
-                  type="text"
-                  placeholder="Search or select a genre"
-                  value={genreSearchQuery}
-                  onChange={(e) => { setGenreSearchQuery(e.target.value); setSelectedGenreIndex(-1); }}
-                  onFocus={() => setGenreSearchOpen(true)}
-                  onBlur={() => setTimeout(() => setGenreSearchOpen(false), 200)}
-                  onKeyDown={(e) => handleComboKeyDown(
-                    e, filteredGenreOptions, selectedGenreIndex, setSelectedGenreIndex, setGenreSearchOpen,
-                    (genre) => { onToggleGenre(genre); setGenreSearchQuery(''); setGenreSearchOpen(false); setSelectedGenreIndex(-1); },
-                  )}
-                  className="input-base"
-                  disabled={loading}
-                  {...comboboxInputAria('song-genres-list', genreSearchOpen, selectedGenreIndex)}
-                />
-                {genreSearchOpen && (
-                    <div ref={genreListRef} id="song-genres-list" role="listbox" className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
-                      {filteredGenreOptions.map((genre, index) => (
-                          <button
-                            key={genre}
-                            type="button"
-                            {...comboboxOptionAria('song-genres-list', index, selectedGenreIndex)}
-                            onMouseEnter={() => setSelectedGenreIndex(index)}
-                            onClick={() => {
-                              onToggleGenre(genre);
-                              setGenreSearchQuery('');
-                              setGenreSearchOpen(false);
-                              setSelectedGenreIndex(-1);
-                            }}
-                            className={`w-full text-left px-3 py-2 text-gray-700 dark:text-gray-100 ${
-                              index === selectedGenreIndex ? 'bg-brand-100 dark:bg-brand-900/40' : ''
-                            }`}
-                            disabled={loading}
-                          >
-                            {genre}
-                          </button>
-                        ))}
-                      {filteredGenreOptions.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No genres found</div>
-                      )}
-                    </div>
-                )}
-              </div>
-              {currentGenres.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {currentGenres.map(genre => (
-                    <RemovableChip key={genre} label={genre} onRemove={() => onToggleGenre(genre)} disabled={loading} />
-                  ))}
-                </div>
+      <Disclosure
+        className="border border-gray-200 dark:border-gray-700 rounded-md divide-y divide-gray-200 dark:divide-gray-700"
+        title="Details"
+        open={detailsAccordionOpen}
+        onToggle={() => setDetailsAccordionOpen(!detailsAccordionOpen)}
+        bodyClassName="space-y-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-b-md"
+      >
+        <div>
+          <label htmlFor="genres-search" className="label-base">Genres</label>
+          <div className="relative z-30">
+            <input
+              id="genres-search"
+              type="text"
+              placeholder="Search or select a genre"
+              value={genreSearchQuery}
+              onChange={(e) => { setGenreSearchQuery(e.target.value); setSelectedGenreIndex(-1); }}
+              onFocus={() => setGenreSearchOpen(true)}
+              onBlur={() => setTimeout(() => setGenreSearchOpen(false), 200)}
+              onKeyDown={(e) => handleComboKeyDown(
+                e, filteredGenreOptions, selectedGenreIndex, setSelectedGenreIndex, setGenreSearchOpen,
+                (genre) => { onToggleGenre(genre); setGenreSearchQuery(''); setGenreSearchOpen(false); setSelectedGenreIndex(-1); },
               )}
-            </div>
-            <div>
-              <label htmlFor="song-album" className="label-base">Album</label>
-              <AutocompleteInput
-                id="song-album"
-                name="album"
-                value={typeof form.album === 'string' ? form.album : ''}
-                onValueChange={(v) => onChange({ target: { name: 'album', value: v } } as React.ChangeEvent<HTMLInputElement>)}
-                suggestions={suggestedAlbums}
-                inputClassName="input-base"
-                wrapperClassName="relative z-[25]"
-                disabled={loading}
-                autoComplete="off"
-              />
-            </div>
-            <div>
-              <label htmlFor="language-search" className="label-base">Languages</label>
-              <div className="relative z-20">
-                <input
-                  id="language-search"
-                  type="text"
-                  placeholder="Search or select a language"
-                  value={languageSearchQuery}
-                  onChange={(e) => { setLanguageSearchQuery(e.target.value); setSelectedLanguageIndex(-1); }}
-                  onFocus={() => setLanguageSearchOpen(true)}
-                  onBlur={() => setTimeout(() => setLanguageSearchOpen(false), 200)}
-                  onKeyDown={(e) => handleComboKeyDown(
-                    e, filteredLanguageOptions, selectedLanguageIndex, setSelectedLanguageIndex, setLanguageSearchOpen,
-                    (language) => { onToggleLanguage(language); setLanguageSearchQuery(''); setLanguageSearchOpen(false); setSelectedLanguageIndex(-1); },
+              className="input-base"
+              disabled={loading}
+              {...comboboxInputAria('song-genres-list', genreSearchOpen, selectedGenreIndex)}
+            />
+            {genreSearchOpen && (
+                <div ref={genreListRef} id="song-genres-list" role="listbox" className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
+                  {filteredGenreOptions.map((genre, index) => (
+                      <button
+                        key={genre}
+                        type="button"
+                        {...comboboxOptionAria('song-genres-list', index, selectedGenreIndex)}
+                        onMouseEnter={() => setSelectedGenreIndex(index)}
+                        onClick={() => {
+                          onToggleGenre(genre);
+                          setGenreSearchQuery('');
+                          setGenreSearchOpen(false);
+                          setSelectedGenreIndex(-1);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-gray-700 dark:text-gray-100 ${
+                          index === selectedGenreIndex ? 'bg-brand-100 dark:bg-brand-900/40' : ''
+                        }`}
+                        disabled={loading}
+                      >
+                        {genre}
+                      </button>
+                    ))}
+                  {filteredGenreOptions.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No genres found</div>
                   )}
-                  className="input-base"
-                  disabled={loading}
-                  {...comboboxInputAria('song-languages-list', languageSearchOpen, selectedLanguageIndex)}
-                />
-                {languageSearchOpen && (
-                    <div ref={languageListRef} id="song-languages-list" role="listbox" className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
-                      {filteredLanguageOptions.map((language, index) => (
-                          <button
-                            key={language}
-                            type="button"
-                            {...comboboxOptionAria('song-languages-list', index, selectedLanguageIndex)}
-                            onMouseEnter={() => setSelectedLanguageIndex(index)}
-                            onClick={() => {
-                              onToggleLanguage(language);
-                              setLanguageSearchQuery('');
-                              setLanguageSearchOpen(false);
-                              setSelectedLanguageIndex(-1);
-                            }}
-                            className={`w-full text-left px-3 py-2 text-gray-700 dark:text-gray-100 ${
-                              index === selectedLanguageIndex ? 'bg-brand-100 dark:bg-brand-900/40' : ''
-                            }`}
-                            disabled={loading}
-                          >
-                            {language}
-                          </button>
-                        ))}
-                      {filteredLanguageOptions.length === 0 && (
-                        <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No languages found</div>
-                      )}
-                    </div>
-                )}
-              </div>
-              {currentLanguages.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {currentLanguages.map(language => (
-                    <RemovableChip key={language} label={language} onRemove={() => onToggleLanguage(language)} disabled={loading} />
-                  ))}
                 </div>
-              )}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="song-duration" className="label-base">Duration (m:ss)</label>
-                <input
-                  id="song-duration"
-                  className={`input-base ${durationError ? 'border-red-500 focus:border-red-500 dark:border-red-500 dark:focus:border-red-500' : ''}`}
-                  name="durationSeconds"
-                  type="text"
-                  inputMode="numeric"
-                  value={durationText}
-                  aria-invalid={durationError ? true : undefined}
-                  aria-describedby={durationError ? 'song-duration-error' : undefined}
-                  onChange={(e) => {
-                    setDurationText(e.target.value);
-                    if (durationError) setDurationError(null);
-                  }}
-                  onBlur={() => {
-                    const trimmed = durationText.trim();
-                    if (trimmed === '') {
-                      // Cleared on purpose — no error, commit "no duration".
-                      setDurationError(null);
-                      setDurationText('');
-                      lastCommittedSeconds.current = null;
-                      onSetDurationSeconds?.(null);
-                      return;
-                    }
-                    const seconds = parseDurationToSeconds(durationText);
-                    if (seconds === null) {
-                      // Keep what the user typed and tell them what's wrong.
-                      setDurationError('Use m:ss (e.g. 3:30) or whole minutes; seconds must be 0–59.');
-                      return;
-                    }
-                    setDurationError(null);
-                    setDurationText(formatSecondsToMmss(seconds)); // canonicalise (3:3 → 3:30)
-                    lastCommittedSeconds.current = seconds;
-                    onSetDurationSeconds?.(seconds);
-                  }}
-                  disabled={loading}
-                />
-                {durationError && (
-                  <p id="song-duration-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{durationError}</p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="song-bpm" className="label-base">BPM</label>
-                <input
-                  id="song-bpm"
-                  className="input-base"
-                  name="bpm"
-                  type="number"
-                  value={form.bpm ?? ''}
-                  onChange={onChange}
-                  min={0}
-                  disabled={loading}
-                />
-              </div>
-              <div>
-                <label htmlFor="song-time-signature" className="label-base">Time Signature</label>
-                <select
-                  id="song-time-signature"
-                  className="input-base"
-                  name="timeSignature"
-                  value={form.timeSignature || ''}
-                  onChange={onChange}
-                  disabled={loading}
-                >
-                  <option value="">Select a time signature</option>
-                  {timeSignatureOptions.map(ts => (
-                    <option key={ts} value={ts}>{ts}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="song-key" className="label-base">Key</label>
-                <select
-                  id="song-key"
-                  className="input-base"
-                  name="key"
-                  value={form.key || ''}
-                  onChange={onChange}
-                  disabled={loading}
-                >
-                  <option value="">Select a key</option>
-                  {keyOptions.map(k => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="song-mode" className="label-base">Mode</label>
-                <select
-                  id="song-mode"
-                  className="input-base"
-                  name="mode"
-                  value={form.mode || ''}
-                  onChange={onChange}
-                  disabled={loading}
-                >
-                  <option value="">Select a mode</option>
-                  {modeOptions.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="song-pitch-standard" className="label-base">Pitch Standard (Hz)</label>
-                <input
-                  id="song-pitch-standard"
-                  className="input-base"
-                  name="pitchStandard"
-                  type="number"
-                  value={form.pitchStandard ?? 440}
-                  onChange={onChange}
-                  min={400}
-                  max={500}
-                  disabled={loading}
-                />
-              </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+          {currentGenres.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {currentGenres.map(genre => (
+                <RemovableChip key={genre} label={genre} onRemove={() => onToggleGenre(genre)} disabled={loading} />
+              ))}
+            </div>
+          )}
+        </div>
+        <div>
+          <label htmlFor="song-album" className="label-base">Album</label>
+          <AutocompleteInput
+            id="song-album"
+            name="album"
+            value={typeof form.album === 'string' ? form.album : ''}
+            onValueChange={(v) => onChange({ target: { name: 'album', value: v } } as React.ChangeEvent<HTMLInputElement>)}
+            suggestions={suggestedAlbums}
+            inputClassName="input-base"
+            wrapperClassName="relative z-[25]"
+            disabled={loading}
+            autoComplete="off"
+          />
+        </div>
+        <div>
+          <label htmlFor="language-search" className="label-base">Languages</label>
+          <div className="relative z-20">
+            <input
+              id="language-search"
+              type="text"
+              placeholder="Search or select a language"
+              value={languageSearchQuery}
+              onChange={(e) => { setLanguageSearchQuery(e.target.value); setSelectedLanguageIndex(-1); }}
+              onFocus={() => setLanguageSearchOpen(true)}
+              onBlur={() => setTimeout(() => setLanguageSearchOpen(false), 200)}
+              onKeyDown={(e) => handleComboKeyDown(
+                e, filteredLanguageOptions, selectedLanguageIndex, setSelectedLanguageIndex, setLanguageSearchOpen,
+                (language) => { onToggleLanguage(language); setLanguageSearchQuery(''); setLanguageSearchOpen(false); setSelectedLanguageIndex(-1); },
+              )}
+              className="input-base"
+              disabled={loading}
+              {...comboboxInputAria('song-languages-list', languageSearchOpen, selectedLanguageIndex)}
+            />
+            {languageSearchOpen && (
+                <div ref={languageListRef} id="song-languages-list" role="listbox" className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg max-h-32 overflow-y-auto">
+                  {filteredLanguageOptions.map((language, index) => (
+                      <button
+                        key={language}
+                        type="button"
+                        {...comboboxOptionAria('song-languages-list', index, selectedLanguageIndex)}
+                        onMouseEnter={() => setSelectedLanguageIndex(index)}
+                        onClick={() => {
+                          onToggleLanguage(language);
+                          setLanguageSearchQuery('');
+                          setLanguageSearchOpen(false);
+                          setSelectedLanguageIndex(-1);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-gray-700 dark:text-gray-100 ${
+                          index === selectedLanguageIndex ? 'bg-brand-100 dark:bg-brand-900/40' : ''
+                        }`}
+                        disabled={loading}
+                      >
+                        {language}
+                      </button>
+                    ))}
+                  {filteredLanguageOptions.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">No languages found</div>
+                  )}
+                </div>
+            )}
+          </div>
+          {currentLanguages.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {currentLanguages.map(language => (
+                <RemovableChip key={language} label={language} onRemove={() => onToggleLanguage(language)} disabled={loading} />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="song-duration" className="label-base">Duration (m:ss)</label>
+            <input
+              id="song-duration"
+              className={`input-base ${durationError ? 'border-red-500 focus:border-red-500 dark:border-red-500 dark:focus:border-red-500' : ''}`}
+              name="durationSeconds"
+              type="text"
+              inputMode="numeric"
+              value={durationText}
+              aria-invalid={durationError ? true : undefined}
+              aria-describedby={durationError ? 'song-duration-error' : undefined}
+              onChange={(e) => {
+                setDurationText(e.target.value);
+                if (durationError) setDurationError(null);
+              }}
+              onBlur={() => {
+                const trimmed = durationText.trim();
+                if (trimmed === '') {
+                  // Cleared on purpose — no error, commit "no duration".
+                  setDurationError(null);
+                  setDurationText('');
+                  lastCommittedSeconds.current = null;
+                  onSetDurationSeconds?.(null);
+                  return;
+                }
+                const seconds = parseDurationToSeconds(durationText);
+                if (seconds === null) {
+                  // Keep what the user typed and tell them what's wrong.
+                  setDurationError('Use m:ss (e.g. 3:30) or whole minutes; seconds must be 0–59.');
+                  return;
+                }
+                setDurationError(null);
+                setDurationText(formatSecondsToMmss(seconds)); // canonicalise (3:3 → 3:30)
+                lastCommittedSeconds.current = seconds;
+                onSetDurationSeconds?.(seconds);
+              }}
+              disabled={loading}
+            />
+            {durationError && (
+              <p id="song-duration-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{durationError}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="song-bpm" className="label-base">BPM</label>
+            <input
+              id="song-bpm"
+              className="input-base"
+              name="bpm"
+              type="number"
+              value={form.bpm ?? ''}
+              onChange={onChange}
+              min={0}
+              disabled={loading}
+            />
+          </div>
+          <div>
+            <label htmlFor="song-time-signature" className="label-base">Time Signature</label>
+            <select
+              id="song-time-signature"
+              className="input-base"
+              name="timeSignature"
+              value={form.timeSignature || ''}
+              onChange={onChange}
+              disabled={loading}
+            >
+              <option value="">Select a time signature</option>
+              {timeSignatureOptions.map(ts => (
+                <option key={ts} value={ts}>{ts}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="song-key" className="label-base">Key</label>
+            <select
+              id="song-key"
+              className="input-base"
+              name="key"
+              value={form.key || ''}
+              onChange={onChange}
+              disabled={loading}
+            >
+              <option value="">Select a key</option>
+              {keyOptions.map(k => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="song-mode" className="label-base">Mode</label>
+            <select
+              id="song-mode"
+              className="input-base"
+              name="mode"
+              value={form.mode || ''}
+              onChange={onChange}
+              disabled={loading}
+            >
+              <option value="">Select a mode</option>
+              {modeOptions.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="song-pitch-standard" className="label-base">Pitch Standard (Hz)</label>
+            <input
+              id="song-pitch-standard"
+              className="input-base"
+              name="pitchStandard"
+              type="number"
+              value={form.pitchStandard ?? 440}
+              onChange={onChange}
+              min={400}
+              max={500}
+              disabled={loading}
+            />
+          </div>
+        </div>
+      </Disclosure>
       <StreamingLinksEditor
         links={form.streamingLinks || []}
         onChange={(links) => onSetStreamingLinks?.(links)}

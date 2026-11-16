@@ -4,6 +4,7 @@ import { instrumentTechniquesMap, instrumentTuningsMap } from '../constants/inst
 import { instrumentLinkError } from '../utils/streamingLinks';
 import { CloseButton } from './CloseButton';
 import { ToggleChip } from './Chip';
+import { Disclosure } from './Disclosure';
 
 interface SongFormInstrumentsProps {
   // Instruments data
@@ -96,251 +97,241 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
         const instrumentTechniques = getAvailableTechniques(instrumentType);
         
         return (
-          <div key={instrumentType} className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700">
-            <div className="flex items-center justify-between">
+          <Disclosure
+            key={instrumentType}
+            className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden divide-y divide-gray-200 dark:divide-gray-700"
+            title={instrumentType}
+            open={isExpanded}
+            onToggle={() => {
+              const next = new Set(expandedInstruments);
+              if (next.has(instrumentType)) {
+                next.delete(instrumentType);
+              } else {
+                next.add(instrumentType);
+              }
+              setExpandedInstruments(next);
+            }}
+            bodyClassName="p-3 space-y-3 bg-gray-50 dark:bg-gray-800"
+            aside={<>
+            {formatLastPlayed && (
+              <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
+              </span>
+            )}
+            {onMarkAsPlayedNow && mode === 'edit' && (
               <button
                 type="button"
-                className="flex-1 flex items-center gap-3 px-3 h-10 hover:bg-gray-50 dark:hover:bg-gray-800 dark:text-gray-100"
-                onClick={() => {
-                  const next = new Set(expandedInstruments);
-                  if (next.has(instrumentType)) {
-                    next.delete(instrumentType);
-                  } else {
-                    next.add(instrumentType);
-                  }
-                  setExpandedInstruments(next);
+                className="btn-primary btn-sm whitespace-nowrap"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMarkAsPlayedNow(instrumentType);
                 }}
-                aria-expanded={isExpanded}
+                disabled={loading}
+                title="Mark this instrument as played"
               >
-                <span className="font-medium">{instrumentType}</span>
+                Mark as played
               </button>
+            )}
+            <CloseButton label={`Remove ${instrumentType}`} onClick={(e) => {
+                e.stopPropagation();
+                onChangeInstruments(currentInstruments.filter(i => i !== instrumentType));
+                const next = new Set(expandedInstruments);
+                next.delete(instrumentType);
+                setExpandedInstruments(next);
+              }} disabled={loading} />
+            </>}
+          >
+            {/* Difficulty */}
+            <div>
+              <label className="label-base">Difficulty</label>
               <div className="flex items-center gap-2">
-                {formatLastPlayed && (
-                  <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                    Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
-                  </span>
-                )}
-                {onMarkAsPlayedNow && mode === 'edit' && (
-                  <button
-                    type="button"
-                    className="btn-primary btn-sm whitespace-nowrap"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMarkAsPlayedNow(instrumentType);
-                    }}
-                    disabled={loading}
-                    title="Mark this instrument as played"
-                  >
-                    Mark as played
-                  </button>
-                )}
-                <CloseButton label={`Remove ${instrumentType}`} onClick={(e) => {
-                    e.stopPropagation();
-                    onChangeInstruments(currentInstruments.filter(i => i !== instrumentType));
-                    const next = new Set(expandedInstruments);
-                    next.delete(instrumentType);
-                    setExpandedInstruments(next);
-                  }} disabled={loading} />
-                <span className="text-gray-600 dark:text-gray-400 px-2">
-                  {isExpanded ? '▾' : '▸'}
-                </span>
+                {[1, 2, 3, 4, 5].map((val) => {
+                  const current = instrumentDifficulty[instrumentType] ?? null;
+                  const hovered = hoveredDifficulty[instrumentType];
+                  const filled = (hovered !== null && hovered !== undefined) ? (val <= hovered) : (current !== null && val <= current);
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      className="text-2xl focus:outline-none disabled:opacity-50"
+                      style={{ color: filled ? '#facc15' : '#d1d5db' }}
+                      onMouseEnter={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: val }))}
+                      onMouseLeave={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: null }))}
+                      onClick={() => {
+                        if (onSetInstrumentDifficulty) {
+                          const newVal = current === val ? null : val;
+                          onSetInstrumentDifficulty(instrumentType, newVal);
+                        }
+                      }}
+                      disabled={loading}
+                      title={`Difficulty ${val}`}
+                    >
+                      ★
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            {isExpanded && (
-              <div className="p-3 space-y-3 bg-gray-50 dark:bg-gray-800">
-                {/* Difficulty */}
-                <div>
-                  <label className="label-base">Difficulty</label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((val) => {
-                      const current = instrumentDifficulty[instrumentType] ?? null;
-                      const hovered = hoveredDifficulty[instrumentType];
-                      const filled = (hovered !== null && hovered !== undefined) ? (val <= hovered) : (current !== null && val <= current);
-                      return (
-                        <button
-                          key={val}
-                          type="button"
-                          className="text-2xl focus:outline-none disabled:opacity-50"
-                          style={{ color: filled ? '#facc15' : '#d1d5db' }}
-                          onMouseEnter={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: val }))}
-                          onMouseLeave={() => setHoveredDifficulty(prev => ({ ...prev, [instrumentType]: null }))}
-                          onClick={() => {
-                            if (onSetInstrumentDifficulty) {
-                              const newVal = current === val ? null : val;
-                              onSetInstrumentDifficulty(instrumentType, newVal);
-                            }
-                          }}
-                          disabled={loading}
-                          title={`Difficulty ${val}`}
-                        >
-                          ★
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {/* Tuning */}
-                {getAvailableTunings(instrumentType).length > 0 && (
-                  <div>
-                    <label className="label-base">Tuning</label>
-                    <select
-                      className="input-base"
-                      aria-label="Tuning"
-                      value={instrumentTuning[instrumentType] || ''}
-                      onChange={(e) => {
-                        if (onSetInstrumentTuning) {
-                          onSetInstrumentTuning(instrumentType, e.target.value || null);
-                        }
-                      }}
-                      disabled={loading}
-                    >
-                      <option value="">Standard tuning</option>
-                      {getAvailableTunings(instrumentType).map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+            {/* Tuning */}
+            {getAvailableTunings(instrumentType).length > 0 && (
+              <div>
+                <label className="label-base">Tuning</label>
+                <select
+                  className="input-base"
+                  aria-label="Tuning"
+                  value={instrumentTuning[instrumentType] || ''}
+                  onChange={(e) => {
+                    if (onSetInstrumentTuning) {
+                      onSetInstrumentTuning(instrumentType, e.target.value || null);
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <option value="">Standard tuning</option>
+                  {getAvailableTunings(instrumentType).map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-                {/* Capo (Guitar only) */}
-                {instrumentType === 'Guitar' && (
-                  <div>
-                    <div className="label-base">Capo</div>
-                    <input
-                      className="input-base"
-                      type="number"
-                      min={1}
-                      max={12}
-                      step={1}
-                      value={capo ?? ''}
-                      onChange={(e) => {
-                        if (onSetCapo) {
-                          onSetCapo(e.target.value === '' ? null : Number(e.target.value));
-                        }
-                      }}
-                      disabled={loading}
-                    />
-                  </div>
-                )}
+            {/* Capo (Guitar only) */}
+            {instrumentType === 'Guitar' && (
+              <div>
+                <div className="label-base">Capo</div>
+                <input
+                  className="input-base"
+                  type="number"
+                  min={1}
+                  max={12}
+                  step={1}
+                  value={capo ?? ''}
+                  onChange={(e) => {
+                    if (onSetCapo) {
+                      onSetCapo(e.target.value === '' ? null : Number(e.target.value));
+                    }
+                  }}
+                  disabled={loading}
+                />
+              </div>
+            )}
 
-                {/* My Instrument */}
-                {filteredMyInstruments.length > 0 && (
-                  <div>
-                    <label className="label-base">My Instrument</label>
-                    <select
-                      className="input-base"
-                      value={myInstrumentUid || ''}
-                      onChange={(e) => onSetMyInstrumentUid(e.target.value || undefined)}
-                      disabled={loading}
-                    >
-                      <option value="">Select one of my instruments</option>
-                      {filteredMyInstruments.map((mi) => (
-                        <option key={mi.uid} value={mi.uid}>{mi.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+            {/* My Instrument */}
+            {filteredMyInstruments.length > 0 && (
+              <div>
+                <label className="label-base">My Instrument</label>
+                <select
+                  className="input-base"
+                  value={myInstrumentUid || ''}
+                  onChange={(e) => onSetMyInstrumentUid(e.target.value || undefined)}
+                  disabled={loading}
+                >
+                  <option value="">Select one of my instruments</option>
+                  {filteredMyInstruments.map((mi) => (
+                    <option key={mi.uid} value={mi.uid}>{mi.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-                {/* Techniques */}
-                {instrumentTechniques.length > 0 && (
-                  <div>
-                    <label className="label-base">Techniques</label>
-                    <div className="flex flex-wrap gap-2">
-                      {instrumentTechniques.map((tech) => {
-                        const selected = currentTechniques.includes(tech);
-                        return (
-                          <ToggleChip key={tech} pressed={selected} onToggle={() => onToggleTechnique(tech)} disabled={loading} title={tech}>
-                            {tech}
-                          </ToggleChip>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Instrument Links */}
-                <div>
-                  <label className="label-base">Links for {instrumentType}</label>
-                  {(instrumentLinks?.[instrumentType]?.length ?? 0) > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {(instrumentLinks?.[instrumentType] || []).map((link, idx) => (
-                        <div
-                          key={`${link.url}-${idx}`}
-                          className="inline-flex items-center gap-2 rounded-md bg-gray-200 dark:bg-gray-700 px-3 py-1 text-sm text-gray-800 dark:text-gray-100"
-                        >
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline truncate max-w-[12rem]"
-                          >
-                            {link.label || link.url}
-                          </a>
-                          <CloseButton label="Remove link" onClick={() => {
-                              const currentLinks = instrumentLinks?.[instrumentType] ?? [];
-                              const nextLinks = currentLinks.filter((_, i) => i !== idx);
-                              if (onSetInstrumentLinksForInstrument) {
-                                onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
-                              }
-                            }} disabled={loading} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <input
-                      className="input-base"
-                      type="text"
-                      placeholder="Label (optional)"
-                      value={(newLinkInputs[instrumentType]?.label) || ''}
-                      onChange={(e) => { setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), label: e.target.value } })); setLinkErrors(prev => ({ ...prev, [instrumentType]: null })); }}
-                      disabled={loading}
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        className="input-base flex-1"
-                        type="url"
-                        placeholder="https://example.com"
-                        value={(newLinkInputs[instrumentType]?.url) || ''}
-                        onChange={(e) => { setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), url: e.target.value } })); setLinkErrors(prev => ({ ...prev, [instrumentType]: null })); }}
-                        disabled={loading}
-                      />
-                      <button
-                        type="button"
-                        className="btn-primary btn-sm"
-                        onClick={() => {
-                          const val = newLinkInputs[instrumentType] || { label: '', url: '' };
-                          const url = (val.url || '').trim();
-                          if (!url) return;
-                          const label = (val.label || '').trim();
-                          const currentLinks = instrumentLinks?.[instrumentType] ?? [];
-                          const problem = instrumentLinkError(url, label, currentLinks.length);
-                          if (problem) {
-                            setLinkErrors(prev => ({ ...prev, [instrumentType]: problem }));
-                            return;
-                          }
-                          setLinkErrors(prev => ({ ...prev, [instrumentType]: null }));
-                          const nextLinks = [...currentLinks, { url, label: label || undefined }];
-                          if (onSetInstrumentLinksForInstrument) {
-                            onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
-                          }
-                          setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { label: '', url: '' } }));
-                        }}
-                        disabled={loading}
-                      >
-                        Add link
-                      </button>
-                    </div>
-                    {linkErrors[instrumentType] && (
-                      <p role="alert" className="text-sm text-red-600 dark:text-red-400">{linkErrors[instrumentType]}</p>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Add resources for this instrument (videos, tabs, lessons).</p>
-                  </div>
+            {/* Techniques */}
+            {instrumentTechniques.length > 0 && (
+              <div>
+                <label className="label-base">Techniques</label>
+                <div className="flex flex-wrap gap-2">
+                  {instrumentTechniques.map((tech) => {
+                    const selected = currentTechniques.includes(tech);
+                    return (
+                      <ToggleChip key={tech} pressed={selected} onToggle={() => onToggleTechnique(tech)} disabled={loading} title={tech}>
+                        {tech}
+                      </ToggleChip>
+                    );
+                  })}
                 </div>
               </div>
             )}
-          </div>
+
+            {/* Instrument Links */}
+            <div>
+              <label className="label-base">Links for {instrumentType}</label>
+              {(instrumentLinks?.[instrumentType]?.length ?? 0) > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {(instrumentLinks?.[instrumentType] || []).map((link, idx) => (
+                    <div
+                      key={`${link.url}-${idx}`}
+                      className="inline-flex items-center gap-2 rounded-md bg-gray-200 dark:bg-gray-700 px-3 py-1 text-sm text-gray-800 dark:text-gray-100"
+                    >
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline truncate max-w-[12rem]"
+                      >
+                        {link.label || link.url}
+                      </a>
+                      <CloseButton label="Remove link" onClick={() => {
+                          const currentLinks = instrumentLinks?.[instrumentType] ?? [];
+                          const nextLinks = currentLinks.filter((_, i) => i !== idx);
+                          if (onSetInstrumentLinksForInstrument) {
+                            onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
+                          }
+                        }} disabled={loading} />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="space-y-2">
+                <input
+                  className="input-base"
+                  type="text"
+                  placeholder="Label (optional)"
+                  value={(newLinkInputs[instrumentType]?.label) || ''}
+                  onChange={(e) => { setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), label: e.target.value } })); setLinkErrors(prev => ({ ...prev, [instrumentType]: null })); }}
+                  disabled={loading}
+                />
+                <div className="flex gap-2">
+                  <input
+                    className="input-base flex-1"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={(newLinkInputs[instrumentType]?.url) || ''}
+                    onChange={(e) => { setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { ...(prev[instrumentType] || { label: '', url: '' }), url: e.target.value } })); setLinkErrors(prev => ({ ...prev, [instrumentType]: null })); }}
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    onClick={() => {
+                      const val = newLinkInputs[instrumentType] || { label: '', url: '' };
+                      const url = (val.url || '').trim();
+                      if (!url) return;
+                      const label = (val.label || '').trim();
+                      const currentLinks = instrumentLinks?.[instrumentType] ?? [];
+                      const problem = instrumentLinkError(url, label, currentLinks.length);
+                      if (problem) {
+                        setLinkErrors(prev => ({ ...prev, [instrumentType]: problem }));
+                        return;
+                      }
+                      setLinkErrors(prev => ({ ...prev, [instrumentType]: null }));
+                      const nextLinks = [...currentLinks, { url, label: label || undefined }];
+                      if (onSetInstrumentLinksForInstrument) {
+                        onSetInstrumentLinksForInstrument(instrumentType, nextLinks);
+                      }
+                      setNewLinkInputs(prev => ({ ...prev, [instrumentType]: { label: '', url: '' } }));
+                    }}
+                    disabled={loading}
+                  >
+                    Add link
+                  </button>
+                </div>
+                {linkErrors[instrumentType] && (
+                  <p role="alert" className="text-sm text-red-600 dark:text-red-400">{linkErrors[instrumentType]}</p>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400">Add resources for this instrument (videos, tabs, lessons).</p>
+              </div>
+            </div>
+          </Disclosure>
         );
       })}
     </div>
