@@ -1,4 +1,5 @@
 import { NO_INSTRUMENT } from '../utils/songFilters';
+import { Disclosure } from './Disclosure';
 
 export interface SongsSidebarProps {
   // UI state
@@ -135,208 +136,168 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               «
             </button>
           </div>
-          <div className="card-base">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.filtersAccordionOpen}
-              onClick={() => props.setFiltersAccordionOpen(!props.filtersAccordionOpen)}
-            >
-              <span>Instrument filters</span>
-              <span className="text-xl">{props.filtersAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.filtersAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                <div>
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Song's instrument</div>
-                  <select
-                    value={props.instrumentFilter}
-                    onChange={(e) => props.setInstrumentFilter(e.target.value)}
-                    className="input-base text-sm"
-                  >
-                    <option value="">All instruments</option>
-                    <option value={NO_INSTRUMENT}>No instrument</option>
-                    {props.instrumentTypeOptions.map(inst => (
-                      <option key={inst} value={inst}>{inst}</option>
-                    ))}
-                  </select>
-                </div>
+          <Disclosure
+            className="card-base"
+            title="Instrument filters"
+            open={props.filtersAccordionOpen}
+            onToggle={() => props.setFiltersAccordionOpen(!props.filtersAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3"
+          >
+              <div>
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Song's instrument</div>
+                <select
+                  value={props.instrumentFilter}
+                  onChange={(e) => props.setInstrumentFilter(e.target.value)}
+                  className="input-base text-sm"
+                >
+                  <option value="">All instruments</option>
+                  <option value={NO_INSTRUMENT}>No instrument</option>
+                  {props.instrumentTypeOptions.map(inst => (
+                    <option key={inst} value={inst}>{inst}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div>
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">My instrument</div>
-                  <select
-                    value={props.myInstrumentFilter}
-                    onChange={(e) => props.setMyInstrumentFilter(e.target.value)}
-                    className="input-base text-sm"
-                  >
-                    <option value="">All my instruments</option>
-                    {props.myInstruments.map(mi => (
-                      <option key={mi.uid} value={mi.uid}>{mi.type ? `${mi.type} - ${mi.name}` : mi.name}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">My instrument</div>
+                <select
+                  value={props.myInstrumentFilter}
+                  onChange={(e) => props.setMyInstrumentFilter(e.target.value)}
+                  className="input-base text-sm"
+                >
+                  <option value="">All my instruments</option>
+                  {props.myInstruments.map(mi => (
+                    <option key={mi.uid} value={mi.uid}>{mi.type ? `${mi.type} - ${mi.name}` : mi.name}</option>
+                  ))}
+                </select>
+              </div>
 
-                <div className="pt-2">
+              <div className="pt-2">
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => {
+                    props.setInstrumentFilter('');
+                    props.setMyInstrumentFilter('');
+                    props.setInstrumentDifficultyFilter('');
+                  }}
+                >
+                  Clear filters
+                </button>
+              </div>
+          </Disclosure>
+          <Disclosure
+            className="card-base mt-3"
+            title="Playlist filters"
+            open={props.playlistAccordionOpen}
+            onToggle={() => props.setPlaylistAccordionOpen(!props.playlistAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3"
+          >
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by playlist</div>
+              <select
+                className="input-base text-sm"
+                value={props.playlistFilter}
+                onChange={e => props.setPlaylistFilter(e.target.value)}
+              >
+                <option value="">All playlists</option>
+                {props.playlists.map(playlist => (
+                  <option key={playlist.uid} value={playlist.uid}>{playlist.name}</option>
+                ))}
+              </select>
+              {props.playlistFilter && (
+                <div className="pt-1">
                   <button
                     type="button"
                     className="btn-secondary btn-sm"
-                    onClick={() => {
-                      props.setInstrumentFilter('');
-                      props.setMyInstrumentFilter('');
-                      props.setInstrumentDifficultyFilter('');
-                    }}
+                    onClick={() => props.setPlaylistFilter('')}
                   >
-                    Clear filters
+                    Clear filter
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.playlistAccordionOpen}
-              onClick={() => props.setPlaylistAccordionOpen(!props.playlistAccordionOpen)}
-            >
-              <span>Playlist filters</span>
-              <span className="text-xl">{props.playlistAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.playlistAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by playlist</div>
-                <select
-                  className="input-base text-sm"
-                  value={props.playlistFilter}
-                  onChange={e => props.setPlaylistFilter(e.target.value)}
-                >
-                  <option value="">All playlists</option>
-                  {props.playlists.map(playlist => (
-                    <option key={playlist.uid} value={playlist.uid}>{playlist.name}</option>
-                  ))}
-                </select>
-                {props.playlistFilter && (
-                  <div className="pt-1">
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => props.setPlaylistFilter('')}
-                    >
-                      Clear filter
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+          </Disclosure>
 
           {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
-            <div className="card-base mt-3">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-                aria-expanded={props.difficultyAccordionOpen}
-                onClick={() => props.setDifficultyAccordionOpen(!props.difficultyAccordionOpen)}
-              >
-                <span>Difficulty filter</span>
-                <span className="text-xl">{props.difficultyAccordionOpen ? '▾' : '▴'}</span>
-              </button>
-              {props.difficultyAccordionOpen && (
-                <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
-                  <select
-                    value={props.instrumentDifficultyFilter === '' ? '' : props.instrumentDifficultyFilter}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      props.setInstrumentDifficultyFilter(val as number | '');
-                    }}
-                    className="input-base text-sm"
-                  >
-                    <option value="">All difficulties</option>
-                    {[1,2,3,4,5].map(n => (
-                      <option key={n} value={n}>{`Up to ${n} ★`}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            <Disclosure
+              className="card-base mt-3"
+              title="Difficulty filter"
+              open={props.difficultyAccordionOpen}
+              onToggle={() => props.setDifficultyAccordionOpen(!props.difficultyAccordionOpen)}
+              bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+            >
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by difficulty (max)</div>
+                <select
+                  value={props.instrumentDifficultyFilter === '' ? '' : props.instrumentDifficultyFilter}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    props.setInstrumentDifficultyFilter(val as number | '');
+                  }}
+                  className="input-base text-sm"
+                >
+                  <option value="">All difficulties</option>
+                  {[1,2,3,4,5].map(n => (
+                    <option key={n} value={n}>{`Up to ${n} ★`}</option>
+                  ))}
+                </select>
+            </Disclosure>
           )}
           {props.instrumentFilter === 'Guitar' && (
-            <div className="card-base mt-3">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-                aria-expanded={props.capoAccordionOpen}
-                onClick={() => props.setCapoAccordionOpen(!props.capoAccordionOpen)}
-              >
-                <span>Capo filter</span>
-                <span className="text-xl">{props.capoAccordionOpen ? '▾' : '▴'}</span>
-              </button>
-              {props.capoAccordionOpen && (
-                <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by capo</div>
-                  <select
-                    value={props.capoFilter === '' ? '' : props.capoFilter}
-                    onChange={(e) => {
-                      const val = e.target.value === '' ? '' : Number(e.target.value);
-                      props.setCapoFilter(val as number | '');
-                    }}
-                    className="input-base text-sm"
-                  >
-                    <option value="">All capo positions</option>
-                    {Array.from({ length: 12 }, (_, idx) => idx + 1).map(n => (
-                      <option key={n} value={n}>{`Capo ${n}`}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            <Disclosure
+              className="card-base mt-3"
+              title="Capo filter"
+              open={props.capoAccordionOpen}
+              onToggle={() => props.setCapoAccordionOpen(!props.capoAccordionOpen)}
+              bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+            >
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by capo</div>
+                <select
+                  value={props.capoFilter === '' ? '' : props.capoFilter}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    props.setCapoFilter(val as number | '');
+                  }}
+                  className="input-base text-sm"
+                >
+                  <option value="">All capo positions</option>
+                  {Array.from({ length: 12 }, (_, idx) => idx + 1).map(n => (
+                    <option key={n} value={n}>{`Capo ${n}`}</option>
+                  ))}
+                </select>
+            </Disclosure>
           )}
           {props.showTuningFilters && (
-            <div className="card-base mt-3">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-                aria-expanded={props.tuningAccordionOpen}
-                onClick={() => props.setTuningAccordionOpen(!props.tuningAccordionOpen)}
-              >
-                <span>Tuning filters</span>
-                <span className="text-xl">{props.tuningAccordionOpen ? '▾' : '▴'}</span>
-              </button>
-              {props.tuningAccordionOpen && (
-                <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
-                  {props.tuningFilterOptions.length === 0 ? (
-                    <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {props.instrumentFilter}.</p>
-                  ) : (
-                    <select
-                      className="input-base text-sm"
-                      value={props.tuningFilter}
-                      onChange={e => props.setTuningFilter(e.target.value)}
-                    >
-                      <option value="">All tunings</option>
-                      {props.tuningFilterOptions.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-            </div>
+            <Disclosure
+              className="card-base mt-3"
+              title="Tuning filters"
+              open={props.tuningAccordionOpen}
+              onToggle={() => props.setTuningAccordionOpen(!props.tuningAccordionOpen)}
+              bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+            >
+                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by tuning</div>
+                {props.tuningFilterOptions.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">No tunings available for {props.instrumentFilter}.</p>
+                ) : (
+                  <select
+                    className="input-base text-sm"
+                    value={props.tuningFilter}
+                    onChange={e => props.setTuningFilter(e.target.value)}
+                  >
+                    <option value="">All tunings</option>
+                    {props.tuningFilterOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                )}
+            </Disclosure>
           )}
           {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
-            <div className="card-base mt-3">
-              <button
-                type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-                aria-expanded={props.techniqueAccordionOpen}
-                onClick={() => props.setTechniqueAccordionOpen(!props.techniqueAccordionOpen)}
-              >
-                <span>Technique filters</span>
-                <span className="text-xl">{props.techniqueAccordionOpen ? '▾' : '▴'}</span>
-              </button>
-              {props.techniqueAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+            <Disclosure
+              className="card-base mt-3"
+              title="Technique filters"
+              open={props.techniqueAccordionOpen}
+              onToggle={() => props.setTechniqueAccordionOpen(!props.techniqueAccordionOpen)}
+              bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+            >
                 <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by technique</div>
                 {props.availableTechniqueFilters.length === 0 ? (
                   <p className="text-sm text-gray-600 dark:text-gray-400">No techniques available for {props.instrumentFilter}.</p>
@@ -393,281 +354,239 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                     </div>
                   </>
                 )}
-              </div>
-              )}
-            </div>
+            </Disclosure>
           )}
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.genreAccordionOpen}
-              onClick={() => props.setGenreAccordionOpen(!props.genreAccordionOpen)}
-            >
-              <span>Genre filters</span>
-              <span className="text-xl">{props.genreAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.genreAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                {props.genreOptions.length === 0 ? (
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    No genres available in the songs
+          <Disclosure
+            className="card-base mt-3"
+            title="Genre filters"
+            open={props.genreAccordionOpen}
+            onToggle={() => props.setGenreAccordionOpen(!props.genreAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+          >
+              {props.genreOptions.length === 0 ? (
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  No genres available in the songs
+                </div>
+              ) : (
+                <>
+                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by genre</div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {props.genreOptions.map(genre => (
+                      <label key={genre} className="inline-flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
+                          checked={props.genreFilters.has(genre)}
+                          onChange={() => props.toggleGenreFilter(genre)}
+                        />
+                        <span className="truncate">{genre}</span>
+                      </label>
+                    ))}
                   </div>
-                ) : (
-                  <>
-                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by genre</div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {props.genreOptions.map(genre => (
-                        <label key={genre} className="inline-flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
-                            checked={props.genreFilters.has(genre)}
-                            onChange={() => props.toggleGenreFilter(genre)}
-                          />
-                          <span className="truncate">{genre}</span>
-                        </label>
-                      ))}
+                  <div className="mt-3">
+                    <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                        <input
+                          type="radio"
+                          name="genre-match-mode"
+                          value="all"
+                          className="h-3 w-3"
+                          checked={props.genreMatchMode === 'all'}
+                          onChange={() => props.setGenreMatchMode('all')}
+                        />
+                        <span>All</span>
+                      </label>
+                      <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
+                        <input
+                          type="radio"
+                          name="genre-match-mode"
+                          value="any"
+                          className="h-3 w-3"
+                          checked={props.genreMatchMode === 'any'}
+                          onChange={() => props.setGenreMatchMode('any')}
+                        />
+                        <span>Any</span>
+                      </label>
                     </div>
-                    <div className="mt-3">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">Match mode</div>
-                      <div className="flex items-center gap-3">
-                        <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                          <input
-                            type="radio"
-                            name="genre-match-mode"
-                            value="all"
-                            className="h-3 w-3"
-                            checked={props.genreMatchMode === 'all'}
-                            onChange={() => props.setGenreMatchMode('all')}
-                          />
-                          <span>All</span>
-                        </label>
-                        <label className="inline-flex items-center gap-1 text-xs cursor-pointer">
-                          <input
-                            type="radio"
-                            name="genre-match-mode"
-                            value="any"
-                            className="h-3 w-3"
-                            checked={props.genreMatchMode === 'any'}
-                            onChange={() => props.setGenreMatchMode('any')}
-                          />
-                          <span>Any</span>
-                        </label>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        className="btn-secondary btn-sm"
-                        onClick={() => props.toggleGenreFilter('')}
-                      >
-                        Clear filters
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm"
+                      onClick={() => props.toggleGenreFilter('')}
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                </>
+              )}
+          </Disclosure>
           
           {/* Language filter */}
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.languageAccordionOpen}
-              onClick={() => props.setLanguageAccordionOpen(!props.languageAccordionOpen)}
-            >
-              <span>
-                Filter by language
-                {props.languageFilters.size > 0 && (
-                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
-                    ({props.languageFilters.size} selected)
-                  </span>
-                )}
-              </span>
-              <span className="text-xl">{props.languageAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.languageAccordionOpen && (
-              <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
-                {props.languageFilterOptions.length === 0 ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">No languages available</p>
-                ) : (
-                  <>
-                    <div className="space-y-2">
-                      {props.languageFilterOptions.map(language => (
-                        <label key={language} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded motion-safe:transition">
+          <Disclosure
+            className="card-base mt-3"
+            title={<>
+              Filter by language
+              {props.languageFilters.size > 0 && (
+                <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                  ({props.languageFilters.size} selected)
+                </span>
+              )}
+            </>}
+            open={props.languageAccordionOpen}
+            onToggle={() => props.setLanguageAccordionOpen(!props.languageAccordionOpen)}
+            bodyClassName="p-4 space-y-2 max-h-80 overflow-y-auto"
+          >
+              {props.languageFilterOptions.length === 0 ? (
+                <p className="text-xs text-gray-500 dark:text-gray-400">No languages available</p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    {props.languageFilterOptions.map(language => (
+                      <label key={language} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded motion-safe:transition">
+                        <input
+                          type="checkbox"
+                          checked={props.languageFilters.has(language)}
+                          onChange={() => props.toggleLanguageFilter(language)}
+                          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
+                        />
+                        <span className="text-gray-700 dark:text-gray-300">{language}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {props.languageFilters.size > 1 && (
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Match mode:</div>
+                      <div className="flex gap-3">
+                        <label className="flex items-center gap-1 text-sm cursor-pointer">
                           <input
-                            type="checkbox"
-                            checked={props.languageFilters.has(language)}
-                            onChange={() => props.toggleLanguageFilter(language)}
-                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
+                            type="radio"
+                            name="languageMatchMode"
+                            value="any"
+                            checked={props.languageMatchMode === 'any'}
+                            onChange={() => props.setLanguageMatchMode('any')}
+                            className="w-3 h-3 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
                           />
-                          <span className="text-gray-700 dark:text-gray-300">{language}</span>
+                          <span className="text-gray-700 dark:text-gray-300">Any</span>
                         </label>
-                      ))}
-                    </div>
-                    {props.languageFilters.size > 1 && (
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Match mode:</div>
-                        <div className="flex gap-3">
-                          <label className="flex items-center gap-1 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name="languageMatchMode"
-                              value="any"
-                              checked={props.languageMatchMode === 'any'}
-                              onChange={() => props.setLanguageMatchMode('any')}
-                              className="w-3 h-3 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
-                            />
-                            <span className="text-gray-700 dark:text-gray-300">Any</span>
-                          </label>
-                          <label className="flex items-center gap-1 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name="languageMatchMode"
-                              value="all"
-                              checked={props.languageMatchMode === 'all'}
-                              onChange={() => props.setLanguageMatchMode('all')}
-                              className="w-3 h-3 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
-                            />
-                            <span className="text-gray-700 dark:text-gray-300">All</span>
-                          </label>
-                        </div>
+                        <label className="flex items-center gap-1 text-sm cursor-pointer">
+                          <input
+                            type="radio"
+                            name="languageMatchMode"
+                            value="all"
+                            checked={props.languageMatchMode === 'all'}
+                            onChange={() => props.setLanguageMatchMode('all')}
+                            className="w-3 h-3 text-blue-600 focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 accent-blue-600"
+                          />
+                          <span className="text-gray-700 dark:text-gray-300">All</span>
+                        </label>
                       </div>
-                    )}
-                  </>
-                )}
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    className="btn-secondary btn-sm"
-                    onClick={() => props.toggleLanguageFilter('')}
-                  >
-                    Clear filters
-                  </button>
-                </div>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={() => props.toggleLanguageFilter('')}
+                >
+                  Clear filters
+                </button>
               </div>
-            )}
-          </div>
+          </Disclosure>
 
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.keyAccordionOpen}
-              onClick={() => props.setKeyAccordionOpen(!props.keyAccordionOpen)}
-            >
-              <span>Key filters</span>
-              <span className="text-xl">{props.keyAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.keyAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by key</div>
-                <select
-                  className="input-base text-sm"
-                  value={props.keyFilter}
-                  onChange={e => props.setKeyFilter(e.target.value)}
-                >
-                  <option value="">All keys</option>
-                  <option value="C">C</option>
-                  <option value="C#">C#</option>
-                  <option value="Db">Db</option>
-                  <option value="D">D</option>
-                  <option value="Eb">Eb</option>
-                  <option value="E">E</option>
-                  <option value="F">F</option>
-                  <option value="F#">F#</option>
-                  <option value="Gb">Gb</option>
-                  <option value="G">G</option>
-                  <option value="Ab">Ab</option>
-                  <option value="A">A</option>
-                  <option value="Bb">Bb</option>
-                  <option value="B">B</option>
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.modeAccordionOpen}
-              onClick={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
-            >
-              <span>Mode filters</span>
-              <span className="text-xl">{props.modeAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.modeAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by mode</div>
-                <select
-                  className="input-base text-sm"
-                  value={props.modeFilter}
-                  onChange={e => props.setModeFilter(e.target.value)}
-                >
-                  <option value="">All modes</option>
-                  <option value="Major">Major</option>
-                  <option value="Minor">Minor</option>
-                  <option value="Dorian">Dorian</option>
-                  <option value="Phrygian">Phrygian</option>
-                  <option value="Lydian">Lydian</option>
-                  <option value="Mixolydian">Mixolydian</option>
-                  <option value="Aeolian">Aeolian</option>
-                  <option value="Locrian">Locrian</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.timeSignatureAccordionOpen}
-              onClick={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
-            >
-              <span>Time signature filters</span>
-              <span className="text-xl">{props.timeSignatureAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.timeSignatureAccordionOpen && (
-              <div className="p-4 border-t border-gray-100 dark:border-gray-700">
-                <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by time signature</div>
-                <select
-                  className="input-base text-sm"
-                  value={props.timeSignatureFilter}
-                  onChange={e => props.setTimeSignatureFilter(e.target.value)}
-                >
-                  <option value="">All time signatures</option>
-                  <option value="2/4">2/4</option>
-                  <option value="3/4">3/4</option>
-                  <option value="4/4">4/4</option>
-                  <option value="5/4">5/4</option>
-                  <option value="6/8">6/8</option>
-                  <option value="7/8">7/8</option>
-                  <option value="9/8">9/8</option>
-                  <option value="12/8">12/8</option>
-                  <option value="5/8">5/8</option>
-                  <option value="7/4">7/4</option>
-                  <option value="3/8">3/8</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="card-base mt-3">
-            <button
-              type="button"
-                className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.bpmAccordionOpen}
-              onClick={() => props.setBpmAccordionOpen(!props.bpmAccordionOpen)}
-            >
-              <span>BPM filters</span>
-              <span className="text-xl">{props.bpmAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.bpmAccordionOpen && (
-            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+          <Disclosure
+            className="card-base mt-3"
+            title="Key filters"
+            open={props.keyAccordionOpen}
+            onToggle={() => props.setKeyAccordionOpen(!props.keyAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+          >
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by key</div>
+              <select
+                className="input-base text-sm"
+                value={props.keyFilter}
+                onChange={e => props.setKeyFilter(e.target.value)}
+              >
+                <option value="">All keys</option>
+                <option value="C">C</option>
+                <option value="C#">C#</option>
+                <option value="Db">Db</option>
+                <option value="D">D</option>
+                <option value="Eb">Eb</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="F#">F#</option>
+                <option value="Gb">Gb</option>
+                <option value="G">G</option>
+                <option value="Ab">Ab</option>
+                <option value="A">A</option>
+                <option value="Bb">Bb</option>
+                <option value="B">B</option>
+              </select>
+          </Disclosure>
+          <Disclosure
+            className="card-base mt-3"
+            title="Mode filters"
+            open={props.modeAccordionOpen}
+            onToggle={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+          >
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by mode</div>
+              <select
+                className="input-base text-sm"
+                value={props.modeFilter}
+                onChange={e => props.setModeFilter(e.target.value)}
+              >
+                <option value="">All modes</option>
+                <option value="Major">Major</option>
+                <option value="Minor">Minor</option>
+                <option value="Dorian">Dorian</option>
+                <option value="Phrygian">Phrygian</option>
+                <option value="Lydian">Lydian</option>
+                <option value="Mixolydian">Mixolydian</option>
+                <option value="Aeolian">Aeolian</option>
+                <option value="Locrian">Locrian</option>
+                <option value="Other">Other</option>
+              </select>
+          </Disclosure>
+          <Disclosure
+            className="card-base mt-3"
+            title="Time signature filters"
+            open={props.timeSignatureAccordionOpen}
+            onToggle={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+          >
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by time signature</div>
+              <select
+                className="input-base text-sm"
+                value={props.timeSignatureFilter}
+                onChange={e => props.setTimeSignatureFilter(e.target.value)}
+              >
+                <option value="">All time signatures</option>
+                <option value="2/4">2/4</option>
+                <option value="3/4">3/4</option>
+                <option value="4/4">4/4</option>
+                <option value="5/4">5/4</option>
+                <option value="6/8">6/8</option>
+                <option value="7/8">7/8</option>
+                <option value="9/8">9/8</option>
+                <option value="12/8">12/8</option>
+                <option value="5/8">5/8</option>
+                <option value="7/4">7/4</option>
+                <option value="3/8">3/8</option>
+                <option value="Other">Other</option>
+              </select>
+          </Disclosure>
+          <Disclosure
+            className="card-base mt-3"
+            title="BPM filters"
+            open={props.bpmAccordionOpen}
+            onToggle={() => props.setBpmAccordionOpen(!props.bpmAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+          >
               <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by BPM</div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -695,21 +614,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                   />
                 </div>
               </div>
-            </div>
-            )}
-          </div>
-          <div className="card-base mt-3">
-            <button
-              type="button"
-              className="w-full flex items-center justify-between p-3 text-sm font-semibold text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-t-md motion-safe:transition-colors shadow-sm"
-              aria-expanded={props.pitchAccordionOpen}
-              onClick={() => props.setPitchAccordionOpen(!props.pitchAccordionOpen)}
-            >
-              <span>Pitch standard filters</span>
-              <span className="text-xl">{props.pitchAccordionOpen ? '▾' : '▴'}</span>
-            </button>
-            {props.pitchAccordionOpen && (
-            <div className="p-4 border-t border-gray-100 dark:border-gray-700">
+          </Disclosure>
+          <Disclosure
+            className="card-base mt-3"
+            title="Pitch standard filters"
+            open={props.pitchAccordionOpen}
+            onToggle={() => props.setPitchAccordionOpen(!props.pitchAccordionOpen)}
+            bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
+          >
               <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Filter by pitch standard (Hz)</div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -739,9 +651,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                   />
                 </div>
               </div>
-            </div>
-            )}
-          </div>
+          </Disclosure>
         </div>
     </aside>
   );
