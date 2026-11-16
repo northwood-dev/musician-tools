@@ -29,6 +29,7 @@ import { ErrorBanner } from '../components/ErrorBanner';
 import { Notice } from '../components/Notice';
 import { Page, PageTitle } from '../components/Page';
 import { RemovableChip } from '../components/Chip';
+import { withSongIfAbsent } from '../hooks/useSonglistMatcher';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -69,6 +70,9 @@ function Songs() {
   // Story 13.1: serialization of the form as last loaded/saved, used to skip
   // redundant auto-saves (compared form-to-form, so it's stable). null = not editing.
   const [editBaselineJson, setEditBaselineJson] = useState<string | null>(null);
+  // #192: in add mode, the form as opened when it was prefilled (null = blank add form).
+  // Auto-create waits until the form differs from it.
+  const [addBaselineJson, setAddBaselineJson] = useState<string | null>(null);
   // Story 13.1: ambient auto-save status shown next to the title while editing.
   // Story 17.2: 'conflict' = a duplicate (title+artist) blocked the write (client
   // guard or a server 409) — distinct from 'error' (a retryable network/500 failure).
@@ -830,10 +834,15 @@ function Songs() {
   // UNLESS the form already represents it (loadedFormUidRef) — so an auto-create
   // navigate('/songs/:uid') doesn't reload & clobber the just-typed form.
   useEffect(() => {
-    if (page === 'list') { loadedFormUidRef.current = undefined; setNotFound(false); setFormReady(false); deletingRef.current = false; return; }
+    if (page === 'list') { loadedFormUidRef.current = undefined; setNotFound(false); setFormReady(false); deletingRef.current = false; setAddBaselineJson(null); return; }
     if (isNewSongRoute) {
       if (loadedFormUidRef.current !== '__new__') {
-        setForm(initialSong);
+        // #192: a title prefilled from an empty search isn't a user edit — it becomes the
+        // add baseline, so nothing is auto-created until the user changes something.
+        const prefillTitle = (location.state as { prefillTitle?: string } | null)?.prefillTitle?.trim();
+        const start = prefillTitle ? { ...initialSong, title: prefillTitle } : initialSong;
+        setForm(start);
+        setAddBaselineJson(prefillTitle ? JSON.stringify(start) : null);
         setEditBaselineJson(null);
         setSaveStatus('idle');
         setLastSavedAt(null);
@@ -1035,16 +1044,16 @@ function Songs() {
     form,
     editingUid,
     baseline: editBaselineJson,
-    deps: [form, editingUid, editBaselineJson],
+    deps: [form, editingUid, editBaselineJson, addBaselineJson],
     minVisibleMs: 500, // keep "Saving…" perceptible even on an instant (local) save
     unmount: 'flush', // add mode CAN create on unmount (quitter = garder — the created song is kept)
     scheduleWhen: () =>
       editingUid === null
-        ? !!form.title?.trim() // add: nothing to create until a (trimmed) title
+        ? !!form.title?.trim() && (addBaselineJson === null || JSON.stringify(form) !== addBaselineJson) // add: a title, and (if prefilled) a user change
         : editBaselineJson === null || JSON.stringify(form) !== editBaselineJson, // edit: only when diverged
     flushWhen: () =>
       editingUid === null
-        ? !!(form.title?.trim() && JSON.stringify(form) !== JSON.stringify(initialSong))
+        ? !!(form.title?.trim() && JSON.stringify(form) !== (addBaselineJson ?? JSON.stringify(initialSong)))
         : editBaselineJson !== null && JSON.stringify(form) !== editBaselineJson,
     blockedStatus: () => {
       // Emptied title → clear the stale "Saved ✓" (nothing is persisted for a titleless form).
@@ -1901,6 +1910,9 @@ function Songs() {
           loading={loading}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          // #191: the added song joins the list (it matches the search, so it replaces the
+          // suggestions); the page's toast announces it, since the block unmounts with it.
+          onAddedFromCatalog={song => { setSongs(prev => withSongIfAbsent(prev, song)); showToast(`"${song.title}" added to your songlist`); }}
           instrumentFilter={instrumentFilter}
           setInstrumentFilter={setInstrumentFilter}
           myInstrumentFilter={myInstrumentFilter}
@@ -2011,6 +2023,8 @@ function Songs() {
           // Story 18.2: "Add a song" navigates to /songs/new; the build-form effect
           // arms a clean blank add-mode session.
           onAddNew={() => navigate('/songs/new')}
+          // #192: from an empty search — the title is prefilled, nothing created until a change.
+          onAddNewWithTitle={title => navigate('/songs/new', { state: { prefillTitle: title } })}
           getLastPlayedForSong={getLastPlayedForSong}
           formatLastPlayed={formatLastPlayed}
           SortHeader={SortHeader}

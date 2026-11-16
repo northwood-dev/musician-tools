@@ -14,6 +14,8 @@ import { Page } from './Page';
 import { Panel } from './Panel';
 import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
+import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
+import { findExistingIn } from '../hooks/useSonglistMatcher';
 
 export interface SongsListProps {
   // State
@@ -24,6 +26,8 @@ export interface SongsListProps {
   
   // Search & filters
   searchQuery: string;
+  // #191: a song added from the Catalog suggestions of an empty search.
+  onAddedFromCatalog: (song: Song) => void;
   instrumentFilter: string;
   myInstrumentFilter: string;
   instrumentDifficultyFilter: number | '';
@@ -131,6 +135,8 @@ export interface SongsListProps {
   // Callbacks
   onEdit: (song: Song) => void;
   onAddNew: () => void;
+  // #192: open the add form with this title prefilled (from an empty search).
+  onAddNewWithTitle: (title: string) => void;
   
   // Additional handlers
   getLastPlayedForSong: (uid: string) => string | undefined;
@@ -139,6 +145,7 @@ export interface SongsListProps {
 }
 
 export default function SongsList(props: SongsListProps) {
+  const trimmedSearch = props.searchQuery.trim(); // #191 / #192: what an empty search offers to find or create
   // The bulk Add to playlist menu closes like its ✕ on an outside click or Escape, and
   // like its ✕ not while the page is loading (#38).
   const playlistMenu = useDismissablePanel({
@@ -368,6 +375,19 @@ export default function SongsList(props: SongsListProps) {
               >
                 {emptyListMessage(props.activeFilterCount > 0, props.searchQuery !== '')}
               </EmptyState>
+              {props.songs.length > 0 && trimmedSearch.length >= 2 && (
+                <div className="px-4 pb-4">
+                  <SonglistCatalogSuggestions
+                    search={trimmedSearch}
+                    findExisting={entry => findExistingIn(props.songs, entry)}
+                    onAdded={props.onAddedFromCatalog}
+                    preferredInstrument={isRealInstrument(props.instrumentFilter) ? props.instrumentFilter : undefined}
+                  />
+                  <button type="button" className="btn-link mt-4" onClick={() => props.onAddNewWithTitle(trimmedSearch)}>
+                    Add "{trimmedSearch}" as a new song
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="card-base overflow-hidden">

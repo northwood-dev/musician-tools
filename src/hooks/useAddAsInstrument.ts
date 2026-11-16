@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { instrumentTypeOptions } from '../constants/instrumentTypes';
 
 // The instrument songs are added with from the Catalog (#34). One choice per device, shared
@@ -47,9 +47,16 @@ export interface AddAsInstrument {
   selectRef: React.RefObject<HTMLSelectElement | null>;
 }
 
-export function useAddAsInstrument(): AddAsInstrument {
-  const [choice, setChoice] = useState<string | null>(readRememberedChoice);
+// `preferred` (#191): a page that already knows the instrument (the Songlist filtered on
+// Guitar) makes it the starting choice, over the remembered one. Not saved until chosen.
+export function useAddAsInstrument(preferred?: string): AddAsInstrument {
+  const [choice, setChoice] = useState<string | null>(() =>
+    preferred && isKnownChoice(preferred) ? preferred : readRememberedChoice());
   const [needsChoice, setNeedsChoice] = useState(false);
+  // The page's instrument can change while it's shown (the Songlist filter): follow it.
+  useEffect(() => {
+    if (preferred && isKnownChoice(preferred)) setChoice(preferred);
+  }, [preferred]);
   const selectRef = useRef<HTMLSelectElement | null>(null);
 
   const choose = (value: string) => {
