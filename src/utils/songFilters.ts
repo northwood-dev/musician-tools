@@ -40,8 +40,8 @@ export type SongFilterOptions = {
   instrumentMatchModeAll?: boolean;
 };
 
-// Subset of filter state that counts as an "active filter" — mirrors, one-for-one,
-// the conditions behind `hasActiveFilters` in Songs.tsx. Search query is NOT a filter.
+// Subset of filter state that counts as an "active filter": what describeActiveFilters
+// turns into chips (#188). Search query and match modes are NOT filters.
 export type ActiveFilterState = {
   instrumentFilter: string;
   myInstrumentFilter: string;
@@ -61,27 +61,69 @@ export type ActiveFilterState = {
   genreFilters: Set<string>;
 };
 
-// Number of active filter dimensions (a non-empty Set counts as one). Single source
-// of truth for both `hasActiveFilters` (> 0) and the mobile "Filters · N" counter.
-export function countActiveFilters(f: ActiveFilterState): number {
-  let n = 0;
-  if (f.instrumentFilter) n++;
-  if (f.myInstrumentFilter) n++;
-  if (f.instrumentDifficultyFilter) n++;
-  if (f.capoFilter !== '') n++;
-  if (f.tuningFilter) n++;
-  if (f.keyFilter) n++;
-  if (f.bpmMinFilter) n++;
-  if (f.bpmMaxFilter) n++;
-  if (f.pitchStandardMinFilter) n++;
-  if (f.pitchStandardMaxFilter) n++;
-  if (f.timeSignatureFilter) n++;
-  if (f.modeFilter) n++;
-  if (f.languageFilters.size > 0) n++;
-  if (f.playlistFilter) n++;
-  if (f.techniqueFilters.size > 0) n++;
-  if (f.genreFilters.size > 0) n++;
-  return n;
+/** What removing one chip clears (#188). Multi-value filters name the value to drop. */
+export type ActiveFilterRemoval =
+  | { filter: 'instrument' | 'myInstrument' | 'playlist' | 'difficulty' | 'capo' | 'tuning' | 'key' | 'mode' | 'timeSignature' | 'bpm' | 'pitch' }
+  | { filter: 'technique' | 'genre' | 'language'; value: string };
+
+export type ActiveFilterChip = { key: string; label: string; remove: ActiveFilterRemoval };
+
+/** Names the filter state can't know by itself (it only holds uids and tuning values). */
+export type ActiveFilterNames = {
+  playlists: { uid: string; name: string }[];
+  myInstruments: { uid: string; type?: string | null; name: string }[];
+  tunings: { value: string; label: string }[];
+};
+
+function rangeLabel(min: string, max: string, unit: string): string | null {
+  if (min && max) return `${min}–${max} ${unit}`;
+  if (min) return `≥ ${min} ${unit}`;
+  if (max) return `≤ ${max} ${unit}`;
+  return null;
+}
+
+// The "Other" option several sidebar lists end with: alone on a chip it says nothing.
+const OTHER = 'Other';
+
+// #188: one chip per active filter VALUE, in the sidebar's section order. A prefix is
+// added only where the bare value would be ambiguous ("Key: C", and every list's
+// "Other": "Instrument: Other", "Technique: Other", "Tuning: Other"…).
+// Search text and the All/Any match modes are never chips.
+export function describeActiveFilters(f: ActiveFilterState, names: ActiveFilterNames): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
+  const single = (filter: Exclude<ActiveFilterRemoval['filter'], 'technique' | 'genre' | 'language'>, label: string) =>
+    chips.push({ key: filter, label, remove: { filter } });
+  const each = (filter: 'technique' | 'genre' | 'language', values: Set<string>, label: (value: string) => string = v => v) =>
+    values.forEach(value => chips.push({ key: `${filter}:${value}`, label: label(value), remove: { filter, value } }));
+
+  if (f.instrumentFilter) {
+    single('instrument', f.instrumentFilter === NO_INSTRUMENT ? 'No instrument' : f.instrumentFilter === OTHER ? 'Instrument: Other' : f.instrumentFilter);
+  }
+  if (f.myInstrumentFilter) {
+    const mine = names.myInstruments.find(i => i.uid === f.myInstrumentFilter);
+    single('myInstrument', mine ? `My instrument: ${mine.type ? `${mine.type} - ${mine.name}` : mine.name}` : 'My instrument');
+  }
+  if (f.playlistFilter) {
+    const playlist = names.playlists.find(p => p.uid === f.playlistFilter);
+    single('playlist', playlist ? `Playlist: ${playlist.name}` : 'Playlist');
+  }
+  if (f.instrumentDifficultyFilter) single('difficulty', `Up to ${f.instrumentDifficultyFilter} ★`);
+  if (f.capoFilter !== '') single('capo', `Capo ${f.capoFilter}`);
+  if (f.tuningFilter) {
+    const label = f.tuningFilter === OTHER ? 'Tuning: Other' : names.tunings.find(t => t.value === f.tuningFilter)?.label ?? f.tuningFilter;
+    single('tuning', label);
+  }
+  each('technique', f.techniqueFilters, v => (v === OTHER ? 'Technique: Other' : v));
+  each('genre', f.genreFilters);
+  each('language', f.languageFilters);
+  if (f.keyFilter) single('key', `Key: ${f.keyFilter}`);
+  if (f.modeFilter) single('mode', `Mode: ${f.modeFilter}`);
+  if (f.timeSignatureFilter) single('timeSignature', f.timeSignatureFilter === OTHER ? 'Time signature: Other' : f.timeSignatureFilter);
+  const bpm = rangeLabel(f.bpmMinFilter, f.bpmMaxFilter, 'BPM');
+  if (bpm) single('bpm', bpm);
+  const pitch = rangeLabel(f.pitchStandardMinFilter, f.pitchStandardMaxFilter, 'Hz');
+  if (pitch) single('pitch', pitch);
+  return chips;
 }
 
 export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[] {

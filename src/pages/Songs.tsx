@@ -13,7 +13,7 @@ import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
-import { applySongFilters, countActiveFilters, isRealInstrument } from '../utils/songFilters';
+import { applySongFilters, describeActiveFilters, isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
 import { handleComboKeyDown, useScrollHighlightIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { useAutosave } from '../hooks/useAutosave';
 import { useRowSelection } from '../hooks/useRowSelection';
@@ -50,6 +50,13 @@ const initialSong: CreateSongDTO = {
   timeSignature: '',
   mode: '',
   lastPlayed: undefined,
+};
+
+/** A copy of the set without that value (#188: one chip removes one value). */
+const withoutValue = (values: Set<string>, value: string) => {
+  const next = new Set(values);
+  next.delete(value);
+  return next;
 };
 
 function Songs() {
@@ -403,8 +410,7 @@ function Songs() {
   // is intentional — the song is being removed). Read live in the blocker predicate.
   const deletingRef = useRef(false);
 
-  // Single source of truth: the count drives both the boolean and the mobile "Filters · N" badge.
-  const activeFilterCount = countActiveFilters({
+  const activeFilterState = {
     instrumentFilter,
     myInstrumentFilter,
     instrumentDifficultyFilter,
@@ -421,7 +427,16 @@ function Songs() {
     playlistFilter,
     techniqueFilters,
     genreFilters,
+  };
+  // #188: the chips under the search field; the names come from what the sidebar lists.
+  const activeFilterChips = describeActiveFilters(activeFilterState, {
+    playlists,
+    myInstruments,
+    tunings: instrumentTuningsMap[instrumentFilter] || [],
   });
+  // #195: single source of truth — the mobile "Filters · N" badge counts the chips the
+  // user sees (three genres = 3), and hasActiveFilters follows it.
+  const activeFilterCount = activeFilterChips.length;
   const hasActiveFilters = activeFilterCount > 0;
 
   const clearAllFilters = () => {
@@ -448,6 +463,37 @@ function Songs() {
   };
 
 
+
+  // #188: a chip's ✕ clears just its filter. Clearing the song instrument relies on the
+  // existing cascade (capo, tuning, difficulty and techniques follow it).
+  const removeFilterChip = ({ remove }: ActiveFilterChip) => {
+    switch (remove.filter) {
+      case 'instrument':
+        // Clear the dependent filters in the SAME render as the instrument: the cascade
+        // effect would only do it one render later, and focus would land on a chip
+        // ("Up to 3 ★", "Capo 2"…) that is about to vanish (#195 review).
+        setInstrumentFilter('');
+        setInstrumentDifficultyFilter('');
+        setCapoFilter('');
+        setTuningFilter('');
+        setTechniqueFilters(new Set());
+        break;
+      case 'myInstrument': setMyInstrumentFilter(''); break;
+      case 'playlist': setPlaylistFilter(''); break;
+      case 'difficulty': setInstrumentDifficultyFilter(''); break;
+      case 'capo': setCapoFilter(''); break;
+      case 'tuning': setTuningFilter(''); break;
+      case 'technique': setTechniqueFilters(prev => withoutValue(prev, remove.value)); break;
+      case 'genre': setGenreFilters(prev => withoutValue(prev, remove.value)); break;
+      case 'language': setLanguageFilters(prev => withoutValue(prev, remove.value)); break;
+      case 'key': setKeyFilter(''); break;
+      case 'mode': setModeFilter(''); break;
+      case 'timeSignature': setTimeSignatureFilter(''); break;
+      case 'bpm': setBpmMinFilter(''); setBpmMaxFilter(''); break;
+      case 'pitch': setPitchStandardMinFilter(''); setPitchStandardMaxFilter(''); break;
+      default: remove satisfies never; // a new kind of chip must say how it is removed
+    }
+  };
 
   const toggleTechniqueFilter = (technique: string) => {
     setTechniqueFilters(prev => {
@@ -2008,6 +2054,8 @@ function Songs() {
           someDisplayedSelected={someDisplayedSelected}
           hasActiveFilters={hasActiveFilters}
           activeFilterCount={activeFilterCount}
+          activeFilterChips={activeFilterChips}
+          onRemoveFilterChip={removeFilterChip}
           mobileFiltersOpen={mobileFiltersOpen}
           setMobileFiltersOpen={setMobileFiltersOpen}
           showTuningFilters={showTuningFilters}

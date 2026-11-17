@@ -1,5 +1,6 @@
-import { applySongFilters, countActiveFilters, NO_INSTRUMENT, type ActiveFilterState } from '../utils/songFilters';
+import { applySongFilters, describeActiveFilters, NO_INSTRUMENT, type ActiveFilterState } from '../utils/songFilters';
 import type { Song } from '../services/songService';
+import { instrumentTuningsMap } from '../constants/instrumentTypes';
 
 const noFilters: ActiveFilterState = {
   instrumentFilter: '',
@@ -19,39 +20,6 @@ const noFilters: ActiveFilterState = {
   techniqueFilters: new Set(),
   genreFilters: new Set(),
 };
-
-describe('countActiveFilters', () => {
-  test('returns 0 when nothing is set', () => {
-    expect(countActiveFilters(noFilters)).toBe(0);
-  });
-
-  test('counts a single active select filter', () => {
-    expect(countActiveFilters({ ...noFilters, keyFilter: 'C' })).toBe(1);
-  });
-
-  test('a non-empty Set counts as one dimension', () => {
-    expect(countActiveFilters({ ...noFilters, genreFilters: new Set(['Rock', 'Jazz']) })).toBe(1);
-    expect(countActiveFilters({ ...noFilters, techniqueFilters: new Set(['Bend']) })).toBe(1);
-    expect(countActiveFilters({ ...noFilters, languageFilters: new Set(['en']) })).toBe(1);
-  });
-
-  test('capo 0 is active (!== ""), empty string is not', () => {
-    expect(countActiveFilters({ ...noFilters, capoFilter: 0 })).toBe(1);
-    expect(countActiveFilters({ ...noFilters, capoFilter: '' })).toBe(0);
-  });
-
-  test('sums multiple active dimensions', () => {
-    expect(
-      countActiveFilters({
-        ...noFilters,
-        instrumentFilter: 'Guitar',
-        bpmMinFilter: '90',
-        genreFilters: new Set(['Rock']),
-        playlistFilter: 'pl-1',
-      }),
-    ).toBe(4);
-  });
-});
 
 const baseSong: Song = {
   uid: '1',
@@ -366,5 +334,73 @@ describe('#84: a search can span the artist and the title', () => {
     ['doors light my fire', 'The Doors'],
   ])('the article stays optional: "%s" finds "Light My Fire" by %s', (query, artist) => {
     expect(found([{ title: 'Light My Fire', artist }, { title: 'Riders on the Storm', artist }], query)).toEqual(['0']);
+  });
+});
+
+// #188 / #194: one chip per active filter value, in sidebar order, with the agreed labels.
+describe('describeActiveFilters', () => {
+  const names = {
+    playlists: [{ uid: 'p1', name: 'Gig set' }],
+    myInstruments: [{ uid: 'mi1', type: 'Guitar', name: 'Strat' }, { uid: 'mi2', type: null, name: 'Uke' }],
+    tunings: instrumentTuningsMap.Guitar, // the real sidebar labels
+  };
+  const labels = (f: Partial<ActiveFilterState>) => describeActiveFilters({ ...noFilters, ...f }, names).map(c => c.label);
+
+  test('no chip when nothing is set', () => {
+    expect(describeActiveFilters(noFilters, names)).toEqual([]);
+  });
+
+  test.each<[Partial<ActiveFilterState>, string[]]>([
+    [{ instrumentFilter: 'Guitar' }, ['Guitar']],
+    [{ instrumentFilter: NO_INSTRUMENT }, ['No instrument']],
+    [{ instrumentFilter: 'Other' }, ['Instrument: Other']],
+    [{ myInstrumentFilter: 'mi1' }, ['My instrument: Guitar - Strat']],
+    [{ myInstrumentFilter: 'mi2' }, ['My instrument: Uke']],
+    [{ playlistFilter: 'p1' }, ['Playlist: Gig set']],
+    [{ instrumentDifficultyFilter: 3 }, ['Up to 3 ★']],
+    [{ capoFilter: 2 }, ['Capo 2']],
+    [{ capoFilter: 0 }, ['Capo 0']],
+    [{ tuningFilter: 'DADGBE' }, ['DADGBE (Drop D)']],
+    [{ tuningFilter: 'Other' }, ['Tuning: Other']],
+    [{ techniqueFilters: new Set(['Palm Mute', 'Pick']) }, ['Palm Mute', 'Pick']],
+    [{ techniqueFilters: new Set(['Other']) }, ['Technique: Other']],
+    [{ genreFilters: new Set(['Rock', 'Pop', 'Jazz']) }, ['Rock', 'Pop', 'Jazz']],
+    [{ languageFilters: new Set(['French']) }, ['French']],
+    [{ keyFilter: 'C' }, ['Key: C']],
+    [{ modeFilter: 'Minor' }, ['Mode: Minor']],
+    [{ timeSignatureFilter: '3/4' }, ['3/4']],
+    [{ timeSignatureFilter: 'Other' }, ['Time signature: Other']],
+    [{ bpmMinFilter: '90', bpmMaxFilter: '140' }, ['90–140 BPM']],
+    [{ bpmMinFilter: '90' }, ['≥ 90 BPM']],
+    [{ bpmMaxFilter: '140' }, ['≤ 140 BPM']],
+    [{ pitchStandardMinFilter: '440', pitchStandardMaxFilter: '452' }, ['440–452 Hz']],
+    [{ pitchStandardMinFilter: '440' }, ['≥ 440 Hz']],
+    [{ pitchStandardMaxFilter: '452' }, ['≤ 452 Hz']],
+  ])('%o → %j', (f, expected) => {
+    expect(labels(f)).toEqual(expected);
+  });
+
+  test('falls back to a plain name when a lookup is missing', () => {
+    expect(labels({ playlistFilter: 'gone', myInstrumentFilter: 'gone', tuningFilter: 'weird' }))
+      .toEqual(['My instrument', 'Playlist', 'weird']);
+  });
+
+  test('chips follow the sidebar order', () => {
+    expect(labels({
+      pitchStandardMinFilter: '440', bpmMinFilter: '90', timeSignatureFilter: '3/4', modeFilter: 'Minor', keyFilter: 'C',
+      languageFilters: new Set(['French']), genreFilters: new Set(['Rock']), techniqueFilters: new Set(['Pick']),
+      tuningFilter: 'DADGBE', capoFilter: 2, instrumentDifficultyFilter: 3, playlistFilter: 'p1', myInstrumentFilter: 'mi1',
+      instrumentFilter: 'Guitar',
+    })).toEqual([
+      'Guitar', 'My instrument: Guitar - Strat', 'Playlist: Gig set', 'Up to 3 ★', 'Capo 2', 'DADGBE (Drop D)', 'Pick', 'Rock',
+      'French', 'Key: C', 'Mode: Minor', '3/4', '≥ 90 BPM', '≥ 440 Hz',
+    ]);
+  });
+
+  test('each chip says what it removes, and keys are unique', () => {
+    const chips = describeActiveFilters({ ...noFilters, genreFilters: new Set(['Rock']), bpmMinFilter: '90', bpmMaxFilter: '140' }, names);
+    expect(chips.map(c => c.remove)).toEqual([{ filter: 'genre', value: 'Rock' }, { filter: 'bpm' }]);
+    const all = describeActiveFilters({ ...noFilters, genreFilters: new Set(['Rock']), languageFilters: new Set(['Rock']) }, names);
+    expect(new Set(all.map(c => c.key)).size).toBe(2);
   });
 });

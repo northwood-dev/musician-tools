@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { isRealInstrument } from '../utils/songFilters';
+import { isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
+import { ActiveFilterChips } from './ActiveFilterChips';
 import type { Song } from '../services/songService';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from './PlaylistsLoadMessage';
-import type { ReactNode } from 'react';
+import { useCallback, useRef, type ReactNode } from 'react';
 import SongsSidebar from './SongsSidebar';
 import FiltersDisclosureButton from './FiltersDisclosureButton';
 import { BulkActionBar } from './BulkActionBar';
@@ -84,6 +85,9 @@ export interface SongsListProps {
   someDisplayedSelected: boolean;
   hasActiveFilters: boolean;
   activeFilterCount: number;
+  /** #188: one chip per active filter value, shown under the search field. */
+  activeFilterChips: ActiveFilterChip[];
+  onRemoveFilterChip: (chip: ActiveFilterChip) => void;
   showTuningFilters: boolean;
   bulkPlaylistSelection: Set<string>;
   
@@ -145,6 +149,9 @@ export interface SongsListProps {
 }
 
 export default function SongsList(props: SongsListProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  // #195: when the last chip goes, focus returns to the search field.
+  const focusSearch = useCallback(() => searchInputRef.current?.focus(), []);
   const trimmedSearch = props.searchQuery.trim(); // #191 / #192: what an empty search offers to find or create
   // The bulk Add to playlist menu closes like its ✕ on an outside click or Escape, and
   // like its ✕ not while the page is loading (#38).
@@ -263,6 +270,7 @@ export default function SongsList(props: SongsListProps) {
               </label>
               <div className="relative">
               <input
+                ref={searchInputRef}
                 id="songs-search"
                 type="text"
                 placeholder="Search by title, artist, or album…"
@@ -275,6 +283,7 @@ export default function SongsList(props: SongsListProps) {
               )}
               </div>
             </div>
+            <ActiveFilterChips chips={props.activeFilterChips} onRemove={props.onRemoveFilterChip} onClearAll={props.clearAllFilters} onEmptied={focusSearch} />
           </div>
           {/* Bulk actions: the shared bar (22.1) hides itself when nothing is selected. */}
           <BulkActionBar count={props.selectedSongs.size} noun="song(s)">
