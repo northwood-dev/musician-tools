@@ -1,3 +1,5 @@
+import { isRealInstrument } from './songFilters';
+
 // #185: the Songlist sidebar's filter sections, by stable id (also stored on the account).
 // The order here is the historical sidebar order.
 export const FILTER_SECTION_IDS = [
@@ -44,8 +46,26 @@ export const FILTER_SECTION_TITLES: Record<FilterSectionId, string> = {
   pitch: 'Pitch standard filters',
 };
 
-/** Sections that only show once a song instrument is chosen ("needs a song instrument"). */
-export const INSTRUMENT_DEPENDENT_SECTIONS: ReadonlySet<FilterSectionId> = new Set(['difficulty', 'capo', 'tuning', 'technique']);
+/** Why an instrument-dependent section doesn't show right now, for the "+ Add filter"
+ *  menu (#185), or null when it shows. Mirrors the sidebar's display conditions. */
+export function sectionWaitingReason(
+  id: FilterSectionId,
+  { instrumentFilter, showTuningFilters }: { instrumentFilter: string; showTuningFilters: boolean },
+): string | null {
+  const realInstrument = isRealInstrument(instrumentFilter);
+  switch (id) {
+    case 'difficulty':
+    case 'technique':
+      return realInstrument ? null : 'needs a song instrument';
+    case 'capo':
+      return instrumentFilter === 'Guitar' ? null : 'needs Guitar as the song instrument';
+    case 'tuning':
+      if (showTuningFilters) return null;
+      return realInstrument ? 'needs an instrument with tunings' : 'needs a song instrument';
+    default:
+      return null;
+  }
+}
 
 /** The section holding a filter, by the filter names of the #188 chips. */
 export function sectionOfFilter(filter: 'myInstrument' | FilterSectionId): FilterSectionId {

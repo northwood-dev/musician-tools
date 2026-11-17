@@ -9,7 +9,7 @@ import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import {
   FILTER_SECTION_IDS,
   FILTER_SECTION_TITLES,
-  INSTRUMENT_DEPENDENT_SECTIONS,
+  sectionWaitingReason,
   type FilterSectionId,
 } from '../utils/filterSections';
 
@@ -700,7 +700,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
   };
   const order = props.sections ?? FILTER_SECTION_IDS;
   const hidden = FILTER_SECTION_IDS.filter(id => !order.includes(id));
-  const noInstrument = !props.instrumentFilter || props.instrumentFilter === NO_INSTRUMENT;
+  const waitingReason = (id: FilterSectionId) => sectionWaitingReason(id, props);
   return (
     <aside
       id="songs-sidebar"
@@ -786,8 +786,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
                       >
                         {FILTER_SECTION_TITLES[id]}
-                        {noInstrument && INSTRUMENT_DEPENDENT_SECTIONS.has(id) && (
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">needs a song instrument</span>
+                        {waitingReason(id) && (
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{waitingReason(id)}</span>
                         )}
                       </button>
                     ))}

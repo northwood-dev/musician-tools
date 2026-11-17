@@ -1,4 +1,4 @@
-import { DEFAULT_FILTER_SECTIONS, moveSection, resolveFilterSections, sectionOfFilter } from '../utils/filterSections';
+import { DEFAULT_FILTER_SECTIONS, moveSection, resolveFilterSections, sectionOfFilter, sectionWaitingReason } from '../utils/filterSections';
 
 // #185 / #198: which sidebar sections show, in which order.
 describe('resolveFilterSections', () => {
@@ -40,4 +40,20 @@ test('moveSection drops a section at the place of another, the others shift', ()
   expect(moveSection(['genre', 'key', 'mode'], 'mode', 'genre')).toEqual(['mode', 'genre', 'key']);
   expect(moveSection(['genre', 'key'], 'genre', 'genre')).toEqual(['genre', 'key']);
   expect(moveSection(['genre', 'key'], 'bpm', 'genre')).toEqual(['genre', 'key']);
+});
+
+// #185 follow-up: why an instrument-dependent section is not shown right now.
+test.each<[string, string, boolean, string | null]>([
+  ['difficulty', '', false, 'needs a song instrument'],
+  ['difficulty', 'Piano', true, null],
+  ['technique', '__none__', false, 'needs a song instrument'],
+  ['capo', '', false, 'needs Guitar as the song instrument'],
+  ['capo', 'Piano', true, 'needs Guitar as the song instrument'],
+  ['capo', 'Guitar', true, null],
+  ['tuning', '', false, 'needs a song instrument'],
+  ['tuning', 'Drums', false, 'needs an instrument with tunings'],
+  ['tuning', 'Bass', true, null],
+  ['genre', '', false, null],
+])('%s with instrument "%s" → %s', (id, instrumentFilter, showTuningFilters, reason) => {
+  expect(sectionWaitingReason(id as never, { instrumentFilter, showTuningFilters })).toBe(reason);
 });

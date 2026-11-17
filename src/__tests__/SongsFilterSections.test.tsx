@@ -336,3 +336,24 @@ test('announced positions count only the sections on screen', async () => {
     rect.mockRestore();
   }
 });
+
+// #185 follow-up: the "+ Add filter" menu says why an instrument-dependent section won't show yet.
+test('with Piano chosen, the menu says Capo needs Guitar; with Drums, Tuning needs an instrument with tunings', async () => {
+  accountLayout(['instrument']);
+  localStorage.setItem('songsInstrumentFilter', 'Piano');
+  renderSongs();
+  await screen.findByRole('button', { name: 'Remove Piano' });
+  await settle();
+
+  openAddMenu();
+  let menu = screen.getByRole('group', { name: 'Add a filter' });
+  expect(within(menu).getByRole('button', { name: /Capo filter/ })).toHaveTextContent('needs Guitar as the song instrument');
+  expect(within(menu).getByRole('button', { name: /Difficulty filter/ })).not.toHaveTextContent('needs');
+  fireEvent.keyDown(document, { key: 'Escape' });
+
+  fireEvent.change(screen.getByRole('option', { name: 'No instrument' }).closest('select')!, { target: { value: 'Drums' } });
+  await settle();
+  openAddMenu();
+  menu = screen.getByRole('group', { name: 'Add a filter' });
+  expect(within(menu).getByRole('button', { name: /Tuning filters/ })).toHaveTextContent('needs an instrument with tunings');
+});
