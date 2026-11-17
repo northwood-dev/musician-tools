@@ -37,4 +37,29 @@ async function assertFunctionalIndexes(sequelize) {
   }
 }
 
-module.exports = { assertFunctionalIndexes, EXPECTED_INDEXES };
+// #207 / #209: Supabase serves every table of the schema through its auto-generated REST API to
+// the `anon` / `authenticated` roles; Row-Level Security (on, with no policy) is what keeps them
+// out, while the backend, as the tables' owner, bypasses it. So the boot REFUSES to serve while
+// any table has RLS off — a new table whose migration forgot it, or one created by the sync
+// safety net above. Reads the catalog, not a hard-coded list: a new table is covered for free.
+// Same contract as the index guard: throws, the caller logs and exits.
+async function assertRowLevelSecurity(sequelize) {
+  const rows = await sequelize.query(
+    `SELECT c.relname FROM pg_class c
+      WHERE c.relnamespace = current_schema()::regnamespace
+        AND c.relkind IN ('r', 'p')
+        AND NOT c.relrowsecurity
+      ORDER BY c.relname`,
+    { type: 'SELECT' }
+  );
+  if (rows.length > 0) {
+    const list = rows.map(r => r.relname).join(', ');
+    throw new Error(
+      `Row-Level Security is off on: ${list}. Without it, Supabase's REST API exposes the table ` +
+      'to anyone holding the anon key. Add `ALTER TABLE "<table>" ENABLE ROW LEVEL SECURITY;` ' +
+      'to the migration that creates the table, then run `make migrate`.'
+    );
+  }
+}
+
+module.exports = { assertFunctionalIndexes, assertRowLevelSecurity, EXPECTED_INDEXES };
