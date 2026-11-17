@@ -1,5 +1,7 @@
 import { NO_INSTRUMENT } from '../utils/songFilters';
+import { Fragment, type ReactNode } from 'react';
 import { Disclosure } from './Disclosure';
+import { FILTER_SECTION_IDS, type FilterSectionId } from '../utils/filterSections';
 
 export interface SongsSidebarProps {
   // UI state
@@ -86,56 +88,15 @@ export interface SongsSidebarProps {
   hasActiveFilters: boolean;
   showTuningFilters: boolean;
   clearAllFilters: () => void;
+  /** #185: which filter sections to show, in order (default: all, historical order). */
+  sections?: readonly FilterSectionId[];
 }
 
 export default function SongsSidebar(props: SongsSidebarProps) {
-  return (
-    <aside
-      id="songs-sidebar"
-      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all motion-safe:duration-300 card-base glass-effect lg:sticky lg:top-24`}
-      aria-hidden={false}
-    >
-      {/* Collapsed rail — desktop only (>= lg). Under lg the "Filters" disclosure
-          controls visibility, so the sidebar always shows its full content there. */}
-      {!props.sidebarExpanded && (
-        <div className="hidden lg:flex p-2 items-center justify-center">
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            aria-label="Expand sidebar"
-            onClick={() => props.setSidebarExpanded(true)}
-          >
-            »
-          </button>
-        </div>
-      )}
-      <div className={`${props.sidebarExpanded ? '' : 'lg:hidden'} p-4 space-y-3`}>
-          {/* On mobile this row only ever holds "Clear all" (the title and «-collapse are
-              desktop-only), so hide it entirely when there's nothing to show — no ghost gap. */}
-          <div className={`${props.hasActiveFilters ? 'flex' : 'hidden'} lg:flex items-center justify-between mb-2`}>
-            <div className="flex items-center gap-2">
-              {/* Redundant with the mobile "Filters" disclosure button; keep it only as the
-                  static sidebar title on desktop (>= lg). */}
-              <h3 className="hidden lg:block text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
-              {props.hasActiveFilters && (
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm"
-                  onClick={props.clearAllFilters}
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              className="hidden lg:inline-flex btn-secondary btn-sm"
-              aria-label="Collapse sidebar"
-              onClick={() => props.setSidebarExpanded(false)}
-            >
-              «
-            </button>
-          </div>
+  // #197: each filter section once, by id; the sidebar shows them in `order`.
+  const sectionElements: Record<FilterSectionId, ReactNode> = {
+    instrument:
+          (
           <Disclosure
             className="card-base"
             title="Instrument filters"
@@ -186,8 +147,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </button>
             </div>
           </Disclosure>
+          ),
+    playlist:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="Playlist filters"
             open={props.playlistAccordionOpen}
             onToggle={() => props.setPlaylistAccordionOpen(!props.playlistAccordionOpen)}
@@ -216,10 +180,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             )}
           </Disclosure>
-
-          {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
+          ),
+    difficulty:
+          props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              className="card-base mt-3"
+              className="card-base"
               title="Difficulty filter"
               open={props.difficultyAccordionOpen}
               onToggle={() => props.setDifficultyAccordionOpen(!props.difficultyAccordionOpen)}
@@ -240,10 +205,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 ))}
               </select>
             </Disclosure>
-          )}
-          {props.instrumentFilter === 'Guitar' && (
+          ),
+    capo:
+          props.instrumentFilter === 'Guitar' && (
             <Disclosure
-              className="card-base mt-3"
+              className="card-base"
               title="Capo filter"
               open={props.capoAccordionOpen}
               onToggle={() => props.setCapoAccordionOpen(!props.capoAccordionOpen)}
@@ -264,10 +230,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 ))}
               </select>
             </Disclosure>
-          )}
-          {props.showTuningFilters && (
+          ),
+    tuning:
+          props.showTuningFilters && (
             <Disclosure
-              className="card-base mt-3"
+              className="card-base"
               title="Tuning filters"
               open={props.tuningAccordionOpen}
               onToggle={() => props.setTuningAccordionOpen(!props.tuningAccordionOpen)}
@@ -289,10 +256,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 </select>
               )}
             </Disclosure>
-          )}
-          {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
+          ),
+    technique:
+          props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              className="card-base mt-3"
+              className="card-base"
               title="Technique filters"
               open={props.techniqueAccordionOpen}
               onToggle={() => props.setTechniqueAccordionOpen(!props.techniqueAccordionOpen)}
@@ -355,9 +323,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 </>
               )}
             </Disclosure>
-          )}
+          ),
+    genre:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="Genre filters"
             open={props.genreAccordionOpen}
             onToggle={() => props.setGenreAccordionOpen(!props.genreAccordionOpen)}
@@ -422,10 +392,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </>
             )}
           </Disclosure>
-          
-          {/* Language filter */}
+          ),
+    language:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title={<>
               Filter by language
               {props.languageFilters.size > 0 && (
@@ -496,9 +467,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </button>
             </div>
           </Disclosure>
-
+          ),
+    key:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="Key filters"
             open={props.keyAccordionOpen}
             onToggle={() => props.setKeyAccordionOpen(!props.keyAccordionOpen)}
@@ -527,8 +500,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               <option value="B">B</option>
             </select>
           </Disclosure>
+          ),
+    mode:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="Mode filters"
             open={props.modeAccordionOpen}
             onToggle={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
@@ -552,8 +528,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               <option value="Other">Other</option>
             </select>
           </Disclosure>
+          ),
+    timeSignature:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="Time signature filters"
             open={props.timeSignatureAccordionOpen}
             onToggle={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
@@ -580,8 +559,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               <option value="Other">Other</option>
             </select>
           </Disclosure>
+          ),
+    bpm:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="BPM filters"
             open={props.bpmAccordionOpen}
             onToggle={() => props.setBpmAccordionOpen(!props.bpmAccordionOpen)}
@@ -615,8 +597,11 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             </div>
           </Disclosure>
+          ),
+    pitch:
+          (
           <Disclosure
-            className="card-base mt-3"
+            className="card-base"
             title="Pitch standard filters"
             open={props.pitchAccordionOpen}
             onToggle={() => props.setPitchAccordionOpen(!props.pitchAccordionOpen)}
@@ -652,6 +637,57 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             </div>
           </Disclosure>
+          ),
+  };
+  const order = props.sections ?? FILTER_SECTION_IDS;
+  return (
+    <aside
+      id="songs-sidebar"
+      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all motion-safe:duration-300 card-base glass-effect lg:sticky lg:top-24`}
+      aria-hidden={false}
+    >
+      {/* Collapsed rail — desktop only (>= lg). Under lg the "Filters" disclosure
+          controls visibility, so the sidebar always shows its full content there. */}
+      {!props.sidebarExpanded && (
+        <div className="hidden lg:flex p-2 items-center justify-center">
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            aria-label="Expand sidebar"
+            onClick={() => props.setSidebarExpanded(true)}
+          >
+            »
+          </button>
+        </div>
+      )}
+      <div className={`${props.sidebarExpanded ? '' : 'lg:hidden'} p-4 space-y-3`}>
+          {/* On mobile this row only ever holds "Clear all" (the title and «-collapse are
+              desktop-only), so hide it entirely when there's nothing to show — no ghost gap. */}
+          <div className={`${props.hasActiveFilters ? 'flex' : 'hidden'} lg:flex items-center justify-between mb-2`}>
+            <div className="flex items-center gap-2">
+              {/* Redundant with the mobile "Filters" disclosure button; keep it only as the
+                  static sidebar title on desktop (>= lg). */}
+              <h3 className="hidden lg:block text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
+              {props.hasActiveFilters && (
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={props.clearAllFilters}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="hidden lg:inline-flex btn-secondary btn-sm"
+              aria-label="Collapse sidebar"
+              onClick={() => props.setSidebarExpanded(false)}
+            >
+              «
+            </button>
+          </div>
+          {order.map(id => <Fragment key={id}>{sectionElements[id]}</Fragment>)}
         </div>
     </aside>
   );
