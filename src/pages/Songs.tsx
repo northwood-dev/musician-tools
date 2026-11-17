@@ -390,10 +390,12 @@ function Songs() {
   const editingUidRef = useRef(editingUid);
   editingUidRef.current = editingUid;
   const page: 'list' | 'form' = editingUid !== null || isNewSongRoute ? 'form' : 'list';
-  // #187: n opens Add a song from the Songlist; Esc on a song goes back like
-  // "← Back to songlist" (same navigation, so the empty-title blocker still asks first).
+  // #187: n opens Add a song from the Songlist; Esc on a song goes back exactly like
+  // "← Back to songlist" (backToList: saves the last edit first, and the empty-title
+  // blocker still asks), also with the cursor in a field — it is nearly always in one.
+  // An Escape a combobox used to close its list is theirs (preventDefault).
   useKeyboardShortcut('n', () => navigate('/songs/new'), { enabled: page === 'list' && !loading });
-  useKeyboardShortcut('Escape', () => navigate('/songs'), { enabled: page === 'form' });
+  useKeyboardShortcut('Escape', () => { void backToList(); }, { enabled: page === 'form', inFields: true });
   // Which song uid the `form` currently represents ('__new__' = the blank add draft,
   // undefined = nothing). Lets the load effect skip rebuilding the form when the URL
   // already matches it — e.g. right after an auto-create, so live typing isn't clobbered.

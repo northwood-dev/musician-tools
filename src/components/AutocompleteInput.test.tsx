@@ -102,3 +102,17 @@ test('exposes combobox a11y wiring on the input', () => {
   expect(input).toHaveAttribute('role', 'combobox');
   expect(input).toHaveAttribute('aria-controls', 'ac-list');
 });
+
+// #187: Escape belongs to the list only while it is open; with the list closed it goes on
+// to the page (Esc on a song goes back to the Songlist).
+test('Escape is used up only when it closes the list', () => {
+  render(<Harness suggestions={['The Beatles', 'The Who']} />);
+  const input = screen.getByRole('combobox');
+  fireEvent.focus(input);
+  expect(opt('The Beatles')).toBeInTheDocument();
+  const closing = fireEvent.keyDown(input, { key: 'Escape' });
+  expect(closing).toBe(false); // preventDefault → dispatchEvent returns false
+  expect(opt('The Beatles')).not.toBeInTheDocument();
+  const passing = fireEvent.keyDown(input, { key: 'Escape' });
+  expect(passing).toBe(true);
+});

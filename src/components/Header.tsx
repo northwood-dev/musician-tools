@@ -55,8 +55,10 @@ function Header() {
       event.preventDefault(); // spent: one Escape closes one thing (#187)
       setMobileMenuOpen(false);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    // On document (not window): it must run before the page shortcuts, which listen on
+    // window (#187), so this Escape closes the menu and nothing else.
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [mobileMenuOpen]);
 
   // Close the account dropdown on Escape or a click outside it, like the bulk menus (#38).

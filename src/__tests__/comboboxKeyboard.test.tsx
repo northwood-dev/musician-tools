@@ -7,8 +7,10 @@ import {
   comboboxOptionAria,
 } from '../utils/comboboxKeyboard';
 
-function keyEvent(key: string) {
-  return { key, preventDefault: jest.fn() } as unknown as React.KeyboardEvent<HTMLInputElement>;
+function keyEvent(key: string, { listOpen = true } = {}) {
+  const input = document.createElement('input');
+  input.setAttribute('aria-expanded', String(listOpen));
+  return { key, preventDefault: jest.fn(), currentTarget: input } as unknown as React.KeyboardEvent<HTMLInputElement>;
 }
 
 describe('handleComboKeyDown', () => {
@@ -56,10 +58,18 @@ describe('handleComboKeyDown', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  test('Escape closes and resets the index', () => {
-    handleComboKeyDown(keyEvent('Escape'), options, 1, setIndex, setOpen, onSelect);
+  test('Escape closes and resets the index, and is used up while the list was open', () => {
+    const e = keyEvent('Escape');
+    handleComboKeyDown(e, options, 1, setIndex, setOpen, onSelect);
     expect(setOpen).toHaveBeenCalledWith(false);
     expect(setIndex).toHaveBeenCalledWith(-1);
+    expect(e.preventDefault).toHaveBeenCalled();
+  });
+
+  test('Escape with the list closed goes on to the page (#187: Esc on a song)', () => {
+    const e = keyEvent('Escape', { listOpen: false });
+    handleComboKeyDown(e, options, -1, setIndex, setOpen, onSelect);
+    expect(e.preventDefault).not.toHaveBeenCalled();
   });
 
   test('Tab closes the list immediately but does NOT preventDefault (focus moves on)', () => {

@@ -98,3 +98,23 @@ test('n and / do nothing on a song; Esc does nothing on the list', async () => {
   press('n');
   expect(router.state.location.pathname).toBe('/songs/song-a');
 });
+
+// #187 review fixes.
+test('Esc works with the cursor in a field, and saves the last edit first, like the Back button', async () => {
+  const { router } = renderSongs();
+  fireEvent.click(await screen.findByText('Alpha'));
+  const artist = await screen.findByLabelText('Artist');
+  artist.focus();
+  fireEvent.change(artist, { target: { value: 'Just typed' } });
+  press('Escape', artist);
+  await waitFor(() => expect(router.state.location.pathname).toBe('/songs'));
+  expect(songService.updateSong).toHaveBeenCalledWith('song-a', expect.objectContaining({ artist: 'Just typed' }));
+});
+
+test('n works with a row checkbox focused (a checkbox is not a text field)', async () => {
+  const { router } = renderSongs();
+  const row = await screen.findByRole('checkbox', { name: /Alpha/ });
+  row.focus();
+  press('n', row);
+  await waitFor(() => expect(router.state.location.pathname).toBe('/songs/new'));
+});

@@ -80,3 +80,45 @@ test('a disabled shortcut leaves the key alone (its default action included)', (
   expect(onFire).not.toHaveBeenCalled();
   expect(event.defaultPrevented).toBe(false);
 });
+
+// #187 review fixes.
+test('a checkbox or a radio is not a place where one types: the shortcut still fires there', () => {
+  const onFire = jest.fn();
+  function WithBoxes() {
+    useKeyboardShortcut('n', onFire);
+    return <><input type="checkbox" aria-label="Row" /><input type="radio" aria-label="Choice" /></>;
+  }
+  render(<WithBoxes />);
+  fireEvent.keyDown(screen.getByLabelText('Row'), { key: 'n' });
+  fireEvent.keyDown(screen.getByLabelText('Choice'), { key: 'n' });
+  expect(onFire).toHaveBeenCalledTimes(2);
+});
+
+test('holding the key down fires once, not on every repeat', () => {
+  const onFire = setup('n');
+  fireEvent.keyDown(document.body, { key: 'n' });
+  fireEvent.keyDown(document.body, { key: 'n', repeat: true });
+  expect(onFire).toHaveBeenCalledTimes(1);
+});
+
+test('nothing fires behind an open modal window', () => {
+  const onFire = setup('n');
+  const modal = document.createElement('div');
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  document.body.appendChild(modal);
+  fireEvent.keyDown(document.body, { key: 'n' });
+  modal.remove();
+  expect(onFire).not.toHaveBeenCalled();
+});
+
+test('a shortcut allowed in fields (Escape on a song) fires while typing too', () => {
+  const onFire = jest.fn();
+  function Form() {
+    useKeyboardShortcut('Escape', onFire, { inFields: true });
+    return <input aria-label="Title" />;
+  }
+  render(<Form />);
+  fireEvent.keyDown(screen.getByLabelText('Title'), { key: 'Escape' });
+  expect(onFire).toHaveBeenCalledTimes(1);
+});

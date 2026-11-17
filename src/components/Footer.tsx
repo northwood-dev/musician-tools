@@ -29,7 +29,9 @@ function Footer({ onShowShortcuts }: { onShowShortcuts?: () => void } = {}) {
               <>
                 <span className="hidden sm:inline">•</span>
                 {/* #187: the Keyboard shortcuts help, for those who don't know "?" */}
-                <button type="button" className="btn-link" onClick={onShowShortcuts}>Keyboard shortcuts</button>
+                {/* The footer is always dark: btn-link's brand-600 is too dark here, so the link
+                    takes the footer's light grey (btn-link-inherit). */}
+                <button type="button" className="btn-link btn-link-inherit" onClick={onShowShortcuts}>Keyboard shortcuts</button>
               </>
             )}
             <span className="hidden sm:inline">•</span>

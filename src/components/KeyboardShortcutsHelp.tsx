@@ -9,14 +9,15 @@ import { setShortcutsEnabled, useShortcutsEnabled } from '../hooks/useShortcutsE
 const SHORTCUTS: { keys: string; action: string; where: string }[] = [
   { keys: '/', action: 'Search', where: 'Songlist, Catalog' },
   { keys: 'n', action: 'Add a song', where: 'Songlist' },
-  { keys: 'Esc', action: 'Back to the songlist', where: 'a song' },
-  { keys: '?', action: 'This help', where: 'everywhere' },
+  { keys: 'Esc', action: 'Back to the songlist', where: 'Song page' },
+  { keys: '?', action: 'This help', where: 'Everywhere' },
 ];
 
 export function KeyboardShortcutsHelp({ open, onClose }: { open: boolean; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
   const titleId = useId();
+  const hintId = useId();
   const enabled = useShortcutsEnabled();
 
   useEffect(() => {
@@ -65,13 +66,13 @@ export function KeyboardShortcutsHelp({ open, onClose }: { open: boolean; onClos
           <label className="flex items-center justify-between gap-3 border-t border-gray-100 pt-4 text-sm dark:border-gray-700">
             <span>
               Keyboard shortcuts: <strong>{enabled ? 'On' : 'Off'}</strong>
-              <span className="block text-xs text-gray-500 dark:text-gray-400">Turn them off if single keys get in your way (screen reader, voice control). “?” keeps working.</span>
+              <span id={hintId} className="block text-xs text-gray-500 dark:text-gray-400">Turn them off if single keys get in your way (screen reader, voice control). “?” keeps working.</span>
             </span>
             <input
               type="checkbox"
               role="switch"
               aria-label="Keyboard shortcuts"
-              className="h-5 w-5 accent-brand-500"
+              aria-describedby={hintId}
               checked={enabled}
               onChange={e => setShortcutsEnabled(e.target.checked)}
             />

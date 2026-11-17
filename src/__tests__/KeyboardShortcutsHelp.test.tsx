@@ -12,9 +12,11 @@ import { ROUTER_FUTURE } from '../routerFuture';
 jest.mock('../contexts/AuthContext', () => ({ useAuth: jest.fn() }));
 const mockAuth = useAuth as jest.Mock;
 
+const leftPage = jest.fn();
 function SearchPage() {
   const ref = useRef<HTMLInputElement>(null);
   useKeyboardShortcut('/', () => ref.current?.focus());
+  useKeyboardShortcut('Escape', leftPage, { inFields: true }); // like Esc on a song
   return <input ref={ref} aria-label="Search" />;
 }
 
@@ -35,6 +37,7 @@ const press = (key: string, target: Element = document.body) => fireEvent.keyDow
 
 beforeEach(() => {
   localStorage.clear();
+  leftPage.mockClear();
 });
 
 test('? opens the help, which lists every shortcut and where it works', () => {
@@ -46,8 +49,8 @@ test('? opens the help, which lists every shortcut and where it works', () => {
   expect(within(dialog).getAllByRole('row').map(r => r.textContent)).toEqual([
     '/SearchSonglist, Catalog',
     'nAdd a songSonglist',
-    'EscBack to the songlista song',
-    '?This helpeverywhere',
+    'EscBack to the songlistSong page',
+    '?This helpEverywhere',
   ]);
 });
 
@@ -104,4 +107,35 @@ test('signed out: no footer link, and ? does nothing', () => {
   expect(screen.queryByRole('button', { name: 'Keyboard shortcuts' })).not.toBeInTheDocument();
   press('?');
   expect(help()).not.toBeInTheDocument();
+});
+
+// #187 review fixes.
+test('opened with ?, it gives focus back to where it was on close', () => {
+  renderApp();
+  const field = screen.getByLabelText('Search');
+  field.focus();
+  field.blur();
+  const add = screen.getByRole('button', { name: 'Keyboard shortcuts' });
+  add.focus();
+  press('?', add);
+  press('Escape', help()!);
+  expect(add).toHaveFocus();
+});
+
+test('while the help is open, page shortcuts do nothing behind it', () => {
+  renderApp();
+  press('?');
+  const close = within(help()!).getByRole('button', { name: 'Close' });
+  close.focus();
+  press('/', close);
+  expect(screen.getByLabelText('Search')).not.toHaveFocus();
+});
+
+test('an Escape that closes the mobile menu does not also act on the page', () => {
+  renderApp();
+  fireEvent.click(screen.getByRole('button', { name: 'Open navigation menu' }));
+  expect(document.getElementById('mobile-nav')).toBeInTheDocument();
+  press('Escape');
+  expect(document.getElementById('mobile-nav')).not.toBeInTheDocument();
+  expect(leftPage).not.toHaveBeenCalled();
 });
