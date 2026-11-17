@@ -82,17 +82,23 @@ function rangeLabel(min: string, max: string, unit: string): string | null {
   return null;
 }
 
+// The "Other" option several sidebar lists end with: alone on a chip it says nothing.
+const OTHER = 'Other';
+
 // #188: one chip per active filter VALUE, in the sidebar's section order. A prefix is
-// added only where the bare value would be ambiguous ("Key: C", "Time signature: Other").
+// added only where the bare value would be ambiguous ("Key: C", and every list's
+// "Other": "Instrument: Other", "Technique: Other", "Tuning: Other"…).
 // Search text and the All/Any match modes are never chips.
 export function describeActiveFilters(f: ActiveFilterState, names: ActiveFilterNames): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
   const single = (filter: Exclude<ActiveFilterRemoval['filter'], 'technique' | 'genre' | 'language'>, label: string) =>
     chips.push({ key: filter, label, remove: { filter } });
-  const each = (filter: 'technique' | 'genre' | 'language', values: Set<string>) =>
-    values.forEach(value => chips.push({ key: `${filter}:${value}`, label: value, remove: { filter, value } }));
+  const each = (filter: 'technique' | 'genre' | 'language', values: Set<string>, label: (value: string) => string = v => v) =>
+    values.forEach(value => chips.push({ key: `${filter}:${value}`, label: label(value), remove: { filter, value } }));
 
-  if (f.instrumentFilter) single('instrument', f.instrumentFilter === NO_INSTRUMENT ? 'No instrument' : f.instrumentFilter);
+  if (f.instrumentFilter) {
+    single('instrument', f.instrumentFilter === NO_INSTRUMENT ? 'No instrument' : f.instrumentFilter === OTHER ? 'Instrument: Other' : f.instrumentFilter);
+  }
   if (f.myInstrumentFilter) {
     const mine = names.myInstruments.find(i => i.uid === f.myInstrumentFilter);
     single('myInstrument', mine ? `My instrument: ${mine.type ? `${mine.type} - ${mine.name}` : mine.name}` : 'My instrument');
@@ -104,15 +110,15 @@ export function describeActiveFilters(f: ActiveFilterState, names: ActiveFilterN
   if (f.instrumentDifficultyFilter) single('difficulty', `Up to ${f.instrumentDifficultyFilter} ★`);
   if (f.capoFilter !== '') single('capo', `Capo ${f.capoFilter}`);
   if (f.tuningFilter) {
-    const label = f.tuningFilter === 'Other' ? 'Tuning: Other' : names.tunings.find(t => t.value === f.tuningFilter)?.label ?? f.tuningFilter;
+    const label = f.tuningFilter === OTHER ? 'Tuning: Other' : names.tunings.find(t => t.value === f.tuningFilter)?.label ?? f.tuningFilter;
     single('tuning', label);
   }
-  each('technique', f.techniqueFilters);
+  each('technique', f.techniqueFilters, v => (v === OTHER ? 'Technique: Other' : v));
   each('genre', f.genreFilters);
   each('language', f.languageFilters);
   if (f.keyFilter) single('key', `Key: ${f.keyFilter}`);
   if (f.modeFilter) single('mode', `Mode: ${f.modeFilter}`);
-  if (f.timeSignatureFilter) single('timeSignature', f.timeSignatureFilter === 'Other' ? 'Time signature: Other' : f.timeSignatureFilter);
+  if (f.timeSignatureFilter) single('timeSignature', f.timeSignatureFilter === OTHER ? 'Time signature: Other' : f.timeSignatureFilter);
   const bpm = rangeLabel(f.bpmMinFilter, f.bpmMaxFilter, 'BPM');
   if (bpm) single('bpm', bpm);
   const pitch = rangeLabel(f.pitchStandardMinFilter, f.pitchStandardMaxFilter, 'Hz');

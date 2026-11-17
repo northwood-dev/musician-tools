@@ -5,15 +5,16 @@ import type { ActiveFilterChip } from '../utils/songFilters';
 // #188: the active Songlist filters as removable chips, under the search field, so a
 // shorter list explains itself without opening the sidebar (folded away on mobile).
 // #195: after a removal, focus moves to the next chip still there, else the previous
-// one, else `onEmptied` (the search field). Removing the song instrument can drop
-// several chips at once, so "next" means the first SURVIVING chip after the removed one.
+// one, else `onEmptied` (the search field). Removing the song instrument drops its
+// dependent chips in the same render, so "next" means the first SURVIVING chip after
+// the removed one.
 export function ActiveFilterChips({ chips, onRemove, onClearAll, onEmptied }: {
   chips: ActiveFilterChip[];
   onRemove: (chip: ActiveFilterChip) => void;
   onClearAll: () => void;
   onEmptied: () => void;
 }) {
-  const groupRef = useRef<HTMLDivElement>(null);
+  const buttons = useRef(new Map<string, HTMLButtonElement>());
   const pending = useRef<{ keys: string[]; index: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -24,26 +25,29 @@ export function ActiveFilterChips({ chips, onRemove, onClearAll, onEmptied }: {
     const after = removal.keys.slice(removal.index + 1).find(k => surviving.has(k));
     const before = removal.keys.slice(0, removal.index).reverse().find(k => surviving.has(k));
     const target = after ?? before;
-    if (target === undefined) { onEmptied(); return; }
-    const buttons = groupRef.current?.querySelectorAll<HTMLButtonElement>('[data-chip-slot] > button');
-    buttons?.[chips.findIndex(c => c.key === target)]?.focus();
+    if (target === undefined) onEmptied();
+    else buttons.current.get(target)?.focus();
   }, [chips, onEmptied]);
 
   if (chips.length === 0) return null;
   return (
-    <div ref={groupRef} role="group" aria-label="Active filters" className="mt-3 flex flex-wrap items-center gap-2">
+    <div role="group" aria-label="Active filters" className="mt-3 flex flex-wrap items-center gap-2">
       {chips.map((chip, index) => (
-        <span key={chip.key} data-chip-slot className="contents">
-          <RemovableChip
-            label={chip.label}
-            onRemove={() => {
-              pending.current = { keys: chips.map(c => c.key), index };
-              onRemove(chip);
-            }}
-          />
-        </span>
+        <RemovableChip
+          key={chip.key}
+          ref={el => {
+            if (el) buttons.current.set(chip.key, el);
+            else buttons.current.delete(chip.key);
+          }}
+          label={chip.label}
+          onRemove={() => {
+            pending.current = { keys: chips.map(c => c.key), index };
+            onRemove(chip);
+          }}
+        />
       ))}
-      <button type="button" className="btn-link" onClick={onClearAll}>Clear all</button>
+      {/* Named apart from the sidebar's "Clear all", so a screen reader's button list tells them apart. */}
+      <button type="button" className="btn-link" aria-label="Clear all filters" onClick={onClearAll}>Clear all</button>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { applySongFilters, describeActiveFilters, NO_INSTRUMENT, type ActiveFilterState } from '../utils/songFilters';
 import type { Song } from '../services/songService';
+import { instrumentTuningsMap } from '../constants/instrumentTypes';
 
 const noFilters: ActiveFilterState = {
   instrumentFilter: '',
@@ -341,7 +342,7 @@ describe('describeActiveFilters', () => {
   const names = {
     playlists: [{ uid: 'p1', name: 'Gig set' }],
     myInstruments: [{ uid: 'mi1', type: 'Guitar', name: 'Strat' }, { uid: 'mi2', type: null, name: 'Uke' }],
-    tunings: [{ value: 'drop-d', label: 'Drop D' }],
+    tunings: instrumentTuningsMap.Guitar, // the real sidebar labels
   };
   const labels = (f: Partial<ActiveFilterState>) => describeActiveFilters({ ...noFilters, ...f }, names).map(c => c.label);
 
@@ -352,15 +353,17 @@ describe('describeActiveFilters', () => {
   test.each<[Partial<ActiveFilterState>, string[]]>([
     [{ instrumentFilter: 'Guitar' }, ['Guitar']],
     [{ instrumentFilter: NO_INSTRUMENT }, ['No instrument']],
+    [{ instrumentFilter: 'Other' }, ['Instrument: Other']],
     [{ myInstrumentFilter: 'mi1' }, ['My instrument: Guitar - Strat']],
     [{ myInstrumentFilter: 'mi2' }, ['My instrument: Uke']],
     [{ playlistFilter: 'p1' }, ['Playlist: Gig set']],
     [{ instrumentDifficultyFilter: 3 }, ['Up to 3 ★']],
     [{ capoFilter: 2 }, ['Capo 2']],
     [{ capoFilter: 0 }, ['Capo 0']],
-    [{ tuningFilter: 'drop-d' }, ['Drop D']],
+    [{ tuningFilter: 'DADGBE' }, ['DADGBE (Drop D)']],
     [{ tuningFilter: 'Other' }, ['Tuning: Other']],
-    [{ techniqueFilters: new Set(['Palm mute', 'Bend']) }, ['Palm mute', 'Bend']],
+    [{ techniqueFilters: new Set(['Palm Mute', 'Pick']) }, ['Palm Mute', 'Pick']],
+    [{ techniqueFilters: new Set(['Other']) }, ['Technique: Other']],
     [{ genreFilters: new Set(['Rock', 'Pop', 'Jazz']) }, ['Rock', 'Pop', 'Jazz']],
     [{ languageFilters: new Set(['French']) }, ['French']],
     [{ keyFilter: 'C' }, ['Key: C']],
@@ -385,11 +388,11 @@ describe('describeActiveFilters', () => {
   test('chips follow the sidebar order', () => {
     expect(labels({
       pitchStandardMinFilter: '440', bpmMinFilter: '90', timeSignatureFilter: '3/4', modeFilter: 'Minor', keyFilter: 'C',
-      languageFilters: new Set(['French']), genreFilters: new Set(['Rock']), techniqueFilters: new Set(['Bend']),
-      tuningFilter: 'drop-d', capoFilter: 2, instrumentDifficultyFilter: 3, playlistFilter: 'p1', myInstrumentFilter: 'mi1',
+      languageFilters: new Set(['French']), genreFilters: new Set(['Rock']), techniqueFilters: new Set(['Pick']),
+      tuningFilter: 'DADGBE', capoFilter: 2, instrumentDifficultyFilter: 3, playlistFilter: 'p1', myInstrumentFilter: 'mi1',
       instrumentFilter: 'Guitar',
     })).toEqual([
-      'Guitar', 'My instrument: Guitar - Strat', 'Playlist: Gig set', 'Up to 3 ★', 'Capo 2', 'Drop D', 'Bend', 'Rock',
+      'Guitar', 'My instrument: Guitar - Strat', 'Playlist: Gig set', 'Up to 3 ★', 'Capo 2', 'DADGBE (Drop D)', 'Pick', 'Rock',
       'French', 'Key: C', 'Mode: Minor', '3/4', '≥ 90 BPM', '≥ 440 Hz',
     ]);
   });

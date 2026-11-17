@@ -77,22 +77,41 @@ test('a chip removes its filter, the list updates, and the match mode is kept', 
   expect(screen.getByRole('radio', { name: 'Any', checked: true })).toHaveAttribute('name', 'genre-match-mode');
 });
 
-test('removing the song instrument also drops the chips that depend on it', async () => {
-  saved({ songsInstrumentFilter: 'Guitar', songsCapoFilter: '2', songsInstrumentDifficultyFilter: '3', songsKeyFilter: 'C' });
+test('removing a language keeps the languages match mode', async () => {
+  saved({ songsLanguageFilters: JSON.stringify(['French', 'English']), songsLanguageMatchMode: 'any' });
+  mockedSongs.getAllSongs.mockResolvedValue([{ ...rockFast, language: 'French' }, { ...jazzSlow, language: 'English' }] as never);
   renderSongs();
   await screen.findByRole('group', { name: 'Active filters' });
-  expect(chipLabels()).toEqual(['Remove Guitar', 'Remove Up to 3 ★', 'Remove Capo 2', 'Remove Key: C']);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove English' }));
+  expect(chipLabels()).toEqual(['Remove French']);
+  expect(localStorage.getItem('songsLanguageMatchMode')).toBe('any');
+});
+
+test('removing the song instrument also drops the chips that depend on it', async () => {
+  saved({
+    songsInstrumentFilter: 'Guitar', songsCapoFilter: '2', songsInstrumentDifficultyFilter: '3',
+    songsTuningFilter: 'DADGBE', songsTechniqueFilters: JSON.stringify(['Pick']), songsKeyFilter: 'C',
+  });
+  renderSongs();
+  await screen.findByRole('group', { name: 'Active filters' });
+  expect(chipLabels()).toEqual([
+    'Remove Guitar', 'Remove Up to 3 ★', 'Remove Capo 2', 'Remove DADGBE (Drop D)', 'Remove Pick', 'Remove Key: C',
+  ]);
 
   fireEvent.click(screen.getByRole('button', { name: 'Remove Guitar' }));
   expect(chipLabels()).toEqual(['Remove Key: C']);
+  // #195 review: the dependent chips go in the same render, so focus lands on the first
+  // chip that survives (not on "Up to 3 ★", which vanished right after).
+  expect(screen.getByRole('button', { name: 'Remove Key: C' })).toHaveFocus();
 });
 
-test('"Clear all" at the end of the row clears every filter and the row goes away', async () => {
+test('"Clear all filters" at the end of the row clears every filter and the row goes away', async () => {
   saved({ songsGenreFilters: JSON.stringify(['Rock']), songsBpmMaxFilter: '100' });
   renderSongs();
   await screen.findByRole('group', { name: 'Active filters' });
 
-  fireEvent.click(within(chipRow()!).getByRole('button', { name: 'Clear all' }));
+  fireEvent.click(within(chipRow()!).getByRole('button', { name: 'Clear all filters' }));
   expect(await screen.findByText('Alpha')).toBeInTheDocument();
   expect(screen.getByText('Beta')).toBeInTheDocument();
   expect(chipRow()).not.toBeInTheDocument();

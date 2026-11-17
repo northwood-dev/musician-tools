@@ -468,7 +468,16 @@ function Songs() {
   // existing cascade (capo, tuning, difficulty and techniques follow it).
   const removeFilterChip = ({ remove }: ActiveFilterChip) => {
     switch (remove.filter) {
-      case 'instrument': setInstrumentFilter(''); break;
+      case 'instrument':
+        // Clear the dependent filters in the SAME render as the instrument: the cascade
+        // effect would only do it one render later, and focus would land on a chip
+        // ("Up to 3 ★", "Capo 2"…) that is about to vanish (#195 review).
+        setInstrumentFilter('');
+        setInstrumentDifficultyFilter('');
+        setCapoFilter('');
+        setTuningFilter('');
+        setTechniqueFilters(new Set());
+        break;
       case 'myInstrument': setMyInstrumentFilter(''); break;
       case 'playlist': setPlaylistFilter(''); break;
       case 'difficulty': setInstrumentDifficultyFilter(''); break;
@@ -482,6 +491,7 @@ function Songs() {
       case 'timeSignature': setTimeSignatureFilter(''); break;
       case 'bpm': setBpmMinFilter(''); setBpmMaxFilter(''); break;
       case 'pitch': setPitchStandardMinFilter(''); setPitchStandardMaxFilter(''); break;
+      default: remove satisfies never; // a new kind of chip must say how it is removed
     }
   };
 

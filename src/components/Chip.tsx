@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 // The chip block of the design pass (#141, #159): one shape for genres, languages,
 // playlists, aliases, links and tags, instead of the brand / grey / amber pills copied by
@@ -21,6 +21,7 @@ export function RemovableChip({
   ariaLabel,
   dimmed,
   busy,
+  ref,
 }: {
   label: string;
   onRemove: () => void;
@@ -32,9 +33,12 @@ export function RemovableChip({
   dimmed?: boolean;
   /** A slow request is running: a small spinner shows, and the chip says so (aria-busy). */
   busy?: boolean;
+  /** Lets a list move focus to a given chip (#195). */
+  ref?: Ref<HTMLButtonElement>;
 }) {
   return (
     <button
+      ref={ref}
       type="button"
       className={`${SHAPE} ${ON} ${dimmed ? 'opacity-50' : ''}`}
       onClick={onRemove}
