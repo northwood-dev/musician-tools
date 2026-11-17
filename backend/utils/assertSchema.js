@@ -1,5 +1,8 @@
 'use strict';
 
+// Boot-time schema guards: each one throws (the caller logs and exits) instead of serving a
+// database the migrations didn't shape. Two guards: functional indexes (11.1), RLS (#209).
+
 // Story 11.1: migrations are the single source of truth for the schema. The
 // case/accent-insensitive per-user UNIQUE constraints are FUNCTIONAL indexes
 // (e.g. lower(name)) that can't be expressed in Sequelize's index DSL — so
@@ -37,4 +40,40 @@ async function assertFunctionalIndexes(sequelize) {
   }
 }
 
-module.exports = { assertFunctionalIndexes, EXPECTED_INDEXES };
+// #207 / #209: Supabase serves every table of the schema through its auto-generated REST API to
+// the `anon` / `authenticated` roles; Row-Level Security (on, with no policy) is what keeps them
+// out, while the backend, as the tables' owner, bypasses it. So the boot REFUSES to serve while
+// any table has RLS off — a new table whose migration forgot it, or one created by the sync
+// safety net above. Reads the catalog, not a hard-coded list: a new table is covered for free.
+// Same contract as the index guard: throws, the caller logs and exits.
+// Always returns at least one row (the schema), so an empty search_path — current_schema() NULL,
+// which would match no table — fails loudly instead of passing silently.
+async function assertRowLevelSecurity(sequelize) {
+  const rows = await sequelize.query(
+    `SELECT s.schema, c.relname
+       FROM (SELECT current_schema() AS schema) s
+       LEFT JOIN pg_class c
+         ON c.relnamespace = s.schema::regnamespace
+        AND c.relkind IN ('r', 'p')
+        AND NOT c.relrowsecurity
+      ORDER BY c.relname`,
+    { type: 'SELECT' }
+  );
+  if (!rows[0] || !rows[0].schema) {
+    throw new Error(
+      'No current schema (empty search_path): cannot check Row-Level Security. ' +
+      'Check the database role\'s search_path.'
+    );
+  }
+  const unprotected = rows.filter(r => r.relname);
+  if (unprotected.length > 0) {
+    const list = unprotected.map(r => r.relname).join(', ');
+    throw new Error(
+      `Row-Level Security is off on: ${list}. Without it, Supabase's REST API exposes the table ` +
+      'to anyone holding the anon key. Add `ALTER TABLE "<table>" ENABLE ROW LEVEL SECURITY;` ' +
+      'to the migration that creates the table, then run `make migrate`.'
+    );
+  }
+}
+
+module.exports = { assertFunctionalIndexes, assertRowLevelSecurity, EXPECTED_INDEXES };

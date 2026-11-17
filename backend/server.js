@@ -20,7 +20,7 @@ const { env } = require('./config/env');
 const config = require('./config/config')[env];
 const PORT = process.env.PORT || 3001;
 const { sequelize } = require('./models');
-const { assertFunctionalIndexes } = require('./utils/assertSchema');
+const { assertFunctionalIndexes, assertRowLevelSecurity } = require('./utils/assertSchema');
 
 // Fail-fast at boot: required secrets/config must be present. There is no
 // fallback — the session secret (7.1) and the email infra config (7.6:
@@ -43,6 +43,7 @@ const SESSION_SECRET = process.env.SESSION_SECRET;
   try {
     await sequelize.sync({ alter: false });
     await assertFunctionalIndexes(sequelize);
+    await assertRowLevelSecurity(sequelize); // #209: no table exposed to the Supabase API
     logger.log('info', 'Database schema verified');
     // Only start serving once the schema is verified — the guard's promise is to
     // fail fast BEFORE serving a schema without per-user uniqueness. The routes/
@@ -123,7 +124,9 @@ if (process.env.NODE_ENV === 'production') {
   sessionConfig.store = new pgSession({
     pool: pgPool,
     tableName: 'session',
-    createTableIfMissing: true
+    // #207: the migrations create `session` (with Row-Level Security); a table created here at
+    // runtime would have none and expose sessions through Supabase's API until the next boot.
+    createTableIfMissing: false
   });
   
   logger.info('Using PostgreSQL session store');
