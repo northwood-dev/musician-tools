@@ -180,3 +180,78 @@ test('the last known layout is shown before the account answers (no flash of the
   await screen.findByText('Alpha');
   expect(shownSections()).toEqual(['bpm']);
 });
+
+// jsdom lays nothing out (every box is 0×0), and dnd-kit's keyboard sensor moves by
+// geometry: give each section a 60px-high box stacked in DOM order. Restore after use.
+const stackSectionBoxes = () =>
+  jest.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const section = this.closest('[data-filter-section]');
+    const all = Array.from(sidebar().querySelectorAll('[data-filter-section]'));
+    const top = section ? all.indexOf(section) * 60 : 0;
+    const height = section ? 60 : 0;
+    return { x: 0, y: top, top, left: 0, right: 300, bottom: top + height, width: 300, height, toJSON: () => ({}) } as DOMRect;
+  });
+const press = async (el: HTMLElement, key: string, code = key) => {
+  fireEvent.keyDown(el, { key, code });
+  await settle();
+};
+
+// #199: reorder from the keyboard (dnd-kit's keyboard sensor: Space, arrows, Space).
+test('a section moves down from the keyboard with its handle, and the order is saved', async () => {
+  accountLayout(['genre', 'key', 'mode']);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+
+  const rect = stackSectionBoxes();
+  const handle = screen.getByRole('button', { name: 'Move Genre filters' });
+  handle.focus();
+  fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+  await settle();
+  fireEvent.keyDown(handle, { key: 'ArrowDown', code: 'ArrowDown' });
+  await settle();
+  fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+  await settle();
+
+  expect(shownSections()).toEqual(['key', 'genre', 'mode']);
+  expect(profile.saveSonglistFilterSections).toHaveBeenLastCalledWith(['key', 'genre', 'mode']);
+  rect.mockRestore();
+});
+
+test('Escape cancels a keyboard move: nothing changes, nothing is saved', async () => {
+  accountLayout(['genre', 'key', 'mode']);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+  const rect = stackSectionBoxes();
+  try {
+    const handle = screen.getByRole('button', { name: 'Move Genre filters' });
+    handle.focus();
+    await press(handle, ' ', 'Space');
+    await press(handle, 'ArrowDown');
+    await press(handle, 'Escape');
+    expect(shownSections()).toEqual(['genre', 'key', 'mode']);
+    expect(profile.saveSonglistFilterSections).not.toHaveBeenCalled();
+  } finally {
+    rect.mockRestore();
+  }
+});
+
+test('keyboard moves are announced by section title', async () => {
+  accountLayout(['genre', 'key', 'mode']);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+  const rect = stackSectionBoxes();
+  try {
+    const handle = screen.getByRole('button', { name: 'Move Genre filters' });
+    handle.focus();
+    await press(handle, ' ', 'Space');
+    expect(await screen.findByText('Picked up Genre filters, position 1 of 3.')).toBeInTheDocument();
+    await press(handle, 'ArrowDown');
+    expect(await screen.findByText('Genre filters moved to position 2 of 3.')).toBeInTheDocument();
+    await press(handle, ' ', 'Space');
+  } finally {
+    rect.mockRestore();
+  }
+});

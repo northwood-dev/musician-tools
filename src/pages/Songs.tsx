@@ -2083,6 +2083,7 @@ function Songs() {
             onRemove: removeFilterSection,
             onAdd: filterSections.add,
             onReset: filterSections.reset,
+            onMove: filterSections.move,
             saveFailed: filterSections.saveFailed,
             onRetrySave: filterSections.retrySave,
           }}

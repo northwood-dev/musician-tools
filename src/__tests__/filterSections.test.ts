@@ -1,4 +1,4 @@
-import { DEFAULT_FILTER_SECTIONS, resolveFilterSections, sectionOfFilter } from '../utils/filterSections';
+import { DEFAULT_FILTER_SECTIONS, moveSection, resolveFilterSections, sectionOfFilter } from '../utils/filterSections';
 
 // #185 / #198: which sidebar sections show, in which order.
 describe('resolveFilterSections', () => {
@@ -32,4 +32,12 @@ test('each chip filter belongs to a section (My instrument lives in Instrument f
   expect(sectionOfFilter('instrument')).toBe('instrument');
   expect(sectionOfFilter('timeSignature')).toBe('timeSignature');
   expect(sectionOfFilter('genre')).toBe('genre');
+});
+
+// #199: dropping a section where another one is.
+test('moveSection drops a section at the place of another, the others shift', () => {
+  expect(moveSection(['genre', 'key', 'mode'], 'genre', 'mode')).toEqual(['key', 'mode', 'genre']);
+  expect(moveSection(['genre', 'key', 'mode'], 'mode', 'genre')).toEqual(['mode', 'genre', 'key']);
+  expect(moveSection(['genre', 'key'], 'genre', 'genre')).toEqual(['genre', 'key']);
+  expect(moveSection(['genre', 'key'], 'bpm', 'genre')).toEqual(['genre', 'key']);
 });

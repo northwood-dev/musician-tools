@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { profileService } from '../services/profileService';
-import { resolveFilterSections, type FilterSectionId } from '../utils/filterSections';
+import { moveSection, resolveFilterSections, type FilterSectionId } from '../utils/filterSections';
 
 // #198: the Songlist sidebar layout — which filter sections show, in which order. It is
 // saved on the account (phone and computer match); a browser copy lets the first paint
@@ -72,6 +72,8 @@ export function useFilterSectionsLayout(activeSections: ReadonlySet<FilterSectio
     remove: (id: FilterSectionId) => save(shown.filter(s => s !== id)),
     add: (id: FilterSectionId) => save([...shown.filter(s => s !== id), id]),
     reset: () => save(null),
+    /** #199: drop `id` at the place of `overId`. */
+    move: (id: FilterSectionId, overId: FilterSectionId) => save(moveSection(shown, id, overId)),
     saveFailed,
     retrySave: () => send(lastSent.current),
   };

@@ -4,6 +4,7 @@ import { Disclosure } from './Disclosure';
 import { CloseButton } from './CloseButton';
 import { Notice } from './Notice';
 import { Panel } from './Panel';
+import { SectionDragHandle, SortableFilterSections, SortableSection } from './SortableFilterSections';
 import { useDismissablePanel } from '../hooks/useDismissablePanel';
 import {
   FILTER_SECTION_IDS,
@@ -104,6 +105,8 @@ export interface SongsSidebarProps {
     onRemove: (id: FilterSectionId) => void;
     onAdd: (id: FilterSectionId) => void;
     onReset: () => void;
+    /** #199: drop `id` where `overId` is. */
+    onMove: (id: FilterSectionId, overId: FilterSectionId) => void;
     saveFailed: boolean;
     onRetrySave: () => void;
   };
@@ -130,7 +133,12 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     pitch: props.setPitchAccordionOpen,
   };
   const removeButton = (id: FilterSectionId) =>
-    layout && <CloseButton label={`Remove ${FILTER_SECTION_TITLES[id]}`} onClick={() => layout.onRemove(id)} />;
+    layout && (
+      <>
+        <SectionDragHandle id={id} />
+        <CloseButton label={`Remove ${FILTER_SECTION_TITLES[id]}`} onClick={() => layout.onRemove(id)} />
+      </>
+    );
   // #197: each filter section once, by id; the sidebar shows them in `order`.
   const sectionElements: Record<FilterSectionId, ReactNode> = {
     instrument:
@@ -745,7 +753,13 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               Couldn't save your filter layout
             </Notice>
           )}
-          {order.map(id => sectionElements[id] ? <div key={id} data-filter-section={id}>{sectionElements[id]}</div> : null)}
+          {layout ? (
+            <SortableFilterSections order={order} onMove={layout.onMove}>
+              {order.map(id => sectionElements[id] ? <SortableSection key={id} id={id}>{sectionElements[id]}</SortableSection> : null)}
+            </SortableFilterSections>
+          ) : (
+            order.map(id => sectionElements[id] ? <div key={id} data-filter-section={id}>{sectionElements[id]}</div> : null)
+          )}
           {layout && (
             <div className="relative">
               <button

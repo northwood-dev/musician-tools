@@ -67,3 +67,13 @@ export function resolveFilterSections(
   }
   return shown;
 }
+
+/** #199: the layout with `id` dropped where `overId` was (the others shift by one). */
+export function moveSection(sections: readonly FilterSectionId[], id: FilterSectionId, overId: FilterSectionId): FilterSectionId[] {
+  const from = sections.indexOf(id);
+  const to = sections.indexOf(overId);
+  if (from === -1 || to === -1 || from === to) return [...sections];
+  const next = [...sections];
+  next.splice(to, 0, ...next.splice(from, 1));
+  return next;
+}
