@@ -40,8 +40,8 @@ export type SongFilterOptions = {
   instrumentMatchModeAll?: boolean;
 };
 
-// Subset of filter state that counts as an "active filter" — mirrors, one-for-one,
-// the conditions behind `hasActiveFilters` in Songs.tsx. Search query is NOT a filter.
+// Subset of filter state that counts as an "active filter": what describeActiveFilters
+// turns into chips (#188). Search query and match modes are NOT filters.
 export type ActiveFilterState = {
   instrumentFilter: string;
   myInstrumentFilter: string;
@@ -60,29 +60,6 @@ export type ActiveFilterState = {
   techniqueFilters: Set<string>;
   genreFilters: Set<string>;
 };
-
-// Number of active filter dimensions (a non-empty Set counts as one). Single source
-// of truth for both `hasActiveFilters` (> 0) and the mobile "Filters · N" counter.
-export function countActiveFilters(f: ActiveFilterState): number {
-  let n = 0;
-  if (f.instrumentFilter) n++;
-  if (f.myInstrumentFilter) n++;
-  if (f.instrumentDifficultyFilter) n++;
-  if (f.capoFilter !== '') n++;
-  if (f.tuningFilter) n++;
-  if (f.keyFilter) n++;
-  if (f.bpmMinFilter) n++;
-  if (f.bpmMaxFilter) n++;
-  if (f.pitchStandardMinFilter) n++;
-  if (f.pitchStandardMaxFilter) n++;
-  if (f.timeSignatureFilter) n++;
-  if (f.modeFilter) n++;
-  if (f.languageFilters.size > 0) n++;
-  if (f.playlistFilter) n++;
-  if (f.techniqueFilters.size > 0) n++;
-  if (f.genreFilters.size > 0) n++;
-  return n;
-}
 
 /** What removing one chip clears (#188). Multi-value filters name the value to drop. */
 export type ActiveFilterRemoval =

@@ -103,3 +103,28 @@ test('the chips stay visible when the desktop sidebar is collapsed', async () =>
   renderSongs();
   expect(await screen.findByRole('button', { name: 'Remove Key: C' })).toBeInTheDocument();
 });
+
+// #195: the mobile badge counts what the user sees, and focus never gets lost.
+test('the mobile "Filters · N" button counts the chips, not the filter groups', async () => {
+  // Old group count: genres 1 + key 1 = 2. Chips: Rock, Jazz, Key: C = 3.
+  saved({ songsGenreFilters: JSON.stringify(['Rock', 'Jazz']), songsKeyFilter: 'C' });
+  renderSongs();
+  await screen.findByRole('group', { name: 'Active filters' });
+  expect(chipLabels()).toHaveLength(3);
+  expect(screen.getByText('Filters · 3')).toBeInTheDocument();
+});
+
+test('after a removal, focus goes to the next chip, else the previous one, else the search field', async () => {
+  saved({ songsGenreFilters: JSON.stringify(['Rock', 'Jazz']), songsKeyFilter: 'C' });
+  renderSongs();
+  await screen.findByRole('group', { name: 'Active filters' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Rock' }));
+  expect(screen.getByRole('button', { name: 'Remove Jazz' })).toHaveFocus();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Key: C' }));
+  expect(screen.getByRole('button', { name: 'Remove Jazz' })).toHaveFocus();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Jazz' }));
+  expect(screen.getByPlaceholderText('Search by title, artist, or album…')).toHaveFocus();
+});

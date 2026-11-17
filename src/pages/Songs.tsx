@@ -13,7 +13,7 @@ import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
-import { applySongFilters, countActiveFilters, describeActiveFilters, isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
+import { applySongFilters, describeActiveFilters, isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
 import { handleComboKeyDown, useScrollHighlightIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { useAutosave } from '../hooks/useAutosave';
 import { useRowSelection } from '../hooks/useRowSelection';
@@ -410,7 +410,6 @@ function Songs() {
   // is intentional — the song is being removed). Read live in the blocker predicate.
   const deletingRef = useRef(false);
 
-  // Single source of truth: the count drives both the boolean and the mobile "Filters · N" badge.
   const activeFilterState = {
     instrumentFilter,
     myInstrumentFilter,
@@ -429,13 +428,15 @@ function Songs() {
     techniqueFilters,
     genreFilters,
   };
-  const activeFilterCount = countActiveFilters(activeFilterState);
   // #188: the chips under the search field; the names come from what the sidebar lists.
   const activeFilterChips = describeActiveFilters(activeFilterState, {
     playlists,
     myInstruments,
     tunings: instrumentTuningsMap[instrumentFilter] || [],
   });
+  // #195: single source of truth — the mobile "Filters · N" badge counts the chips the
+  // user sees (three genres = 3), and hasActiveFilters follows it.
+  const activeFilterCount = activeFilterChips.length;
   const hasActiveFilters = activeFilterCount > 0;
 
   const clearAllFilters = () => {
