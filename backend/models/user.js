@@ -78,6 +78,14 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: false,
       field: 'is_curator'
+    },
+    songlistFilterSections: {
+      // #198: the Songlist sidebar layout — ordered ids of the filter sections shown
+      // (constants/filterSections.js). NULL = never customised → the default layout.
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      field: 'songlist_filter_sections'
     }
   }, {
     tableName: 'Users',

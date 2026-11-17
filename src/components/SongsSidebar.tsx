@@ -1,5 +1,17 @@
 import { NO_INSTRUMENT } from '../utils/songFilters';
+import { useState, type ReactNode } from 'react';
 import { Disclosure } from './Disclosure';
+import { CloseButton } from './CloseButton';
+import { Notice } from './Notice';
+import { Panel } from './Panel';
+import { SectionDragHandle, SortableFilterSections, SortableSection } from './SortableFilterSections';
+import { useDismissablePanel } from '../hooks/useDismissablePanel';
+import {
+  FILTER_SECTION_IDS,
+  FILTER_SECTION_TITLES,
+  sectionWaitingReason,
+  type FilterSectionId,
+} from '../utils/filterSections';
 
 export interface SongsSidebarProps {
   // UI state
@@ -86,59 +98,53 @@ export interface SongsSidebarProps {
   hasActiveFilters: boolean;
   showTuningFilters: boolean;
   clearAllFilters: () => void;
+  /** #185: which filter sections to show, in order (default: all, historical order). */
+  sections?: readonly FilterSectionId[];
+  /** #198: the layout controls. Without them the sidebar shows no ✕ / + Add filter. */
+  layout?: {
+    onRemove: (id: FilterSectionId) => void;
+    onAdd: (id: FilterSectionId) => void;
+    onReset: () => void;
+    /** #199: drop `id` where `overId` is. */
+    onMove: (id: FilterSectionId, overId: FilterSectionId) => void;
+    saveFailed: boolean;
+    onRetrySave: () => void;
+  };
 }
 
 export default function SongsSidebar(props: SongsSidebarProps) {
-  return (
-    <aside
-      id="songs-sidebar"
-      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all motion-safe:duration-300 card-base glass-effect lg:sticky lg:top-24`}
-      aria-hidden={false}
-    >
-      {/* Collapsed rail — desktop only (>= lg). Under lg the "Filters" disclosure
-          controls visibility, so the sidebar always shows its full content there. */}
-      {!props.sidebarExpanded && (
-        <div className="hidden lg:flex p-2 items-center justify-center">
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            aria-label="Expand sidebar"
-            onClick={() => props.setSidebarExpanded(true)}
-          >
-            »
-          </button>
-        </div>
-      )}
-      <div className={`${props.sidebarExpanded ? '' : 'lg:hidden'} p-4 space-y-3`}>
-          {/* On mobile this row only ever holds "Clear all" (the title and «-collapse are
-              desktop-only), so hide it entirely when there's nothing to show — no ghost gap. */}
-          <div className={`${props.hasActiveFilters ? 'flex' : 'hidden'} lg:flex items-center justify-between mb-2`}>
-            <div className="flex items-center gap-2">
-              {/* Redundant with the mobile "Filters" disclosure button; keep it only as the
-                  static sidebar title on desktop (>= lg). */}
-              <h3 className="hidden lg:block text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
-              {props.hasActiveFilters && (
-                <button
-                  type="button"
-                  className="btn-secondary btn-sm"
-                  onClick={props.clearAllFilters}
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-            <button
-              type="button"
-              className="hidden lg:inline-flex btn-secondary btn-sm"
-              aria-label="Collapse sidebar"
-              onClick={() => props.setSidebarExpanded(false)}
-            >
-              «
-            </button>
-          </div>
+  const { layout } = props;
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenu = useDismissablePanel({ open: addMenuOpen, onClose: () => setAddMenuOpen(false) });
+  // #198: a section added from "+ Add filter" opens, ready to use.
+  const openSection: Record<FilterSectionId, (open: boolean) => void> = {
+    instrument: props.setFiltersAccordionOpen,
+    playlist: props.setPlaylistAccordionOpen,
+    difficulty: props.setDifficultyAccordionOpen,
+    capo: props.setCapoAccordionOpen,
+    tuning: props.setTuningAccordionOpen,
+    technique: props.setTechniqueAccordionOpen,
+    genre: props.setGenreAccordionOpen,
+    language: props.setLanguageAccordionOpen,
+    key: props.setKeyAccordionOpen,
+    mode: props.setModeAccordionOpen,
+    timeSignature: props.setTimeSignatureAccordionOpen,
+    bpm: props.setBpmAccordionOpen,
+    pitch: props.setPitchAccordionOpen,
+  };
+  // #185: the ⋮⋮ handle on the left of the section name, its ✕ on the right.
+  const sectionHandle = (id: FilterSectionId) => layout && <SectionDragHandle id={id} />;
+  const sectionRemove = (id: FilterSectionId) =>
+    layout && <CloseButton label={`Remove ${FILTER_SECTION_TITLES[id]}`} onClick={() => layout.onRemove(id)} />;
+  // #197: each filter section once, by id; the sidebar shows them in `order`.
+  const sectionElements: Record<FilterSectionId, ReactNode> = {
+    instrument:
+          (
           <Disclosure
+            lead={sectionHandle('instrument')}
+            aside={sectionRemove('instrument')}
             className="card-base"
-            title="Instrument filters"
+            title={FILTER_SECTION_TITLES.instrument}
             open={props.filtersAccordionOpen}
             onToggle={() => props.setFiltersAccordionOpen(!props.filtersAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3"
@@ -186,9 +192,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </button>
             </div>
           </Disclosure>
+          ),
+    playlist:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="Playlist filters"
+            lead={sectionHandle('playlist')}
+            aside={sectionRemove('playlist')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.playlist}
             open={props.playlistAccordionOpen}
             onToggle={() => props.setPlaylistAccordionOpen(!props.playlistAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3"
@@ -216,11 +227,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             )}
           </Disclosure>
-
-          {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
+          ),
+    difficulty:
+          props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              className="card-base mt-3"
-              title="Difficulty filter"
+              lead={sectionHandle('difficulty')}
+            aside={sectionRemove('difficulty')}
+              className="card-base"
+              title={FILTER_SECTION_TITLES.difficulty}
               open={props.difficultyAccordionOpen}
               onToggle={() => props.setDifficultyAccordionOpen(!props.difficultyAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -240,11 +254,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 ))}
               </select>
             </Disclosure>
-          )}
-          {props.instrumentFilter === 'Guitar' && (
+          ),
+    capo:
+          props.instrumentFilter === 'Guitar' && (
             <Disclosure
-              className="card-base mt-3"
-              title="Capo filter"
+              lead={sectionHandle('capo')}
+            aside={sectionRemove('capo')}
+              className="card-base"
+              title={FILTER_SECTION_TITLES.capo}
               open={props.capoAccordionOpen}
               onToggle={() => props.setCapoAccordionOpen(!props.capoAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -264,11 +281,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 ))}
               </select>
             </Disclosure>
-          )}
-          {props.showTuningFilters && (
+          ),
+    tuning:
+          props.showTuningFilters && (
             <Disclosure
-              className="card-base mt-3"
-              title="Tuning filters"
+              lead={sectionHandle('tuning')}
+            aside={sectionRemove('tuning')}
+              className="card-base"
+              title={FILTER_SECTION_TITLES.tuning}
               open={props.tuningAccordionOpen}
               onToggle={() => props.setTuningAccordionOpen(!props.tuningAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -289,11 +309,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 </select>
               )}
             </Disclosure>
-          )}
-          {props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
+          ),
+    technique:
+          props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              className="card-base mt-3"
-              title="Technique filters"
+              lead={sectionHandle('technique')}
+            aside={sectionRemove('technique')}
+              className="card-base"
+              title={FILTER_SECTION_TITLES.technique}
               open={props.techniqueAccordionOpen}
               onToggle={() => props.setTechniqueAccordionOpen(!props.techniqueAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -355,10 +378,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 </>
               )}
             </Disclosure>
-          )}
+          ),
+    genre:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="Genre filters"
+            lead={sectionHandle('genre')}
+            aside={sectionRemove('genre')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.genre}
             open={props.genreAccordionOpen}
             onToggle={() => props.setGenreAccordionOpen(!props.genreAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -422,12 +449,15 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </>
             )}
           </Disclosure>
-          
-          {/* Language filter */}
+          ),
+    language:
+          (
           <Disclosure
-            className="card-base mt-3"
+            lead={sectionHandle('language')}
+            aside={sectionRemove('language')}
+            className="card-base"
             title={<>
-              Filter by language
+              {FILTER_SECTION_TITLES.language}
               {props.languageFilters.size > 0 && (
                 <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
                   ({props.languageFilters.size} selected)
@@ -496,10 +526,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </button>
             </div>
           </Disclosure>
-
+          ),
+    key:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="Key filters"
+            lead={sectionHandle('key')}
+            aside={sectionRemove('key')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.key}
             open={props.keyAccordionOpen}
             onToggle={() => props.setKeyAccordionOpen(!props.keyAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -527,9 +561,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               <option value="B">B</option>
             </select>
           </Disclosure>
+          ),
+    mode:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="Mode filters"
+            lead={sectionHandle('mode')}
+            aside={sectionRemove('mode')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.mode}
             open={props.modeAccordionOpen}
             onToggle={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -552,9 +591,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               <option value="Other">Other</option>
             </select>
           </Disclosure>
+          ),
+    timeSignature:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="Time signature filters"
+            lead={sectionHandle('timeSignature')}
+            aside={sectionRemove('timeSignature')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.timeSignature}
             open={props.timeSignatureAccordionOpen}
             onToggle={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -580,9 +624,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               <option value="Other">Other</option>
             </select>
           </Disclosure>
+          ),
+    bpm:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="BPM filters"
+            lead={sectionHandle('bpm')}
+            aside={sectionRemove('bpm')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.bpm}
             open={props.bpmAccordionOpen}
             onToggle={() => props.setBpmAccordionOpen(!props.bpmAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -615,9 +664,14 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             </div>
           </Disclosure>
+          ),
+    pitch:
+          (
           <Disclosure
-            className="card-base mt-3"
-            title="Pitch standard filters"
+            lead={sectionHandle('pitch')}
+            aside={sectionRemove('pitch')}
+            className="card-base"
+            title={FILTER_SECTION_TITLES.pitch}
             open={props.pitchAccordionOpen}
             onToggle={() => props.setPitchAccordionOpen(!props.pitchAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -652,6 +706,111 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               </div>
             </div>
           </Disclosure>
+          ),
+  };
+  const order = props.sections ?? FILTER_SECTION_IDS;
+  const hidden = FILTER_SECTION_IDS.filter(id => !order.includes(id));
+  const waitingReason = (id: FilterSectionId) => sectionWaitingReason(id, props);
+  return (
+    <aside
+      id="songs-sidebar"
+      className={`${props.mobileFiltersOpen ? '' : 'hidden'} lg:block ${props.sidebarExpanded ? 'w-full lg:w-80' : 'w-full lg:w-12'} shrink-0 min-w-[48px] overflow-hidden motion-safe:transition-all motion-safe:duration-300 card-base glass-effect lg:sticky lg:top-24`}
+      aria-hidden={false}
+    >
+      {/* Collapsed rail — desktop only (>= lg). Under lg the "Filters" disclosure
+          controls visibility, so the sidebar always shows its full content there. */}
+      {!props.sidebarExpanded && (
+        <div className="hidden lg:flex p-2 items-center justify-center">
+          <button
+            type="button"
+            className="btn-secondary btn-sm"
+            aria-label="Expand sidebar"
+            onClick={() => props.setSidebarExpanded(true)}
+          >
+            »
+          </button>
+        </div>
+      )}
+      <div className={`${props.sidebarExpanded ? '' : 'lg:hidden'} p-4 space-y-3`}>
+          {/* On mobile this row only ever holds "Clear all" (the title and «-collapse are
+              desktop-only), so hide it entirely when there's nothing to show — no ghost gap. */}
+          <div className={`${props.hasActiveFilters ? 'flex' : 'hidden'} lg:flex items-center justify-between mb-2`}>
+            <div className="flex items-center gap-2">
+              {/* Redundant with the mobile "Filters" disclosure button; keep it only as the
+                  static sidebar title on desktop (>= lg). */}
+              <h3 className="hidden lg:block text-sm font-semibold text-gray-800 dark:text-gray-100">Filters</h3>
+              {props.hasActiveFilters && (
+                <button
+                  type="button"
+                  className="btn-secondary btn-sm"
+                  onClick={props.clearAllFilters}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              className="hidden lg:inline-flex btn-secondary btn-sm"
+              aria-label="Collapse sidebar"
+              onClick={() => props.setSidebarExpanded(false)}
+            >
+              «
+            </button>
+          </div>
+          {layout?.saveFailed && (
+            <Notice tone="error" action={<button type="button" className="btn-secondary btn-sm" onClick={layout.onRetrySave}>Retry</button>}>
+              Couldn't save your filter layout
+            </Notice>
+          )}
+          {layout ? (
+            <SortableFilterSections order={order.filter(id => sectionElements[id])} onMove={layout.onMove}>
+              {order.map(id => sectionElements[id] ? <SortableSection key={id} id={id}>{sectionElements[id]}</SortableSection> : null)}
+            </SortableFilterSections>
+          ) : (
+            order.map(id => sectionElements[id] ? <div key={id} data-filter-section={id}>{sectionElements[id]}</div> : null)
+          )}
+          {layout && (
+            <div>
+              <button
+                ref={addMenu.buttonRef}
+                type="button"
+                className="btn-secondary btn-sm w-full"
+                aria-expanded={addMenuOpen}
+                aria-controls={addMenu.panelId}
+                onClick={() => setAddMenuOpen(o => !o)}
+              >
+                + Add filter
+              </button>
+              {addMenuOpen && (
+                <Panel panel={addMenu} inline>
+                  <div role="group" aria-label="Add a filter">
+                    {hidden.length === 0 && (
+                      <p className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">Every filter is already shown.</p>
+                    )}
+                    {hidden.map(id => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => { layout.onAdd(id); openSection[id](true); setAddMenuOpen(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                      >
+                        {FILTER_SECTION_TITLES[id]}
+                        {waitingReason(id) && (
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{waitingReason(id)}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-gray-700 px-4 pt-2 pb-1">
+                    <button type="button" className="btn-link" onClick={() => { layout.onReset(); setAddMenuOpen(false); }}>
+                      Reset to default
+                    </button>
+                  </div>
+                </Panel>
+              )}
+            </div>
+          )}
         </div>
     </aside>
   );

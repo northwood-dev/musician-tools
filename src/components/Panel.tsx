@@ -24,6 +24,7 @@ type TitleRow =
 export function Panel({
   panel,
   size = 'md',
+  inline = false,
   title,
   onClose,
   closeDisabled,
@@ -31,13 +32,16 @@ export function Panel({
 }: {
   panel: { panelRef: RefObject<HTMLDivElement | null>; panelId: string };
   size?: 'md' | 'sm';
+  /** Opens in the flow, full width, instead of floating: for a container that clips
+   *  overflow (the Songlist sidebar, #198). */
+  inline?: boolean;
   children: ReactNode;
 } & TitleRow) {
   return (
     <div
       ref={panel.panelRef}
       id={panel.panelId}
-      className={`absolute right-0 mt-2 rounded-lg border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 ${SIZE[size]}`}
+      className={`${inline ? 'relative mt-2 w-full py-1' : `absolute right-0 mt-2 shadow-lg ${SIZE[size]}`} rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800`}
     >
       {title && (
         <div className="mb-2 flex items-center justify-between">

@@ -13,6 +13,8 @@ import { songPlayService, type SongPlay } from '../services/songPlayService';
 import { playlistService, PlaylistConflictError, type Playlist } from '../services/playlistService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { instrumentTechniquesMap, instrumentTuningsMap, instrumentTypeOptions } from '../constants/instrumentTypes';
+import { sectionOfFilter, type FilterSectionId } from '../utils/filterSections';
+import { useFilterSectionsLayout } from '../hooks/useFilterSectionsLayout';
 import { applySongFilters, describeActiveFilters, isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
 import { handleComboKeyDown, useScrollHighlightIntoView, comboboxInputAria, comboboxOptionAria } from '../utils/comboboxKeyboard';
 import { useAutosave } from '../hooks/useAutosave';
@@ -437,6 +439,9 @@ function Songs() {
   // #195: single source of truth — the mobile "Filters · N" badge counts the chips the
   // user sees (three genres = 3), and hasActiveFilters follows it.
   const activeFilterCount = activeFilterChips.length;
+  // #198: the sidebar layout; a section holding an active filter always shows.
+  const sectionsWithActiveFilter = new Set(activeFilterChips.map(chip => sectionOfFilter(chip.remove.filter)));
+  const filterSections = useFilterSectionsLayout(sectionsWithActiveFilter);
   const hasActiveFilters = activeFilterCount > 0;
 
   const clearAllFilters = () => {
@@ -493,6 +498,12 @@ function Songs() {
       case 'pitch': setPitchStandardMinFilter(''); setPitchStandardMaxFilter(''); break;
       default: remove satisfies never; // a new kind of chip must say how it is removed
     }
+  };
+
+  // #198: removing a sidebar section clears its active filters (as their chips' ✕ would).
+  const removeFilterSection = (id: FilterSectionId) => {
+    filterSections.remove(id);
+    activeFilterChips.filter(chip => sectionOfFilter(chip.remove.filter) === id).forEach(removeFilterChip);
   };
 
   const toggleTechniqueFilter = (technique: string) => {
@@ -2067,6 +2078,15 @@ function Songs() {
           handleMarkSelectedAsPlayedNow={handleMarkSelectedAsPlayedNow}
           handleDeleteSelected={handleDeleteSelected}
           clearAllFilters={clearAllFilters}
+          filterSections={filterSections.shown}
+          filterSectionsLayout={{
+            onRemove: removeFilterSection,
+            onAdd: filterSections.add,
+            onReset: filterSections.reset,
+            onMove: filterSections.move,
+            saveFailed: filterSections.saveFailed,
+            onRetrySave: filterSections.retrySave,
+          }}
           onEdit={(song) => openSongForEdit(song)}
           // Story 18.2: "Add a song" navigates to /songs/new; the build-form effect
           // arms a clean blank add-mode session.

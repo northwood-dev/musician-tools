@@ -6,6 +6,7 @@ const authFlows = require('../services/authFlows');
 const authTokenService = require('../services/authTokenService');
 const { validateNewPassword } = require('../utils/passwordPolicy');
 const { CHECK_YOUR_INBOX } = require('../constants/messages');
+const { FILTER_SECTION_IDS } = require('../constants/filterSections');
 
 // All account routes act on req.session.user — the caller's OWN record. Loading
 // by findByPk(req.session.user) is the sanctioned self-only case: the uid IS the
@@ -33,6 +34,7 @@ const getProfile = async (req, res, next) => {
       emailVerified: user.emailVerified,
       isAdmin: user.isAdmin,
       isCurator: user.isCurator, // story 19.2: rehydrates the curator flag on profile load
+      songlistFilterSections: user.songlistFilterSections ?? null, // #198: null = default layout
     });
   } catch (error) {
     logger.error('Error fetching profile:', error.message);
@@ -210,4 +212,36 @@ const requestEmailChange = async (req, res, next) => {
   }
 };
 
-module.exports = { getProfile, updateName, changePassword, requestEmailChange };
+// PUT /api/account/songlist-filter-sections — #198: the Songlist sidebar layout, the
+// ordered list of filter sections shown (absent = hidden). Unknown ids and duplicates are
+// refused so a bad client can't store a layout the sidebar would have to second-guess.
+const updateSonglistFilterSections = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+    const { sections } = req.body || {};
+    // null = "Reset to default": forget the layout, so a later change of the default applies.
+    if (sections !== null && !Array.isArray(sections)) {
+      return next(createError(400, 'sections must be a list or null'));
+    }
+    if (sections && sections.some(id => typeof id !== 'string' || !FILTER_SECTION_IDS.includes(id))) {
+      return next(createError(400, 'Unknown filter section'));
+    }
+    if (sections && new Set(sections).size !== sections.length) {
+      return next(createError(400, 'A filter section appears twice'));
+    }
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return next(createError(404, 'User not found'));
+    }
+    await user.update({ songlistFilterSections: sections });
+    res.json({ sections });
+  } catch (error) {
+    logger.error('Error saving filter sections:', error.message);
+    next(createError(500, 'Error saving filter sections'));
+  }
+};
+
+module.exports = { getProfile, updateName, changePassword, requestEmailChange, updateSonglistFilterSections };

@@ -10,6 +10,8 @@ export type Profile = {
   emailVerified: boolean;
   isAdmin: boolean;
   isCurator?: boolean; // story 19.2: rehydrated into the auth user on profile load
+  /** #198: the Songlist sidebar layout (ordered filter section ids); null = the default. */
+  songlistFilterSections?: string[] | null;
 };
 
 export type NameUpdate = {
@@ -25,6 +27,17 @@ export const profileService = {
     const res = await apiFetch(`${API_BASE}/account`, { credentials: 'include' });
     if (!res.ok) throw new Error('Failed to load profile');
     return res.json();
+  },
+
+  // #198: save the Songlist sidebar layout; null = back to the default layout.
+  async saveSonglistFilterSections(sections: readonly string[] | null): Promise<void> {
+    const res = await apiFetch(`${API_BASE}/account/songlist-filter-sections`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sections }),
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to save the filter layout');
   },
 
   async updateName(name: string): Promise<NameUpdate> {

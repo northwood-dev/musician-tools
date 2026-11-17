@@ -4,7 +4,8 @@ import { ActiveFilterChips } from './ActiveFilterChips';
 import type { Song } from '../services/songService';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from './PlaylistsLoadMessage';
 import { useCallback, useRef, type ReactNode } from 'react';
-import SongsSidebar from './SongsSidebar';
+import SongsSidebar, { type SongsSidebarProps } from './SongsSidebar';
+import type { FilterSectionId } from '../utils/filterSections';
 import FiltersDisclosureButton from './FiltersDisclosureButton';
 import { BulkActionBar } from './BulkActionBar';
 import { RowSelectionCheckbox, SelectAllCheckbox } from './SelectionCheckbox';
@@ -135,6 +136,9 @@ export interface SongsListProps {
   handleMarkSelectedAsPlayedNow: () => void;
   handleDeleteSelected: () => void;
   clearAllFilters: () => void;
+  /** #198: the sidebar sections shown, in order, and the controls to change them. */
+  filterSections: readonly FilterSectionId[];
+  filterSectionsLayout: NonNullable<SongsSidebarProps['layout']>;
   
   // Callbacks
   onEdit: (song: Song) => void;
@@ -261,6 +265,8 @@ export default function SongsList(props: SongsListProps) {
           hasActiveFilters={props.hasActiveFilters}
           showTuningFilters={props.showTuningFilters}
           clearAllFilters={props.clearAllFilters}
+          sections={props.filterSections}
+          layout={props.filterSectionsLayout}
         />
         <div className="w-full lg:flex-1 min-w-0 space-y-4">
           <div className="card-base glass-effect p-4 sm:p-5">
