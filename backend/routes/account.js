@@ -14,5 +14,7 @@ router.put('/name', authsess, accountController.updateName);
 router.put('/password', authsess, changePasswordLimiter, accountController.changePassword);
 // Change-email request (story 7.11): verified users only (soft gate), rate-limited.
 router.put('/email', authsess, requireVerified, emailSendLimiter, accountController.requestEmailChange);
+// #198: the Songlist sidebar layout (filter sections shown, in order).
+router.put('/songlist-filter-sections', authsess, accountController.updateSonglistFilterSections);
 
 module.exports = router;

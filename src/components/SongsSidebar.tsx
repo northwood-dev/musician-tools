@@ -1,7 +1,16 @@
 import { NO_INSTRUMENT } from '../utils/songFilters';
-import { Fragment, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Disclosure } from './Disclosure';
-import { FILTER_SECTION_IDS, type FilterSectionId } from '../utils/filterSections';
+import { CloseButton } from './CloseButton';
+import { Notice } from './Notice';
+import { Panel } from './Panel';
+import { useDismissablePanel } from '../hooks/useDismissablePanel';
+import {
+  FILTER_SECTION_IDS,
+  FILTER_SECTION_TITLES,
+  INSTRUMENT_DEPENDENT_SECTIONS,
+  type FilterSectionId,
+} from '../utils/filterSections';
 
 export interface SongsSidebarProps {
   // UI state
@@ -90,14 +99,44 @@ export interface SongsSidebarProps {
   clearAllFilters: () => void;
   /** #185: which filter sections to show, in order (default: all, historical order). */
   sections?: readonly FilterSectionId[];
+  /** #198: the layout controls. Without them the sidebar shows no ✕ / + Add filter. */
+  layout?: {
+    onRemove: (id: FilterSectionId) => void;
+    onAdd: (id: FilterSectionId) => void;
+    onReset: () => void;
+    saveFailed: boolean;
+    onRetrySave: () => void;
+  };
 }
 
 export default function SongsSidebar(props: SongsSidebarProps) {
+  const { layout } = props;
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenu = useDismissablePanel({ open: addMenuOpen, onClose: () => setAddMenuOpen(false) });
+  // #198: a section added from "+ Add filter" opens, ready to use.
+  const openSection: Record<FilterSectionId, (open: boolean) => void> = {
+    instrument: props.setFiltersAccordionOpen,
+    playlist: props.setPlaylistAccordionOpen,
+    difficulty: props.setDifficultyAccordionOpen,
+    capo: props.setCapoAccordionOpen,
+    tuning: props.setTuningAccordionOpen,
+    technique: props.setTechniqueAccordionOpen,
+    genre: props.setGenreAccordionOpen,
+    language: props.setLanguageAccordionOpen,
+    key: props.setKeyAccordionOpen,
+    mode: props.setModeAccordionOpen,
+    timeSignature: props.setTimeSignatureAccordionOpen,
+    bpm: props.setBpmAccordionOpen,
+    pitch: props.setPitchAccordionOpen,
+  };
+  const removeButton = (id: FilterSectionId) =>
+    layout && <CloseButton label={`Remove ${FILTER_SECTION_TITLES[id]}`} onClick={() => layout.onRemove(id)} />;
   // #197: each filter section once, by id; the sidebar shows them in `order`.
   const sectionElements: Record<FilterSectionId, ReactNode> = {
     instrument:
           (
           <Disclosure
+            aside={removeButton('instrument')}
             className="card-base"
             title="Instrument filters"
             open={props.filtersAccordionOpen}
@@ -151,6 +190,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     playlist:
           (
           <Disclosure
+            aside={removeButton('playlist')}
             className="card-base"
             title="Playlist filters"
             open={props.playlistAccordionOpen}
@@ -184,6 +224,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     difficulty:
           props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
+              aside={removeButton('difficulty')}
               className="card-base"
               title="Difficulty filter"
               open={props.difficultyAccordionOpen}
@@ -209,6 +250,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     capo:
           props.instrumentFilter === 'Guitar' && (
             <Disclosure
+              aside={removeButton('capo')}
               className="card-base"
               title="Capo filter"
               open={props.capoAccordionOpen}
@@ -234,6 +276,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     tuning:
           props.showTuningFilters && (
             <Disclosure
+              aside={removeButton('tuning')}
               className="card-base"
               title="Tuning filters"
               open={props.tuningAccordionOpen}
@@ -260,6 +303,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     technique:
           props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
+              aside={removeButton('technique')}
               className="card-base"
               title="Technique filters"
               open={props.techniqueAccordionOpen}
@@ -327,6 +371,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     genre:
           (
           <Disclosure
+            aside={removeButton('genre')}
             className="card-base"
             title="Genre filters"
             open={props.genreAccordionOpen}
@@ -396,6 +441,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     language:
           (
           <Disclosure
+            aside={removeButton('language')}
             className="card-base"
             title={<>
               Filter by language
@@ -471,6 +517,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     key:
           (
           <Disclosure
+            aside={removeButton('key')}
             className="card-base"
             title="Key filters"
             open={props.keyAccordionOpen}
@@ -504,6 +551,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     mode:
           (
           <Disclosure
+            aside={removeButton('mode')}
             className="card-base"
             title="Mode filters"
             open={props.modeAccordionOpen}
@@ -532,6 +580,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     timeSignature:
           (
           <Disclosure
+            aside={removeButton('timeSignature')}
             className="card-base"
             title="Time signature filters"
             open={props.timeSignatureAccordionOpen}
@@ -563,6 +612,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     bpm:
           (
           <Disclosure
+            aside={removeButton('bpm')}
             className="card-base"
             title="BPM filters"
             open={props.bpmAccordionOpen}
@@ -601,6 +651,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     pitch:
           (
           <Disclosure
+            aside={removeButton('pitch')}
             className="card-base"
             title="Pitch standard filters"
             open={props.pitchAccordionOpen}
@@ -640,6 +691,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
           ),
   };
   const order = props.sections ?? FILTER_SECTION_IDS;
+  const hidden = FILTER_SECTION_IDS.filter(id => !order.includes(id));
+  const noInstrument = !props.instrumentFilter || props.instrumentFilter === NO_INSTRUMENT;
   return (
     <aside
       id="songs-sidebar"
@@ -687,7 +740,53 @@ export default function SongsSidebar(props: SongsSidebarProps) {
               «
             </button>
           </div>
-          {order.map(id => <Fragment key={id}>{sectionElements[id]}</Fragment>)}
+          {layout?.saveFailed && (
+            <Notice tone="error" action={<button type="button" className="btn-secondary btn-sm" onClick={layout.onRetrySave}>Retry</button>}>
+              Couldn't save your filter layout
+            </Notice>
+          )}
+          {order.map(id => sectionElements[id] ? <div key={id} data-filter-section={id}>{sectionElements[id]}</div> : null)}
+          {layout && (
+            <div className="relative">
+              <button
+                ref={addMenu.buttonRef}
+                type="button"
+                className="btn-secondary btn-sm w-full"
+                aria-expanded={addMenuOpen}
+                aria-controls={addMenu.panelId}
+                onClick={() => setAddMenuOpen(o => !o)}
+              >
+                + Add filter
+              </button>
+              {addMenuOpen && (
+                <Panel panel={addMenu} size="sm">
+                  <div role="group" aria-label="Add a filter">
+                    {hidden.length === 0 && (
+                      <p className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">Every filter is already shown.</p>
+                    )}
+                    {hidden.map(id => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => { layout.onAdd(id); openSection[id](true); setAddMenuOpen(false); }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-brand-600 motion-safe:transition-colors dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-brand-400"
+                      >
+                        {FILTER_SECTION_TITLES[id]}
+                        {noInstrument && INSTRUMENT_DEPENDENT_SECTIONS.has(id) && (
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">needs a song instrument</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-gray-100 dark:border-gray-700 px-4 pt-2 pb-1">
+                    <button type="button" className="btn-link" onClick={() => { layout.onReset(); setAddMenuOpen(false); }}>
+                      Reset to default
+                    </button>
+                  </div>
+                </Panel>
+              )}
+            </div>
+          )}
         </div>
     </aside>
   );

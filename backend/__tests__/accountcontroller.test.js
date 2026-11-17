@@ -132,3 +132,70 @@ describe('accountcontroller.changePassword', () => {
     expect(JSON.stringify(body)).not.toMatch(/password|hash/i);
   });
 });
+
+// #185 / #198: the Songlist sidebar layout (which filter sections, in which order) is saved on the account.
+describe('accountcontroller songlist filter sections', () => {
+  const userWith = (songlistFilterSections) => {
+    const update = jest.fn(async function (vals) { Object.assign(this, vals); });
+    return { uid: 'u1', name: 'Ada', discriminator: '0042', songlistFilterSections, update, getHandle() { return 'Ada#0042'; } };
+  };
+
+  test('GET /api/account returns the saved sections, or null when never customised', async () => {
+    User.findByPk.mockResolvedValue(userWith(['genre', 'key']));
+    let res = mockRes();
+    await controller.getProfile({ session: { user: 'u1' } }, res, mockNext());
+    expect(res.json.mock.calls[0][0].songlistFilterSections).toEqual(['genre', 'key']);
+
+    User.findByPk.mockResolvedValue(userWith(undefined));
+    res = mockRes();
+    await controller.getProfile({ session: { user: 'u1' } }, res, mockNext());
+    expect(res.json.mock.calls[0][0].songlistFilterSections).toBeNull();
+  });
+
+  test('PUT saves the ordered list and returns it', async () => {
+    const user = userWith(null);
+    User.findByPk.mockResolvedValue(user);
+    const res = mockRes();
+    await controller.updateSonglistFilterSections({ session: { user: 'u1' }, body: { sections: ['key', 'genre'] } }, res, mockNext());
+    expect(user.update).toHaveBeenCalledWith({ songlistFilterSections: ['key', 'genre'] });
+    expect(res.json).toHaveBeenCalledWith({ sections: ['key', 'genre'] });
+  });
+
+  test('PUT accepts an empty list (every section removed)', async () => {
+    const user = userWith(null);
+    User.findByPk.mockResolvedValue(user);
+    const res = mockRes();
+    await controller.updateSonglistFilterSections({ session: { user: 'u1' }, body: { sections: [] } }, res, mockNext());
+    expect(user.update).toHaveBeenCalledWith({ songlistFilterSections: [] });
+  });
+
+  test('PUT null forgets the layout (Reset to default)', async () => {
+    const user = userWith(['key']);
+    User.findByPk.mockResolvedValue(user);
+    const res = mockRes();
+    await controller.updateSonglistFilterSections({ session: { user: 'u1' }, body: { sections: null } }, res, mockNext());
+    expect(user.update).toHaveBeenCalledWith({ songlistFilterSections: null });
+    expect(res.json).toHaveBeenCalledWith({ sections: null });
+  });
+
+  test.each([
+    ['not a list', { sections: 'genre' }],
+    ['missing', {}],
+    ['an unknown id', { sections: ['genre', 'colour'] }],
+    ['a duplicate', { sections: ['genre', 'genre'] }],
+    ['a non-string id', { sections: ['genre', 3] }],
+  ])('PUT refuses %s with 400 and saves nothing', async (_label, body) => {
+    const user = userWith(null);
+    User.findByPk.mockResolvedValue(user);
+    const next = mockNext();
+    await controller.updateSonglistFilterSections({ session: { user: 'u1' }, body }, mockRes(), next);
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(user.update).not.toHaveBeenCalled();
+  });
+
+  test('PUT 401 when unauthenticated', async () => {
+    const next = mockNext();
+    await controller.updateSonglistFilterSections({ session: {}, body: { sections: [] } }, mockRes(), next);
+    expect(next.mock.calls[0][0].status).toBe(401);
+  });
+});
