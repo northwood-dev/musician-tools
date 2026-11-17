@@ -51,7 +51,9 @@ export function handleComboKeyDown<T>(
     e.preventDefault(); // never let Enter submit the form while picking
     if (index >= 0 && index < options.length) onSelect(options[index]);
   } else if (e.key === 'Escape') {
-    e.preventDefault(); // this Escape closes the list, not a menu around it (#38)
+    // Used up only when it closes an OPEN list (#38: not a menu around it). With the list
+    // closed it goes on to the page — Esc on a song goes back to the Songlist (#187).
+    if (e.currentTarget.getAttribute('aria-expanded') === 'true') e.preventDefault();
     setOpen(false);
     setIndex(-1);
   } else if (e.key === 'Tab') {

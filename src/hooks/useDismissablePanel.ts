@@ -43,6 +43,7 @@ export function useDismissablePanel({ open, onClose, blocked = false }: UseDismi
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented || latest.current.blocked) return;
+      event.preventDefault(); // spent: a page shortcut on Escape must not act on it too (#187)
       latest.current.onClose();
       buttonRef.current?.focus();
     };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { useDismissablePanel } from './useDismissablePanel';
 
 // A button that opens a menu, as the bulk bar and the header build them (#38).
@@ -102,4 +102,19 @@ test('the panel id links the button to its panel, unique per instance (#149)', (
   expect(id).toBeTruthy();
   expect(document.getElementById(id!)).toBe(screen.getByRole('group', { name: 'The menu' }));
   expect(second.getAttribute('aria-controls')).not.toBe(id);
+});
+
+// #187: the Escape that closed the menu is spent — a page shortcut on Escape (leave the song)
+// must not act on it too. One Escape closes one thing.
+test('the Escape that closes it is marked as handled; one that finds it closed is left alone', () => {
+  render(<Menu />);
+  openMenu();
+  const closing = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  act(() => { document.body.dispatchEvent(closing); });
+  expect(menu()).not.toBeInTheDocument();
+  expect(closing.defaultPrevented).toBe(true);
+
+  const idle = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  act(() => { document.body.dispatchEvent(idle); });
+  expect(idle.defaultPrevented).toBe(false);
 });
