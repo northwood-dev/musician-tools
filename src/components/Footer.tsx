@@ -1,4 +1,4 @@
-function Footer() {
+function Footer({ onShowShortcuts }: { onShowShortcuts?: () => void } = {}) {
   // From package.json via Vite's define (vite.config.ts). The typeof guard keeps
   // it safe under Jest, where the build-time constant isn't defined.
   const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'dev';
@@ -25,6 +25,13 @@ function Footer() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
             <span>v{appVersion}</span>
+            {onShowShortcuts && (
+              <>
+                <span className="hidden sm:inline">•</span>
+                {/* #187: the Keyboard shortcuts help, for those who don't know "?" */}
+                <button type="button" className="btn-link" onClick={onShowShortcuts}>Keyboard shortcuts</button>
+              </>
+            )}
             <span className="hidden sm:inline">•</span>
             <span className="inline-flex items-center gap-1 flex-wrap justify-center">
               <span>Made with ❤️ by</span>
