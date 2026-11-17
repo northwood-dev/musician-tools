@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
 import { ActiveFilterChips } from './ActiveFilterChips';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 import type { Song } from '../services/songService';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from './PlaylistsLoadMessage';
 import { useCallback, useRef, type ReactNode } from 'react';
@@ -156,6 +157,8 @@ export default function SongsList(props: SongsListProps) {
   const searchInputRef = useRef<HTMLInputElement>(null);
   // #195: when the last chip goes, focus returns to the search field.
   const focusSearch = useCallback(() => searchInputRef.current?.focus(), []);
+  // #187: / puts the cursor in the search.
+  useKeyboardShortcut('/', focusSearch);
   const trimmedSearch = props.searchQuery.trim(); // #191 / #192: what an empty search offers to find or create
   // The bulk Add to playlist menu closes like its ✕ on an outside click or Escape, and
   // like its ✕ not while the page is loading (#38).
@@ -175,6 +178,8 @@ export default function SongsList(props: SongsListProps) {
           className="btn-primary"
           onClick={props.onAddNew}
           disabled={props.loading}
+          title="Add a song (N)"
+          aria-keyshortcuts="n"
         >
           Add a song
         </button>
@@ -277,6 +282,7 @@ export default function SongsList(props: SongsListProps) {
               <div className="relative">
               <input
                 ref={searchInputRef}
+                aria-keyshortcuts="/"
                 id="songs-search"
                 type="text"
                 placeholder="Search by title, artist, or album…"

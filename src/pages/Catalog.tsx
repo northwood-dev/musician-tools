@@ -17,6 +17,7 @@ import AddAsInstrumentSelect from '../components/AddAsInstrumentSelect';
 import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstrument';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
+import { useKeyboardShortcut } from '../hooks/useKeyboardShortcut';
 
 const EMPTY_FACETS: CatalogFacets = { genre: [], key: [], mode: [], timeSignature: [] };
 const asArr = (s: string): string[] => (s ? s.split(',').filter(Boolean) : []);
@@ -31,6 +32,9 @@ const asArr = (s: string): string[] => (s ? s.split(',').filter(Boolean) : []);
 const DEBOUNCE_MS = 280;
 
 export default function Catalog() {
+  // #187: / puts the cursor in the search.
+  const searchRef = useRef<HTMLInputElement>(null);
+  useKeyboardShortcut('/', () => searchRef.current?.focus());
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get('search') || '';
   const key = searchParams.get('key') || '';
@@ -185,8 +189,10 @@ export default function Catalog() {
 
       {/* Search is always above the list (DL-5). */}
       <input
+        ref={searchRef}
         type="search"
         aria-label="Search the catalog"
+        aria-keyshortcuts="/"
         className="input-base"
         placeholder="Search by title or artist…"
         value={searchInput}

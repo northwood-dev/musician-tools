@@ -571,3 +571,14 @@ test('#132: a click on a mixed select-all clears this page only; another page ke
   expect(selectAll).not.toBeChecked();
   expect(selectAll).not.toBePartiallyChecked();
 });
+
+// #187 / #201: / puts the cursor in the Catalog search too.
+test('/ puts the cursor in the Catalog search, which announces the shortcut', async () => {
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }]));
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
+  await screen.findByText('Zombie');
+  const search = screen.getByRole('searchbox', { name: 'Search the catalog' });
+  expect(search).toHaveAttribute('aria-keyshortcuts', '/');
+  fireEvent.keyDown(document.body, { key: '/' });
+  expect(search).toHaveFocus();
+});

@@ -51,7 +51,9 @@ function Header() {
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false);
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      event.preventDefault(); // spent: one Escape closes one thing (#187)
+      setMobileMenuOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
