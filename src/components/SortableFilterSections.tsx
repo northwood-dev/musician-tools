@@ -14,6 +14,7 @@ import {
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FILTER_SECTION_TITLES, type FilterSectionId } from '../utils/filterSections';
+import { ICON_BUTTON, ICON_BUTTON_QUIET } from './CloseButton';
 
 // #199: the Songlist sidebar sections reorder by drag & drop, with dnd-kit (the standard
 // React library, no home-made drag code). A section is grabbed by the ⋮⋮ handle in its
@@ -47,7 +48,8 @@ const screenReaderInstructions = {
 };
 
 export function SortableFilterSections({ order, onMove, children }: {
-  /** Every section in the layout, in order (including those that render nothing right now). */
+  /** The sections on screen, in order (those waiting for an instrument are left out, so
+   *  announced positions match what the user sees). */
   order: readonly FilterSectionId[];
   onMove: (id: FilterSectionId, overId: FilterSectionId) => void;
   children: ReactNode;
@@ -108,7 +110,7 @@ export function SectionDragHandle({ id }: { id: FilterSectionId }) {
       {...handle.listeners}
       aria-label={`Move ${FILTER_SECTION_TITLES[id]}`}
       title={`Move ${FILTER_SECTION_TITLES[id]}`}
-      className="flex h-8 w-6 cursor-grab touch-none items-center justify-center rounded text-gray-400 hover:text-gray-600 active:cursor-grabbing dark:text-gray-500 dark:hover:text-gray-300"
+      className={`${ICON_BUTTON} ${ICON_BUTTON_QUIET} cursor-grab touch-none active:cursor-grabbing`}
     >
       <span aria-hidden="true">⋮⋮</span>
     </button>

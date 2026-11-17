@@ -132,7 +132,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     bpm: props.setBpmAccordionOpen,
     pitch: props.setPitchAccordionOpen,
   };
-  const removeButton = (id: FilterSectionId) =>
+  const sectionControls = (id: FilterSectionId) =>
     layout && (
       <>
         <SectionDragHandle id={id} />
@@ -144,9 +144,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     instrument:
           (
           <Disclosure
-            aside={removeButton('instrument')}
+            aside={sectionControls('instrument')}
             className="card-base"
-            title="Instrument filters"
+            title={FILTER_SECTION_TITLES.instrument}
             open={props.filtersAccordionOpen}
             onToggle={() => props.setFiltersAccordionOpen(!props.filtersAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3"
@@ -198,9 +198,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     playlist:
           (
           <Disclosure
-            aside={removeButton('playlist')}
+            aside={sectionControls('playlist')}
             className="card-base"
-            title="Playlist filters"
+            title={FILTER_SECTION_TITLES.playlist}
             open={props.playlistAccordionOpen}
             onToggle={() => props.setPlaylistAccordionOpen(!props.playlistAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700 space-y-3"
@@ -232,9 +232,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     difficulty:
           props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              aside={removeButton('difficulty')}
+              aside={sectionControls('difficulty')}
               className="card-base"
-              title="Difficulty filter"
+              title={FILTER_SECTION_TITLES.difficulty}
               open={props.difficultyAccordionOpen}
               onToggle={() => props.setDifficultyAccordionOpen(!props.difficultyAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -258,9 +258,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     capo:
           props.instrumentFilter === 'Guitar' && (
             <Disclosure
-              aside={removeButton('capo')}
+              aside={sectionControls('capo')}
               className="card-base"
-              title="Capo filter"
+              title={FILTER_SECTION_TITLES.capo}
               open={props.capoAccordionOpen}
               onToggle={() => props.setCapoAccordionOpen(!props.capoAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -284,9 +284,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     tuning:
           props.showTuningFilters && (
             <Disclosure
-              aside={removeButton('tuning')}
+              aside={sectionControls('tuning')}
               className="card-base"
-              title="Tuning filters"
+              title={FILTER_SECTION_TITLES.tuning}
               open={props.tuningAccordionOpen}
               onToggle={() => props.setTuningAccordionOpen(!props.tuningAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -311,9 +311,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     technique:
           props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              aside={removeButton('technique')}
+              aside={sectionControls('technique')}
               className="card-base"
-              title="Technique filters"
+              title={FILTER_SECTION_TITLES.technique}
               open={props.techniqueAccordionOpen}
               onToggle={() => props.setTechniqueAccordionOpen(!props.techniqueAccordionOpen)}
               bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -379,9 +379,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     genre:
           (
           <Disclosure
-            aside={removeButton('genre')}
+            aside={sectionControls('genre')}
             className="card-base"
-            title="Genre filters"
+            title={FILTER_SECTION_TITLES.genre}
             open={props.genreAccordionOpen}
             onToggle={() => props.setGenreAccordionOpen(!props.genreAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -449,10 +449,10 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     language:
           (
           <Disclosure
-            aside={removeButton('language')}
+            aside={sectionControls('language')}
             className="card-base"
             title={<>
-              Filter by language
+              {FILTER_SECTION_TITLES.language}
               {props.languageFilters.size > 0 && (
                 <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
                   ({props.languageFilters.size} selected)
@@ -525,9 +525,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     key:
           (
           <Disclosure
-            aside={removeButton('key')}
+            aside={sectionControls('key')}
             className="card-base"
-            title="Key filters"
+            title={FILTER_SECTION_TITLES.key}
             open={props.keyAccordionOpen}
             onToggle={() => props.setKeyAccordionOpen(!props.keyAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -559,9 +559,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     mode:
           (
           <Disclosure
-            aside={removeButton('mode')}
+            aside={sectionControls('mode')}
             className="card-base"
-            title="Mode filters"
+            title={FILTER_SECTION_TITLES.mode}
             open={props.modeAccordionOpen}
             onToggle={() => props.setModeAccordionOpen(!props.modeAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -588,9 +588,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     timeSignature:
           (
           <Disclosure
-            aside={removeButton('timeSignature')}
+            aside={sectionControls('timeSignature')}
             className="card-base"
-            title="Time signature filters"
+            title={FILTER_SECTION_TITLES.timeSignature}
             open={props.timeSignatureAccordionOpen}
             onToggle={() => props.setTimeSignatureAccordionOpen(!props.timeSignatureAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -620,9 +620,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     bpm:
           (
           <Disclosure
-            aside={removeButton('bpm')}
+            aside={sectionControls('bpm')}
             className="card-base"
-            title="BPM filters"
+            title={FILTER_SECTION_TITLES.bpm}
             open={props.bpmAccordionOpen}
             onToggle={() => props.setBpmAccordionOpen(!props.bpmAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -659,9 +659,9 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     pitch:
           (
           <Disclosure
-            aside={removeButton('pitch')}
+            aside={sectionControls('pitch')}
             className="card-base"
-            title="Pitch standard filters"
+            title={FILTER_SECTION_TITLES.pitch}
             open={props.pitchAccordionOpen}
             onToggle={() => props.setPitchAccordionOpen(!props.pitchAccordionOpen)}
             bodyClassName="p-4 border-t border-gray-100 dark:border-gray-700"
@@ -754,7 +754,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             </Notice>
           )}
           {layout ? (
-            <SortableFilterSections order={order} onMove={layout.onMove}>
+            <SortableFilterSections order={order.filter(id => sectionElements[id])} onMove={layout.onMove}>
               {order.map(id => sectionElements[id] ? <SortableSection key={id} id={id}>{sectionElements[id]}</SortableSection> : null)}
             </SortableFilterSections>
           ) : (
@@ -773,7 +773,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 + Add filter
               </button>
               {addMenuOpen && (
-                <Panel panel={addMenu} size="sm" inline>
+                <Panel panel={addMenu} inline>
                   <div role="group" aria-label="Add a filter">
                     {hidden.length === 0 && (
                       <p className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">Every filter is already shown.</p>

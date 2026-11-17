@@ -255,3 +255,84 @@ test('keyboard moves are announced by section title', async () => {
     rect.mockRestore();
   }
 });
+
+// #185 review fixes.
+test('quick changes are saved one after the other, the last layout last (never out of order)', async () => {
+  accountLayout(['genre', 'key', 'mode']);
+  let finishFirst!: () => void;
+  profile.saveSonglistFilterSections
+    .mockImplementationOnce(() => new Promise<void>(resolve => { finishFirst = resolve; }) as never)
+    .mockResolvedValue(undefined as never);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Key filters' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Mode filters' }));
+  await settle();
+  expect(profile.saveSonglistFilterSections).toHaveBeenCalledTimes(1); // the second waits
+
+  await act(async () => { finishFirst(); });
+  await settle();
+  expect(profile.saveSonglistFilterSections).toHaveBeenCalledTimes(2);
+  expect(profile.saveSonglistFilterSections).toHaveBeenLastCalledWith(['genre']);
+});
+
+test('a section shown only because its filter is active is not saved into the layout', async () => {
+  accountLayout(['genre', 'mode']);
+  localStorage.setItem('songsKeyFilter', 'C');
+  renderSongs();
+  await screen.findByRole('button', { name: 'Remove Key: C' });
+  await settle();
+  expect(shownSections()).toEqual(['genre', 'mode', 'key']);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Remove Mode filters' }));
+  await settle();
+  expect(profile.saveSonglistFilterSections).toHaveBeenLastCalledWith(['genre']);
+});
+
+test('the layout from the account wins over the browser copy', async () => {
+  localStorage.setItem('songsFilterSections', JSON.stringify(['bpm']));
+  accountLayout(['key']);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+  expect(shownSections()).toEqual(['key']);
+  expect(localStorage.getItem('songsFilterSections')).toBe(JSON.stringify(['key']));
+});
+
+test('Instrument filters can move too, and the drop is announced', async () => {
+  accountLayout(['instrument', 'genre']);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+  const rect = stackSectionBoxes();
+  try {
+    const handle = screen.getByRole('button', { name: 'Move Instrument filters' });
+    handle.focus();
+    await press(handle, ' ', 'Space');
+    await press(handle, 'ArrowDown');
+    await press(handle, ' ', 'Space');
+    expect(await screen.findByText('Instrument filters dropped at position 2 of 2.')).toBeInTheDocument();
+    expect(shownSections()).toEqual(['genre', 'instrument']);
+    expect(profile.saveSonglistFilterSections).toHaveBeenLastCalledWith(['genre', 'instrument']);
+  } finally {
+    rect.mockRestore();
+  }
+});
+
+test('announced positions count only the sections on screen', async () => {
+  renderSongs(); // default layout, no instrument: Difficulty, Capo, Tuning and Technique wait
+  await screen.findByText('Alpha');
+  await settle();
+  const rect = stackSectionBoxes();
+  try {
+    const handle = screen.getByRole('button', { name: 'Move Genre filters' });
+    handle.focus();
+    await press(handle, ' ', 'Space');
+    expect(await screen.findByText('Picked up Genre filters, position 3 of 4.')).toBeInTheDocument();
+    await press(handle, 'Escape');
+  } finally {
+    rect.mockRestore();
+  }
+});
