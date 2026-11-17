@@ -208,7 +208,7 @@ test('Delete asks for confirmation before removing', async () => {
   expect(screen.getByText('Are you sure you want to delete "Pentatonic scale"?')).toBeInTheDocument();
   expect(mockedService.remove).not.toHaveBeenCalled();
 
-  fireEvent.click(screen.getByText('Delete', { selector: 'div[role="dialog"] button' }));
+  fireEvent.click(screen.getByText('Delete', { selector: 'dialog button' }));
 
   // The dialog closes immediately: a second click cannot fire a duplicate DELETE
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -225,7 +225,7 @@ test('cancelling the confirmation dialog keeps the topic', async () => {
   await screen.findByText('Pentatonic scale');
 
   fireEvent.click(screen.getByRole('button', { name: 'Delete Pentatonic scale' }));
-  fireEvent.click(screen.getByText('Cancel', { selector: 'div[role="dialog"] button' }));
+  fireEvent.click(screen.getByText('Cancel', { selector: 'dialog button' }));
 
   expect(mockedService.remove).not.toHaveBeenCalled();
   expect(screen.getByText('Pentatonic scale')).toBeInTheDocument();

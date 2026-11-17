@@ -107,7 +107,7 @@ describe('#46: the picker resets when the selection becomes empty', () => {
     await pickWarmups();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
-    fireEvent.click(await screen.findByText('Delete', { selector: 'div[role="dialog"] button' }));
+    fireEvent.click(await screen.findByText('Delete', { selector: 'dialog button' }));
     await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument());
     await selectSong('Beta');
 
@@ -132,7 +132,7 @@ describe('#46: the picker resets when the selection becomes empty', () => {
 
     fireEvent.click(screen.getByText('Alpha'));
     fireEvent.click(await screen.findByRole('button', { name: /^Delete/ }));
-    fireEvent.click(await screen.findByText('Delete', { selector: 'div[role="dialog"] button' }));
+    fireEvent.click(await screen.findByText('Delete', { selector: 'dialog button' }));
     await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument());
     await selectSong('Beta');
 
