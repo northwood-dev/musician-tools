@@ -9,8 +9,23 @@
 //
 // Explicit list rather than "every table": `down` must undo exactly what `up` did. A table added
 // later enables RLS in its own migration; the boot guard (#209) refuses to start otherwise.
-// IF EXISTS: `session` is created lazily by connect-pg-simple and may be missing on a fresh DB.
-// Idempotent (re-enabling is a no-op). No row is touched.
+//
+// `session` used to be created lazily by connect-pg-simple (createTableIfMissing), on the first
+// request, i.e. AFTER the boot guard and without RLS: exposed until the next restart, which the
+// guard would then refuse. So this migration now owns it (created if missing, same shape as
+// connect-pg-simple 10's table.sql) and the store no longer creates tables. IF EXISTS stays as a
+// belt for `down`. Idempotent (re-enabling is a no-op). No row is touched.
+async function createSessionTableIfMissing(queryInterface) {
+  await queryInterface.sequelize.query(`
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid" varchar NOT NULL COLLATE "default" PRIMARY KEY,
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+  `);
+}
+
 const TABLES = [
   'ArtistAliases',
   'AuthTokens',
@@ -38,9 +53,11 @@ async function setRowLevelSecurity(queryInterface, state) {
 
 module.exports = {
   async up(queryInterface) {
+    await createSessionTableIfMissing(queryInterface);
     await setRowLevelSecurity(queryInterface, 'ENABLE');
   },
 
+  // Turns RLS back off; does NOT drop `session` (it may predate this migration and hold sessions).
   async down(queryInterface) {
     await setRowLevelSecurity(queryInterface, 'DISABLE');
   },

@@ -124,7 +124,9 @@ if (process.env.NODE_ENV === 'production') {
   sessionConfig.store = new pgSession({
     pool: pgPool,
     tableName: 'session',
-    createTableIfMissing: true
+    // #207: the migrations create `session` (with Row-Level Security); a table created here at
+    // runtime would have none and expose sessions through Supabase's API until the next boot.
+    createTableIfMissing: false
   });
   
   logger.info('Using PostgreSQL session store');
