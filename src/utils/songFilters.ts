@@ -84,6 +84,65 @@ export function countActiveFilters(f: ActiveFilterState): number {
   return n;
 }
 
+/** What removing one chip clears (#188). Multi-value filters name the value to drop. */
+export type ActiveFilterRemoval =
+  | { filter: 'instrument' | 'myInstrument' | 'playlist' | 'difficulty' | 'capo' | 'tuning' | 'key' | 'mode' | 'timeSignature' | 'bpm' | 'pitch' }
+  | { filter: 'technique' | 'genre' | 'language'; value: string };
+
+export type ActiveFilterChip = { key: string; label: string; remove: ActiveFilterRemoval };
+
+/** Names the filter state can't know by itself (it only holds uids and tuning values). */
+export type ActiveFilterNames = {
+  playlists: { uid: string; name: string }[];
+  myInstruments: { uid: string; type?: string | null; name: string }[];
+  tunings: { value: string; label: string }[];
+};
+
+function rangeLabel(min: string, max: string, unit: string): string | null {
+  if (min && max) return `${min}–${max} ${unit}`;
+  if (min) return `≥ ${min} ${unit}`;
+  if (max) return `≤ ${max} ${unit}`;
+  return null;
+}
+
+// #188: one chip per active filter VALUE, in the sidebar's section order. A prefix is
+// added only where the bare value would be ambiguous ("Key: C", "Time signature: Other").
+// Search text and the All/Any match modes are never chips.
+export function describeActiveFilters(f: ActiveFilterState, names: ActiveFilterNames): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
+  const single = (filter: Exclude<ActiveFilterRemoval['filter'], 'technique' | 'genre' | 'language'>, label: string) =>
+    chips.push({ key: filter, label, remove: { filter } });
+  const each = (filter: 'technique' | 'genre' | 'language', values: Set<string>) =>
+    values.forEach(value => chips.push({ key: `${filter}:${value}`, label: value, remove: { filter, value } }));
+
+  if (f.instrumentFilter) single('instrument', f.instrumentFilter === NO_INSTRUMENT ? 'No instrument' : f.instrumentFilter);
+  if (f.myInstrumentFilter) {
+    const mine = names.myInstruments.find(i => i.uid === f.myInstrumentFilter);
+    single('myInstrument', mine ? `My instrument: ${mine.type ? `${mine.type} - ${mine.name}` : mine.name}` : 'My instrument');
+  }
+  if (f.playlistFilter) {
+    const playlist = names.playlists.find(p => p.uid === f.playlistFilter);
+    single('playlist', playlist ? `Playlist: ${playlist.name}` : 'Playlist');
+  }
+  if (f.instrumentDifficultyFilter) single('difficulty', `Up to ${f.instrumentDifficultyFilter} ★`);
+  if (f.capoFilter !== '') single('capo', `Capo ${f.capoFilter}`);
+  if (f.tuningFilter) {
+    const label = f.tuningFilter === 'Other' ? 'Tuning: Other' : names.tunings.find(t => t.value === f.tuningFilter)?.label ?? f.tuningFilter;
+    single('tuning', label);
+  }
+  each('technique', f.techniqueFilters);
+  each('genre', f.genreFilters);
+  each('language', f.languageFilters);
+  if (f.keyFilter) single('key', `Key: ${f.keyFilter}`);
+  if (f.modeFilter) single('mode', `Mode: ${f.modeFilter}`);
+  if (f.timeSignatureFilter) single('timeSignature', f.timeSignatureFilter === 'Other' ? 'Time signature: Other' : f.timeSignatureFilter);
+  const bpm = rangeLabel(f.bpmMinFilter, f.bpmMaxFilter, 'BPM');
+  if (bpm) single('bpm', bpm);
+  const pitch = rangeLabel(f.pitchStandardMinFilter, f.pitchStandardMaxFilter, 'Hz');
+  if (pitch) single('pitch', pitch);
+  return chips;
+}
+
 export function applySongFilters(songs: Song[], opts: SongFilterOptions): Song[] {
   const {
     searchQuery,

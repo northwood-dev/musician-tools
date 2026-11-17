@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { isRealInstrument } from '../utils/songFilters';
+import { isRealInstrument, type ActiveFilterChip } from '../utils/songFilters';
+import { ActiveFilterChips } from './ActiveFilterChips';
 import type { Song } from '../services/songService';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from './PlaylistsLoadMessage';
 import type { ReactNode } from 'react';
@@ -84,6 +85,9 @@ export interface SongsListProps {
   someDisplayedSelected: boolean;
   hasActiveFilters: boolean;
   activeFilterCount: number;
+  /** #188: one chip per active filter value, shown under the search field. */
+  activeFilterChips: ActiveFilterChip[];
+  onRemoveFilterChip: (chip: ActiveFilterChip) => void;
   showTuningFilters: boolean;
   bulkPlaylistSelection: Set<string>;
   
@@ -275,6 +279,7 @@ export default function SongsList(props: SongsListProps) {
               )}
               </div>
             </div>
+            <ActiveFilterChips chips={props.activeFilterChips} onRemove={props.onRemoveFilterChip} onClearAll={props.clearAllFilters} />
           </div>
           {/* Bulk actions: the shared bar (22.1) hides itself when nothing is selected. */}
           <BulkActionBar count={props.selectedSongs.size} noun="song(s)">
