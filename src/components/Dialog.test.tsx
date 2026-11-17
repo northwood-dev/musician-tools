@@ -61,7 +61,11 @@ test('a click on the backdrop closes it; a click inside does not', () => {
   open();
   fireEvent.click(screen.getByText('Inside text'));
   expect(dialog()).toBeInTheDocument();
-  fireEvent.click(dialog()!); // the <dialog> itself is only reachable through its backdrop
+  // The <dialog> itself is only reachable through its backdrop: a real click there is a
+  // press, a release and a click, all on it.
+  fireEvent.mouseDown(dialog()!);
+  fireEvent.mouseUp(dialog()!);
+  fireEvent.click(dialog()!);
   expect(dialog()).not.toBeInTheDocument();
 });
 
@@ -74,4 +78,25 @@ test('on open, focus goes to the first control (the ✕), or to the one the call
   render(<Demo withInitialFocus />);
   open();
   expect(screen.getByRole('button', { name: 'Keep' })).toHaveFocus();
+});
+
+// #203 review: a click event lands on the nearest element holding both the press and the
+// release — selecting text inside and releasing over the backdrop must not close the window.
+test('a press inside released on the backdrop (or the reverse) does not close it', () => {
+  render(<Demo />);
+  open();
+  const inside = screen.getByText('Inside text');
+  fireEvent.mouseDown(inside);
+  fireEvent.click(dialog()!);
+  expect(dialog()).toBeInTheDocument();
+
+  fireEvent.mouseDown(dialog()!);
+  fireEvent.mouseUp(inside);
+  fireEvent.click(dialog()!);
+  expect(dialog()).toBeInTheDocument();
+
+  fireEvent.mouseDown(dialog()!);
+  fireEvent.mouseUp(dialog()!);
+  fireEvent.click(dialog()!);
+  expect(dialog()).not.toBeInTheDocument(); // pressed AND released on the backdrop: closes
 });

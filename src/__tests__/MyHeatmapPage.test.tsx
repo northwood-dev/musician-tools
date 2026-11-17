@@ -405,7 +405,7 @@ test('deleting a session from the day detail confirms, removes it and refreshes 
 
   expect(screen.getByText(`Are you sure you want to delete the session of ${YEAR}-03-10 (Bass)?`)).toBeInTheDocument();
   const heatmapCallsBefore = mockedService.getHeatmap.mock.calls.length;
-  fireEvent.click(screen.getByText('Delete', { selector: 'dialog button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
   // Dialog closed before the request (house pattern), session gone, grid refetched
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -444,7 +444,7 @@ test('deleting a session refreshes the Played list (its cascaded plays disappear
   expect(await screen.findByText('Money')).toBeInTheDocument();
 
   fireEvent.click(await screen.findByRole('button', { name: `Delete session of ${YEAR}-03-10` }));
-  fireEvent.click(screen.getByText('Delete', { selector: 'dialog button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
   // After the delete, the Played list is refetched and reflects the cascade —
   // no manual reload needed
@@ -464,7 +464,7 @@ test('cancelling the day-detail delete keeps the session', async () => {
   renderPage();
   fireEvent.click(await screen.findByLabelText(`${YEAR}-02-15 — no practice`));
   fireEvent.click(await screen.findByRole('button', { name: `Delete session of ${YEAR}-02-15` }));
-  fireEvent.click(screen.getByText('Cancel', { selector: 'dialog button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
 
   expect(mockedService.remove).not.toHaveBeenCalled();
   expect(within(screen.getByRole('list', { name: 'Day sessions' })).getByText('Bass')).toBeInTheDocument();
@@ -482,7 +482,7 @@ test('a failed deletion shows an error and keeps the session listed', async () =
   renderPage();
   fireEvent.click(await screen.findByLabelText(`${YEAR}-03-10 — 40 minutes, 1 session`));
   fireEvent.click(await screen.findByRole('button', { name: `Delete session of ${YEAR}-03-10` }));
-  fireEvent.click(screen.getByText('Delete', { selector: 'dialog button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
   expect(await screen.findByText('Session could not be deleted.')).toBeInTheDocument();
   // The session is NOT removed from the panel on failure

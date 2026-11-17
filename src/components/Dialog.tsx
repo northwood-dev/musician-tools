@@ -18,37 +18,25 @@ const WIDTH = {
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-export function Dialog({
-  open,
-  onClose,
-  title,
-  size = 'sm',
-  initialFocus,
-  children,
-}: {
-  open: boolean;
+type DialogProps = {
   onClose: () => void;
   title: ReactNode;
   size?: 'sm' | 'md';
+  /** Where focus starts (a confirmation passes its Cancel). Pass a stable useRef: a new
+   *  object on every render would close and reopen the window each time. */
   initialFocus?: RefObject<HTMLElement | null>;
   children: ReactNode;
-}) {
-  if (!open) return null;
-  return (
-    <OpenDialog onClose={onClose} title={title} size={size} initialFocus={initialFocus}>
-      {children}
-    </OpenDialog>
-  );
+};
+
+// Shown while `open`: mounting shows it, unmounting closes it (see OpenDialog's effect).
+export function Dialog({ open, ...props }: DialogProps & { open: boolean }) {
+  return open ? <OpenDialog {...props} /> : null;
 }
 
-function OpenDialog({ onClose, title, size, initialFocus, children }: {
-  onClose: () => void;
-  title: ReactNode;
-  size: 'sm' | 'md';
-  initialFocus?: RefObject<HTMLElement | null>;
-  children: ReactNode;
-}) {
+function OpenDialog({ onClose, title, size = 'sm', initialFocus, children }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const pressedOnBackdrop = useRef(false);
+  const releasedOnBackdrop = useRef(false);
   const titleId = useId();
 
   // Shown while mounted: open → showModal + focus in; unmount → close + focus back.
@@ -71,7 +59,14 @@ function OpenDialog({ onClose, title, size, initialFocus, children }: {
       aria-labelledby={titleId}
       // The <dialog> box itself has no padding: a click whose target is the dialog element
       // landed on its backdrop (the frame's content is the inner div).
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      // Close only when the press AND the release were both on the backdrop: a click event
+      // lands on the element holding both, so selecting text inside and releasing outside
+      // (or the reverse) would otherwise close the window.
+      onMouseDown={e => { pressedOnBackdrop.current = e.target === e.currentTarget; }}
+      onMouseUp={e => { releasedOnBackdrop.current = e.target === e.currentTarget; }}
+      onClick={e => {
+        if (e.target === e.currentTarget && pressedOnBackdrop.current && releasedOnBackdrop.current) onClose();
+      }}
       onKeyDown={e => {
         if (e.key !== 'Escape') return;
         e.preventDefault(); // used up: one Escape closes one thing

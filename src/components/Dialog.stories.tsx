@@ -5,7 +5,8 @@ import { ConfirmDialog } from './ConfirmDialog';
 
 // The dialog block (#203): every modal window in one frame, on the native <dialog>.
 function Opener({ label, children }: { label: string; children: (close: () => void) => ReactNode }) {
-  const [open, setOpen] = useState(true);
+  // Closed at first: the docs page shows every story at once, and open modals would stack.
+  const [open, setOpen] = useState(false);
   return (
     <div className="p-4">
       <button type="button" className="btn-primary btn-sm" onClick={() => setOpen(true)}>{label}</button>

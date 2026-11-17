@@ -39,7 +39,11 @@ test('clicking overlay or Escape triggers cancel', () => {
     />
   );
 
-  fireEvent.click(screen.getByRole('dialog'));
+  // A real click on the backdrop: press, release and click all on the <dialog> itself.
+  const backdrop = screen.getByRole('dialog');
+  fireEvent.mouseDown(backdrop);
+  fireEvent.mouseUp(backdrop);
+  fireEvent.click(backdrop);
   expect(onCancel).toHaveBeenCalledTimes(1);
 
   fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });

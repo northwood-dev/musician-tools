@@ -21,9 +21,9 @@ test('no modal window is written by hand outside the Dialog block', () => {
     const rel = relative(SRC, file);
     if (rel === OWNER) continue;
     readFileSync(file, 'utf8').split('\n').forEach((line, i) => {
-      if (/^\s*(\/\/|\*|\{\/\*)/.test(line)) return; // a comment may name <dialog>
+      if (/^\s*(\/\/|\/?\*|\{\/\*)/.test(line)) return; // a comment may name <dialog>
       // JSX only: a selector looking FOR an open modal ('[aria-modal="true"]') is not a frame.
-      if (/<dialog\b|role=["'{`]*(alert)?dialog["'}`]|\saria-modal=/.test(line)) offenders.push(`${rel}:${i + 1}`);
+      if (/<dialog\b|role\s*=\s*["'{`]*(alert)?dialog["'}`]|(?<!\[)\baria-modal\b/.test(line)) offenders.push(`${rel}:${i + 1}`);
     });
   }
   expect(offenders).toEqual([]);
