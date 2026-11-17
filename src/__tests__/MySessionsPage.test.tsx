@@ -1073,7 +1073,7 @@ test('Delete session asks for confirmation naming the session, then removes it',
   fireEvent.click(await screen.findByRole('button', { name: 'Delete session of 2026-06-05' }));
 
   expect(screen.getByText('Are you sure you want to delete the session of 2026-06-05 (Bass)?')).toBeInTheDocument();
-  fireEvent.click(screen.getByText('Delete', { selector: 'div[role="dialog"] button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   await waitFor(() => {
@@ -1088,7 +1088,7 @@ test('cancelling the session delete dialog keeps the session', async () => {
 
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
   fireEvent.click(await screen.findByRole('button', { name: 'Delete session of 2026-06-05' }));
-  fireEvent.click(screen.getByText('Cancel', { selector: 'div[role="dialog"] button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
 
   expect(mockedService.remove).not.toHaveBeenCalled();
   expect(screen.getByText('2026-06-05')).toBeInTheDocument();
@@ -1294,7 +1294,7 @@ test('the edit banner offers a confirmed Delete session (3.2 field feedback)', a
   fireEvent.click(screen.getByRole('button', { name: 'Delete session of 2026-06-05' }));
   expect(screen.getByText('Are you sure you want to delete the session of 2026-06-05 (Bass)?')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByText('Delete', { selector: 'div[role="dialog"] button' }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }));
 
   await waitFor(() => {
     expect(mockedService.remove).toHaveBeenCalledWith('s-edit');

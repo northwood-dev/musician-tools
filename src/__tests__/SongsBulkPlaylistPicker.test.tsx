@@ -1,4 +1,4 @@
-import { act, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { renderSongs } from '../test/renderSongs';
 
 jest.mock('../services/songService', () => ({
@@ -107,7 +107,7 @@ describe('#46: the picker resets when the selection becomes empty', () => {
     await pickWarmups();
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
-    fireEvent.click(await screen.findByText('Delete', { selector: 'div[role="dialog"] button' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument());
     await selectSong('Beta');
 
@@ -132,7 +132,7 @@ describe('#46: the picker resets when the selection becomes empty', () => {
 
     fireEvent.click(screen.getByText('Alpha'));
     fireEvent.click(await screen.findByRole('button', { name: /^Delete/ }));
-    fireEvent.click(await screen.findByText('Delete', { selector: 'div[role="dialog"] button' }));
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }));
     await waitFor(() => expect(screen.queryByText('Alpha')).not.toBeInTheDocument());
     await selectSong('Beta');
 

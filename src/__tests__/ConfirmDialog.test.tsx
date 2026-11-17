@@ -39,9 +39,30 @@ test('clicking overlay or Escape triggers cancel', () => {
     />
   );
 
-  fireEvent.click(screen.getByRole('dialog'));
+  // A real click on the backdrop: press, release and click all on the <dialog> itself.
+  const backdrop = screen.getByRole('dialog');
+  fireEvent.mouseDown(backdrop);
+  fireEvent.mouseUp(backdrop);
+  fireEvent.click(backdrop);
   expect(onCancel).toHaveBeenCalledTimes(1);
 
   fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
   expect(onCancel).toHaveBeenCalledTimes(2);
+});
+// #203: rebuilt on the Dialog block — named by its title, focus starts on the safe choice, ✕.
+test('the confirmation is named by its title, starts on Cancel, and has a ✕ that cancels', () => {
+  const onCancel = jest.fn();
+  render(
+    <ConfirmDialog isOpen title="Delete song(s)" message="Sure?" confirmText="Delete" onConfirm={() => {}} onCancel={onCancel} isDangerous />
+  );
+  const dialog = screen.getByRole('dialog', { name: 'Delete song(s)' });
+  expect(dialog).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(onCancel).toHaveBeenCalledTimes(1);
+});
+
+test('closed: nothing rendered', () => {
+  render(<ConfirmDialog isOpen={false} title="T" message="M" onConfirm={() => {}} onCancel={() => {}} />);
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
