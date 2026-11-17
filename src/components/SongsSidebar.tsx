@@ -761,7 +761,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
             order.map(id => sectionElements[id] ? <div key={id} data-filter-section={id}>{sectionElements[id]}</div> : null)
           )}
           {layout && (
-            <div className="relative">
+            <div>
               <button
                 ref={addMenu.buttonRef}
                 type="button"
@@ -773,7 +773,7 @@ export default function SongsSidebar(props: SongsSidebarProps) {
                 + Add filter
               </button>
               {addMenuOpen && (
-                <Panel panel={addMenu} size="sm">
+                <Panel panel={addMenu} size="sm" inline>
                   <div role="group" aria-label="Add a filter">
                     {hidden.length === 0 && (
                       <p className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">Every filter is already shown.</p>

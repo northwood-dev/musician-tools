@@ -55,3 +55,23 @@ export const WhileSaving: Story = {
     </Demo>
   ),
 };
+
+// #198: `inline` opens in the flow, full width — for a container that clips overflow,
+// like the Songlist sidebar's "+ Add filter".
+function InlineDemo() {
+  const [open, setOpen] = useState(true);
+  const panel = useDismissablePanel({ open, onClose: () => setOpen(false) });
+  return (
+    <div className="w-72 overflow-hidden rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+      <button ref={panel.buttonRef} type="button" className="btn-secondary btn-sm w-full" aria-expanded={open} aria-controls={panel.panelId} onClick={() => setOpen(o => !o)}>+ Add filter</button>
+      {open && (
+        <Panel panel={panel} size="sm" inline>
+          <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">Key filters</button>
+          <button type="button" className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">Mode filters</button>
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+export const Inline: Story = { render: () => <InlineDemo /> };
