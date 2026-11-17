@@ -132,19 +132,17 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     bpm: props.setBpmAccordionOpen,
     pitch: props.setPitchAccordionOpen,
   };
-  const sectionControls = (id: FilterSectionId) =>
-    layout && (
-      <>
-        <SectionDragHandle id={id} />
-        <CloseButton label={`Remove ${FILTER_SECTION_TITLES[id]}`} onClick={() => layout.onRemove(id)} />
-      </>
-    );
+  // #185: the ⋮⋮ handle on the left of the section name, its ✕ on the right.
+  const sectionHandle = (id: FilterSectionId) => layout && <SectionDragHandle id={id} />;
+  const sectionRemove = (id: FilterSectionId) =>
+    layout && <CloseButton label={`Remove ${FILTER_SECTION_TITLES[id]}`} onClick={() => layout.onRemove(id)} />;
   // #197: each filter section once, by id; the sidebar shows them in `order`.
   const sectionElements: Record<FilterSectionId, ReactNode> = {
     instrument:
           (
           <Disclosure
-            aside={sectionControls('instrument')}
+            lead={sectionHandle('instrument')}
+            aside={sectionRemove('instrument')}
             className="card-base"
             title={FILTER_SECTION_TITLES.instrument}
             open={props.filtersAccordionOpen}
@@ -198,7 +196,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     playlist:
           (
           <Disclosure
-            aside={sectionControls('playlist')}
+            lead={sectionHandle('playlist')}
+            aside={sectionRemove('playlist')}
             className="card-base"
             title={FILTER_SECTION_TITLES.playlist}
             open={props.playlistAccordionOpen}
@@ -232,7 +231,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     difficulty:
           props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              aside={sectionControls('difficulty')}
+              lead={sectionHandle('difficulty')}
+            aside={sectionRemove('difficulty')}
               className="card-base"
               title={FILTER_SECTION_TITLES.difficulty}
               open={props.difficultyAccordionOpen}
@@ -258,7 +258,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     capo:
           props.instrumentFilter === 'Guitar' && (
             <Disclosure
-              aside={sectionControls('capo')}
+              lead={sectionHandle('capo')}
+            aside={sectionRemove('capo')}
               className="card-base"
               title={FILTER_SECTION_TITLES.capo}
               open={props.capoAccordionOpen}
@@ -284,7 +285,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     tuning:
           props.showTuningFilters && (
             <Disclosure
-              aside={sectionControls('tuning')}
+              lead={sectionHandle('tuning')}
+            aside={sectionRemove('tuning')}
               className="card-base"
               title={FILTER_SECTION_TITLES.tuning}
               open={props.tuningAccordionOpen}
@@ -311,7 +313,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     technique:
           props.instrumentFilter && props.instrumentFilter !== NO_INSTRUMENT && (
             <Disclosure
-              aside={sectionControls('technique')}
+              lead={sectionHandle('technique')}
+            aside={sectionRemove('technique')}
               className="card-base"
               title={FILTER_SECTION_TITLES.technique}
               open={props.techniqueAccordionOpen}
@@ -379,7 +382,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     genre:
           (
           <Disclosure
-            aside={sectionControls('genre')}
+            lead={sectionHandle('genre')}
+            aside={sectionRemove('genre')}
             className="card-base"
             title={FILTER_SECTION_TITLES.genre}
             open={props.genreAccordionOpen}
@@ -449,7 +453,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     language:
           (
           <Disclosure
-            aside={sectionControls('language')}
+            lead={sectionHandle('language')}
+            aside={sectionRemove('language')}
             className="card-base"
             title={<>
               {FILTER_SECTION_TITLES.language}
@@ -525,7 +530,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     key:
           (
           <Disclosure
-            aside={sectionControls('key')}
+            lead={sectionHandle('key')}
+            aside={sectionRemove('key')}
             className="card-base"
             title={FILTER_SECTION_TITLES.key}
             open={props.keyAccordionOpen}
@@ -559,7 +565,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     mode:
           (
           <Disclosure
-            aside={sectionControls('mode')}
+            lead={sectionHandle('mode')}
+            aside={sectionRemove('mode')}
             className="card-base"
             title={FILTER_SECTION_TITLES.mode}
             open={props.modeAccordionOpen}
@@ -588,7 +595,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     timeSignature:
           (
           <Disclosure
-            aside={sectionControls('timeSignature')}
+            lead={sectionHandle('timeSignature')}
+            aside={sectionRemove('timeSignature')}
             className="card-base"
             title={FILTER_SECTION_TITLES.timeSignature}
             open={props.timeSignatureAccordionOpen}
@@ -620,7 +628,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     bpm:
           (
           <Disclosure
-            aside={sectionControls('bpm')}
+            lead={sectionHandle('bpm')}
+            aside={sectionRemove('bpm')}
             className="card-base"
             title={FILTER_SECTION_TITLES.bpm}
             open={props.bpmAccordionOpen}
@@ -659,7 +668,8 @@ export default function SongsSidebar(props: SongsSidebarProps) {
     pitch:
           (
           <Disclosure
-            aside={sectionControls('pitch')}
+            lead={sectionHandle('pitch')}
+            aside={sectionRemove('pitch')}
             className="card-base"
             title={FILTER_SECTION_TITLES.pitch}
             open={props.pitchAccordionOpen}

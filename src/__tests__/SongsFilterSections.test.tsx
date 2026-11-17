@@ -62,6 +62,18 @@ test('never customised: the short default (instrument-dependent sections wait fo
   expect(shownSections()).toEqual(['instrument', 'playlist', 'genre', 'language']);
 });
 
+test('each section has its ⋮⋮ handle on the left of its name, its ✕ on the right', async () => {
+  accountLayout(['genre']);
+  renderSongs();
+  await screen.findByText('Alpha');
+  await settle();
+  const handle = screen.getByRole('button', { name: 'Move Genre filters' });
+  const name = screen.getByRole('button', { name: 'Genre filters' });
+  const remove = screen.getByRole('button', { name: 'Remove Genre filters' });
+  expect(handle.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(name.compareDocumentPosition(remove) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 test('the layout saved on the account is shown, in its order', async () => {
   accountLayout(['key', 'genre']);
   renderSongs();

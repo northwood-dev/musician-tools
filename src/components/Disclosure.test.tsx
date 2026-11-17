@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Disclosure } from './Disclosure';
 
-function Demo({ initial = false, aside }: { initial?: boolean; aside?: React.ReactNode }) {
+function Demo({ initial = false, aside, lead }: { initial?: boolean; aside?: React.ReactNode; lead?: React.ReactNode }) {
   const [open, setOpen] = useState(initial);
   return (
-    <Disclosure title="Genre filters" open={open} onToggle={() => setOpen(o => !o)} aside={aside}>
+    <Disclosure title="Genre filters" open={open} onToggle={() => setOpen(o => !o)} aside={aside} lead={lead}>
       <p>Body content</p>
     </Disclosure>
   );
@@ -43,4 +43,13 @@ test('content on the right is rendered and stays outside the header button', () 
   expect(screen.getByRole('button', { name: 'Mark as played' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Genre filters' })).toHaveAttribute('aria-expanded', 'true');
   expect(screen.getByText('Body content')).toBeInTheDocument();
+});
+
+// #185: a drag handle sits on the LEFT of the title (northwood's request), outside the header button.
+test('content on the left comes before the title and stays outside the header button', () => {
+  render(<Demo lead={<button type="button">Move Genre filters</button>} />);
+  const handle = screen.getByRole('button', { name: 'Move Genre filters' });
+  const header = screen.getByRole('button', { name: 'Genre filters' });
+  expect(header).not.toContainElement(handle);
+  expect(handle.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });

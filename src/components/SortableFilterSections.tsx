@@ -112,7 +112,12 @@ export function SectionDragHandle({ id }: { id: FilterSectionId }) {
       title={`Move ${FILTER_SECTION_TITLES[id]}`}
       className={`${ICON_BUTTON} ${ICON_BUTTON_QUIET} cursor-grab touch-none active:cursor-grabbing`}
     >
-      <span aria-hidden="true">⋮⋮</span>
+      {/* The usual six-dot grip: drawn, so it reads clearly at any font size. */}
+      <svg aria-hidden="true" viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+        <circle cx="5.5" cy="3.5" r="1.5" /><circle cx="10.5" cy="3.5" r="1.5" />
+        <circle cx="5.5" cy="8" r="1.5" /><circle cx="10.5" cy="8" r="1.5" />
+        <circle cx="5.5" cy="12.5" r="1.5" /><circle cx="10.5" cy="12.5" r="1.5" />
+      </svg>
     </button>
   );
 }
