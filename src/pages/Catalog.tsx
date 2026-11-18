@@ -225,7 +225,8 @@ export default function Catalog() {
 
       <div className="flex items-center justify-between mt-6 mb-2">
         <h2 className="text-lg font-medium text-gray-800 dark:text-gray-200" aria-live="polite">
-          {hasQuery ? `Results (${total})` : 'All songs'}
+          {/* #216: no count once the list failed — an old or zero total would be read out above the error */}
+          {hasQuery ? (error ? 'Results' : `Results (${total})`) : 'All songs'}
         </h2>
         {hasQuery && (
           <button type="button" className="btn-secondary btn-sm" onClick={() => setSearchParams(new URLSearchParams())}>
@@ -240,11 +241,9 @@ export default function Catalog() {
         <ListSkeleton rows={6} />
       )}
 
-      {error && (
-        <LoadFailed onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
-          Couldn't load the Catalog.
-        </LoadFailed>
-      )}
+      <LoadFailed failed={error} onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
+        Couldn't load the Catalog.
+      </LoadFailed>
 
       {/* Bulk bar + recap live OUTSIDE the results branch: a filter with no matches (or
           a failed refetch) must not take away the recap of a batch that just wrote to

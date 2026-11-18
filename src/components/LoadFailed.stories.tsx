@@ -6,7 +6,7 @@ import { LoadFailed } from './LoadFailed';
 const meta = {
   title: 'Feedback/LoadFailed',
   component: LoadFailed,
-  args: { children: "Couldn't load the Catalog.", onRetry: fn() },
+  args: { failed: true, children: "Couldn't load the Catalog.", onRetry: fn() },
 } satisfies Meta<typeof LoadFailed>;
 export default meta;
 type Story = StoryObj<typeof meta>;

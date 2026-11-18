@@ -122,9 +122,7 @@ export default function CatalogArtistAliases() {
       <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
       <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
 
-      {loadFailed && (
-        <LoadFailed onRetry={load}>Couldn't load the artist aliases.</LoadFailed>
-      )}
+      <LoadFailed failed={loadFailed} onRetry={load}>Couldn't load the artist aliases.</LoadFailed>
 
       {!loadFailed && aliases === null && <ListSkeleton rows={6} />}
 

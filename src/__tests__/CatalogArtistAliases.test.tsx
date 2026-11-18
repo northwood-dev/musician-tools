@@ -86,7 +86,7 @@ test('a duplicate names the existing alias and keeps what was typed', async () =
 
   add('r.h.c.p', 'Someone');
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('"RHCP" already exists, for Red Hot Chili Peppers.');
+  expect(await screen.findByRole('alert', { name: '' })).toHaveTextContent('"RHCP" already exists, for Red Hot Chili Peppers.');
   expect(screen.getByLabelText('Alias')).toHaveValue('r.h.c.p');
 });
 
@@ -96,7 +96,7 @@ test('an empty value sends nothing and says why', async () => {
 
   add('  ', 'Queen');
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Enter an alias and an artist, with at least one letter or digit.');
+  expect(await screen.findByRole('alert', { name: '' })).toHaveTextContent('Enter an alias and an artist, with at least one letter or digit.');
   expect(svc.create).not.toHaveBeenCalled();
 });
 
@@ -106,7 +106,7 @@ test('a value of only punctuation sends nothing and says why', async () => {
 
   add('...', 'Queen');
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Enter an alias and an artist, with at least one letter or digit.');
+  expect(await screen.findByRole('alert', { name: '' })).toHaveTextContent('Enter an alias and an artist, with at least one letter or digit.');
   expect(svc.create).not.toHaveBeenCalled();
 });
 
@@ -114,7 +114,7 @@ test('the announcement regions are there before any message, so that screen read
   renderPage();
   await screen.findByText('RHCP');
   expect(screen.getByRole('status')).toBeEmptyDOMElement();
-  expect(screen.getByRole('alert')).toBeEmptyDOMElement();
+  expect(screen.getByRole('alert', { name: '' })).toBeEmptyDOMElement();
 });
 
 test('a failed removal says so and reloads the list', async () => {
@@ -126,7 +126,7 @@ test('a failed removal says so and reloads the list', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Remove alias RHCP' }));
   fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }));
 
-  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not remove "RHCP".'));
+  await waitFor(() => expect(screen.getByRole('alert', { name: '' })).toHaveTextContent('Could not remove "RHCP".'));
   await waitFor(() => expect(svc.listWithCounts.mock.calls.length).toBeGreaterThan(loads));
 });
 
@@ -137,7 +137,7 @@ test('a failed add says so and keeps what was typed', async () => {
 
   add('QN', 'Queen');
 
-  expect(await screen.findByRole('alert')).toHaveTextContent('Could not add this alias.');
+  expect(await screen.findByRole('alert', { name: '' })).toHaveTextContent('Could not add this alias.');
   expect(screen.getByLabelText('Alias')).toHaveValue('QN');
 });
 

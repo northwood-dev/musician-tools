@@ -431,9 +431,8 @@ export default function CatalogManage() {
               </button>
             </div>
 
-            {collectionsError ? (
-              <LoadFailed onRetry={() => setCollectionsToken(t => t + 1)}>Couldn't load the collections.</LoadFailed>
-            ) : collections === null ? (
+            <LoadFailed failed={collectionsError} onRetry={() => setCollectionsToken(t => t + 1)}>Couldn't load the collections.</LoadFailed>
+            {collectionsError ? null : collections === null ? (
               <ListSkeleton rows={4} />
             ) : collections.length === 0 ? (
               <EmptyState>No collections yet — create the first one.</EmptyState>
@@ -489,7 +488,7 @@ export default function CatalogManage() {
               <Panel panel={addMenu} title="Select a collection" onClose={() => setAddMenuOpen(false)}>
                 {menuError ? (
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Could not load the collections.{' '}
+                    Couldn't load the collections.{' '}
                     <button type="button" className="btn-link" onClick={loadMenuCollections}>Retry</button>
                   </div>
                 ) : menuCollections === null ? (
@@ -600,11 +599,9 @@ export default function CatalogManage() {
           <ListSkeleton rows={6} />
         )}
 
-        {error && (
-          <LoadFailed onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
-            Couldn't load the Catalog entries.
-          </LoadFailed>
-        )}
+        <LoadFailed failed={error} onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
+          Couldn't load the Catalog entries.
+        </LoadFailed>
 
         {!error && data && (
           <div className={loading ? 'opacity-50 motion-safe:transition-opacity motion-safe:duration-150' : 'motion-safe:transition-opacity motion-safe:duration-150'} aria-busy={loading}>

@@ -104,9 +104,7 @@ export default function CatalogSuggestions() {
       {/* Always mounted: a region that appears with its message may not be announced (#153). */}
       <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
       <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
-      {loadFailed && (
-        <LoadFailed onRetry={load}>Couldn't load the suggestions.</LoadFailed>
-      )}
+      <LoadFailed failed={loadFailed} onRetry={load}>Couldn't load the suggestions.</LoadFailed>
       {!loadFailed && suggestions === null && <ListSkeleton rows={6} />}
       {!loadFailed && suggestions?.length === 0 && (
         <EmptyState>No suggestions waiting.</EmptyState>

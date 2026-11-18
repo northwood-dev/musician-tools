@@ -306,9 +306,7 @@ export default function CatalogCollectionCompose() {
         </div>
       )}
 
-      {error && (
-        <LoadFailed onRetry={() => setRefetchToken(t => t + 1)}>Couldn't load the collection.</LoadFailed>
-      )}
+      <LoadFailed failed={error} onRetry={() => setRefetchToken(t => t + 1)}>Couldn't load the collection.</LoadFailed>
 
       {collection && (
         <>
