@@ -100,7 +100,7 @@ test('shows an error banner when creation fails', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
   expect(await screen.findByText('Failed to add topic')).toBeInTheDocument();
-  expect(screen.getByRole('alert')).toBeInTheDocument();
+  expect(screen.getByRole('alert', { name: '' })).toBeInTheDocument(); // the save banner, not the load region
 });
 
 test('clears the error banner when a retry succeeds', async () => {
@@ -133,14 +133,19 @@ test('shows a duplicate-specific message on 409', async () => {
   expect(await screen.findByText('Topic already exists')).toBeInTheDocument();
 });
 
-test('failed load does not pretend the topic list is empty', async () => {
+test('#222: a failed load says so once, in the list, announced, never as empty; Retry reloads', async () => {
   mockedService.getAll.mockRejectedValue(new Error('Failed to fetch topics'));
 
   renderPage();
 
-  expect(await screen.findByText('Failed to load topics')).toBeInTheDocument();
-  expect(screen.getByText('Topics could not be loaded.')).toBeInTheDocument();
+  expect(await screen.findByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load your topics.");
+  expect(screen.queryByText('Failed to load topics')).toBeNull(); // no banner for a load
+  expect(screen.queryByText('Topics could not be loaded.')).toBeNull(); // no second message
   expect(screen.queryByText('No topics saved yet.')).not.toBeInTheDocument();
+
+  mockedService.getAll.mockResolvedValue([{ uid: 't1', name: 'Pentatonic scale' } as never]);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Pentatonic scale')).toBeInTheDocument();
 });
 
 test('Edit opens an inline editor pre-filled with the topic values', async () => {
@@ -265,6 +270,17 @@ describe('#16: ?edit=<uid> deep link from the session history', () => {
     expect(await screen.findByLabelText('Edit name')).toHaveValue('Pentatonic scale');
     expect(scrollSpy).toHaveBeenCalled();
     // Consumed on arrival: a reload never reopens the editor.
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
+  });
+
+  test('#218 review: a link that met a failed load still opens its topic after Retry', async () => {
+    mockedService.getAll.mockRejectedValueOnce(new Error('down'));
+    renderPage('/my-topics?edit=t1');
+    await screen.findByText("Couldn't load your topics.");
+    expect(screen.getByLabelText('search')).toHaveTextContent('?edit=t1'); // not consumed by the failure
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByLabelText('Edit name')).toHaveValue('Pentatonic scale');
     await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
   });
 

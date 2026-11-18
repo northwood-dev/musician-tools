@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { topicService, type Topic, type CreateTopicDTO, type UpdateTopicDTO } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -7,8 +7,8 @@ import { useInlineRowSave } from '../hooks/useInlineRowSave';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
-import { Notice } from '../components/Notice';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 
 const topicRowId = (uid: string) => `topic-${uid}`;
 
@@ -46,22 +46,26 @@ function MyTopicsPage() {
   });
   const { openRow, savingRow } = row;
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await topicService.getAll();
-        setList(data);
-        setLoadFailed(false);
-      } catch {
-        setError('Failed to load topics');
-        setLoadFailed(true);
-      } finally {
-        setLoading(false);
-        setListLoaded(true);
-      }
-    })();
+  // #222: a failed load says so in the list (LoadFailed, with Retry), never as an empty list
+  // and not in the page banner — that one is for failed saves.
+  const loadList = useCallback(async () => {
+    setLoadFailed(false);
+    setLoading(true);
+    try {
+      setList(await topicService.getAll());
+      // Only a SUCCESSFUL load releases a pending ?edit= link: consumed by a failure, the
+      // link would be gone by the time Retry brings the topic it points to (#218 review).
+      setListLoaded(true);
+    } catch {
+      setLoadFailed(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadList();
+  }, [loadList]);
 
   // Once the topics are loaded, bring the deep-linked row into view and open it
   // for editing (the system topic is not editable: shown, not opened), then
@@ -179,12 +183,11 @@ function MyTopicsPage() {
             </div>
           </form>
 
+          <LoadFailed failed={loadFailed} onRetry={loadList}>Couldn't load your topics.</LoadFailed>
           {loading ? (
             <ListSkeleton rows={4} label="Loading…" />
-          ) : list.length === 0 ? (
-            loadFailed
-              ? <Notice tone="error">Topics could not be loaded.</Notice>
-              : <EmptyState>No topics saved yet.</EmptyState>
+          ) : loadFailed ? null : list.length === 0 ? (
+            <EmptyState>No topics saved yet.</EmptyState>
           ) : (
             <div className="card-base overflow-hidden">
               <div className="overflow-x-auto">
