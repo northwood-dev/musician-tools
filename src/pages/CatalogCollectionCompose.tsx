@@ -5,6 +5,7 @@ import { catalogService, CollectionNotFoundError } from '../services/catalogServ
 import type { CatalogCollectionDetail, CatalogSong } from '../services/catalogService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 import { Toast } from '../components/Toast';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { RowSelectionCheckbox, SelectAllCheckbox } from '../components/SelectionCheckbox';
@@ -305,12 +306,7 @@ export default function CatalogCollectionCompose() {
         </div>
       )}
 
-      {error && (
-        <div className="mt-10 text-center">
-          <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-          <button type="button" className="btn-secondary mt-3" onClick={() => setRefetchToken(t => t + 1)}>Retry</button>
-        </div>
-      )}
+      <LoadFailed failed={error} onRetry={() => setRefetchToken(t => t + 1)}>Couldn't load the collection.</LoadFailed>
 
       {collection && (
         <>

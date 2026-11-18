@@ -45,7 +45,7 @@ test('#34: the row Add button with nothing chosen sends nothing, and does not op
   fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
 
   expect(svc.addToSonglist).not.toHaveBeenCalled();
-  expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+  expect(screen.getByRole('alert', { name: '' })).toHaveTextContent('Choose an instrument first.');
   expect(screen.getByLabelText('Add as')).toHaveFocus();
 });
 
@@ -77,7 +77,8 @@ test('empty results show the no-match message when a query is active', async () 
 test('a fetch error shows Retry, and Retry actually refetches (not a no-op)', async () => {
   svc.listCatalog.mockRejectedValueOnce(new Error('boom'));
   render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
-  await screen.findByText('Something went wrong.');
+  // #216: says what didn't load, announced at once
+  expect(await screen.findByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load the Catalog.");
   const callsAfterError = svc.listCatalog.mock.calls.length;
 
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }], 1));
@@ -85,6 +86,28 @@ test('a fetch error shows Retry, and Retry actually refetches (not a no-op)', as
 
   await waitFor(() => expect(svc.listCatalog.mock.calls.length).toBeGreaterThan(callsAfterError));
   await screen.findByText('Zombie'); // recovered — Retry re-ran the fetch
+});
+
+test('#216: Retry clears the message while the list loads again, and a second failure says so again', async () => {
+  svc.listCatalog.mockRejectedValue(new Error('boom'));
+  render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog?search=zom']}><Catalog /></MemoryRouter>);
+  expect(await screen.findByText("Couldn't load the Catalog.")).toBeInTheDocument();
+  // no count above the error: an old or zero total would be read out (aria-live heading)
+  expect(screen.getByRole('heading', { name: 'Results' })).toBeInTheDocument();
+
+  let failAgain!: (e: Error) => void;
+  svc.listCatalog.mockImplementationOnce(() => new Promise((_, reject) => { failAgain = reject; }));
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(screen.queryByText("Couldn't load the Catalog.")).toBeNull()); // loading, message gone
+  expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+
+  await act(async () => { failAgain(new Error('boom again')); });
+  expect(await screen.findByText("Couldn't load the Catalog.")).toBeInTheDocument(); // said again
+
+  svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }], 1));
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Zombie')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Results (1)' })).toBeInTheDocument();
 });
 
 // ---- Story 20.4: Collections rail ----
@@ -219,7 +242,7 @@ describe('#34: bulk add with the chosen instrument', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(svc.addToSonglist).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent('Choose an instrument first.');
+    expect(screen.getByRole('alert', { name: '' })).toHaveTextContent('Choose an instrument first.');
     expect(screen.getByLabelText('Add as')).toHaveFocus();
   });
 

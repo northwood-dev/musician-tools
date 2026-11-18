@@ -71,6 +71,15 @@ test('a 404 shows a calm not-found panel', async () => {
   await screen.findByText('This collection no longer exists.');
 });
 
+test('#216: a collection that fails to load says so, announced, and Retry reloads it', async () => {
+  cat.getCollection.mockRejectedValue(new Error('offline'));
+  renderCompose();
+  expect((await screen.findByText("Couldn't load the collection.")).closest('[role="alert"]')).not.toBeNull();
+  cat.getCollection.mockResolvedValue(detail);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText(detail.name)).toBeInTheDocument();
+});
+
 test('searching then clicking a result adds it to the collection', async () => {
   cat.listCatalog.mockResolvedValue({
     items: [{ uid: 's2', title: 'Creep', artist: 'Radiohead', publishedAt: '2026-01-01' }],

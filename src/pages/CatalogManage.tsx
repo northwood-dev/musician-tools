@@ -6,6 +6,7 @@ import type { CatalogListResponse, CatalogCollection } from '../services/catalog
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 import { Pagination } from '../components/Pagination';
 import { Toast } from '../components/Toast';
 import { RowSelectionCheckbox, SelectAllCheckbox } from '../components/SelectionCheckbox';
@@ -430,12 +431,8 @@ export default function CatalogManage() {
               </button>
             </div>
 
-            {collectionsError ? (
-              <div className="text-center py-10">
-                <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-                <button type="button" className="btn-secondary mt-3" onClick={() => setCollectionsToken(t => t + 1)}>Retry</button>
-              </div>
-            ) : collections === null ? (
+            <LoadFailed failed={collectionsError} onRetry={() => setCollectionsToken(t => t + 1)}>Couldn't load the collections.</LoadFailed>
+            {collectionsError ? null : collections === null ? (
               <ListSkeleton rows={4} />
             ) : collections.length === 0 ? (
               <EmptyState>No collections yet — create the first one.</EmptyState>
@@ -491,7 +488,7 @@ export default function CatalogManage() {
               <Panel panel={addMenu} title="Select a collection" onClose={() => setAddMenuOpen(false)}>
                 {menuError ? (
                   <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Could not load the collections.{' '}
+                    Couldn't load the collections.{' '}
                     <button type="button" className="btn-link" onClick={loadMenuCollections}>Retry</button>
                   </div>
                 ) : menuCollections === null ? (
@@ -602,18 +599,9 @@ export default function CatalogManage() {
           <ListSkeleton rows={6} />
         )}
 
-        {error && (
-          <div className="text-center py-10">
-            <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-            <button
-              type="button"
-              className="btn-secondary mt-3"
-              onClick={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
+        <LoadFailed failed={error} onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
+          Couldn't load the Catalog entries.
+        </LoadFailed>
 
         {!error && data && (
           <div className={loading ? 'opacity-50 motion-safe:transition-opacity motion-safe:duration-150' : 'motion-safe:transition-opacity motion-safe:duration-150'} aria-busy={loading}>
