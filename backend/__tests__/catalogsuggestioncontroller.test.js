@@ -43,6 +43,28 @@ test('lists one line per group with its count and the Catalog fields of its late
   }]);
 });
 
+test('shows curators only official track links, never a personal one', async () => {
+  sequelize.query.mockResolvedValue([row({ streaming_links: [
+    { label: 'Drive', url: 'https://drive.google.com/file/d/abc/view' },
+    { label: 'YouTube', url: 'https://www.youtube.com/watch?v=bx1Bh8ZvH84' },
+  ] })]);
+  const res = mockRes();
+  await controller.getSuggestions({ session: { user: 'curator' } }, res, jest.fn());
+  expect(res.json.mock.calls[0][0].suggestions[0].song.streamingLinks).toEqual([{ label: 'YouTube', url: 'https://www.youtube.com/watch?v=bx1Bh8ZvH84' }]);
+});
+
+test('the count leaves out lines whose draft is already in progress', async () => {
+  sequelize.query.mockResolvedValue([
+    row(),
+    row({ uid: '22222222-2222-4222-8222-222222222222', catalog_uid: 'draft-1', catalog_published_at: null }),
+    row({ uid: '33333333-3333-4333-8333-333333333333', catalog_uid: 'cat-1', catalog_published_at: '2026-01-01T00:00:00.000Z' }),
+  ]);
+  const res = mockRes();
+  await controller.getSuggestions({ session: { user: 'curator' } }, res, jest.fn());
+  expect(res.json.mock.calls[0][0].pending).toBe(2);
+  expect(res.json.mock.calls[0][0].suggestions).toHaveLength(3);
+});
+
 test('never exposes the user or anything personal, even if the row carried it', async () => {
   sequelize.query.mockResolvedValue([row({ user_uid: 'u-9', notes: 'my notes', instrument: ['Guitar'], capo: 2, myInstrumentUid: 'x' })]);
   const res = mockRes();
@@ -72,6 +94,7 @@ test('the query reads only suggested, complete, unlinked songs, grouped by the i
   const sql = sequelize.query.mock.calls[0][0];
   expect(sql).toMatch(/^\s*WITH\b/);
   expect(sql).toMatch(/catalog_suggestion\s*=\s*'suggested'/);
+  expect(sql).toMatch(/btrim/);
   expect(sql).toMatch(/source_catalog_uid IS NULL/);
   expect(sql).toMatch(/lower\(f_unaccent\(/);
   expect(sql).toMatch(/f_artist_key\(/);
@@ -198,7 +221,7 @@ describe('acceptSuggestion (#215)', () => {
     expect(res.json).toHaveBeenCalledWith({ catalogUid: 'draft-1' });
   });
 
-  test('links a Catalog entry would refuse are left out of the draft (the curator adds them)', async () => {
+  test('only official track links go into the draft (the curator adds the right ones)', async () => {
     Song.findOne.mockResolvedValue({ ...SONG, streamingLinks: [{ label: 'Spotify', url: 'https://open.spotify.com/search/wonderwall' }] });
     sequelize.query.mockResolvedValueOnce([{ catalog_uid: null, published: false }]);
     CatalogSong.create.mockResolvedValue({ uid: 'draft-1' });
@@ -225,24 +248,27 @@ describe('acceptSuggestion (#215)', () => {
 });
 
 describe('linkSuggestionsToPublished (#215, called by publish)', () => {
+  const { linkSuggestionsToPublished } = require('../services/catalogSuggestionLinks');
   const CAT = '33333333-3333-4333-8333-333333333333';
   const SUG = '11111111-1111-4111-8111-111111111111';
   const syncedAt = new Date('2026-11-18T12:00:00.000Z');
 
   test('links the still-suggested songs with the entry\'s identity OR the accepted suggestion\'s', async () => {
     sequelize.query.mockResolvedValue([[{ uid: 'a' }], {}]);
-    const linked = await controller.linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, SUG);
+    const linked = await linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, SUG);
     const [sql, options] = sequelize.query.mock.calls[0];
     expect(sql).toMatch(/catalog_suggestion = 'suggested'/);
     expect(sql).toMatch(/source_catalog_uid IS NULL/);
     expect(sql).toMatch(/UNION/);
+    // the accepted suggestion's identity is read whatever its state (its owner may opt out)
+    expect(sql).toMatch(/WHERE a\.uid = :suggestionId\s*\)/);
     expect(options.replacements).toEqual({ catalogUid: CAT, suggestionId: SUG, syncedAt });
     expect(linked).toBe(1);
   });
 
   test('without a (valid) accepted suggestion, only the entry\'s identity counts', async () => {
     sequelize.query.mockResolvedValue([[], {}]);
-    await controller.linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, 'not-a-uuid');
+    await linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, 'not-a-uuid');
     expect(sequelize.query.mock.calls[0][1].replacements.suggestionId).toBeNull();
   });
 });

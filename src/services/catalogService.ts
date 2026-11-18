@@ -456,8 +456,6 @@ export const catalogService = {
     return response.json();
   },
 
-  // #212: the curators' queue of songs suggested to the Catalog (curator only → 403).
-  // One line per song; `pending` is the number of lines. No user, nothing personal.
   // #213: the line's songs leave the queue for good (their owners aren't told). 404 → the
   // suggestion is no longer waiting (opted out, linked or already rejected meanwhile).
   async rejectSuggestion(id: string): Promise<{ rejected: number }> {
@@ -502,6 +500,9 @@ export const catalogService = {
     return response.json();
   },
 
+  // #212: the curators' queue of songs suggested to the Catalog (curator only → 403). One line
+  // per song; `pending` counts the lines a curator has something to do on (not the drafts in
+  // progress). No user, nothing personal, only official links.
   async getSuggestions(signal?: AbortSignal): Promise<CatalogSuggestions> {
     const response = await apiFetch(`${API_BASE}/catalog/suggestions`, { credentials: 'include', signal });
     if (!response.ok) {

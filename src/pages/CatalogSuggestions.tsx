@@ -8,6 +8,7 @@ import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { Notice } from '../components/Notice';
+import { Tag } from '../components/Chip';
 
 // #190 / #212: the curators' queue of songs typed into Songlists and suggested to the Catalog.
 // One line per song (identical songs from several users grouped), shown with the latest
@@ -45,75 +46,52 @@ export default function CatalogSuggestions() {
     return <Navigate to="/" replace />;
   }
 
-  // #215: a pre-filled Catalog draft, opened in the entry form with this line: publishing it
-  // there links the suggesters' songs.
-  const handleAccept = async (target: CatalogSuggestionLine) => {
+  // The three actions share their bookkeeping: one at a time, the outcome announced, then the
+  // queue reloaded — it may have changed under the curator (an owner opting out meanwhile).
+  // `act` returns the success message, or null when it navigated away.
+  const runAction = async (verb: string, line: CatalogSuggestionLine, act: () => Promise<string | null>) => {
     if (busy) return;
     setBusy(true);
     setError(null);
     setDoneMessage(null);
     try {
-      const { catalogUid } = await catalogService.acceptSuggestion(target.id);
-      navigate(`/catalog/admin/${catalogUid}?suggestion=${target.id}`);
-      return;
+      const done = await act();
+      if (done === null) return; // left the page
+      setDoneMessage(done);
     } catch (err) {
-      if (err instanceof SuggestionInCatalogError) {
-        setError('This song is already in the Catalog.');
-      } else if (err instanceof SuggestionGoneError) {
-        setError('This suggestion is no longer waiting.');
-      } else {
-        setError(`Could not accept "${target.song.title}".`);
-      }
-      await load(); // show what is really there
+      setError(
+        err instanceof SuggestionInCatalogError ? 'This song is already in the Catalog.'
+          : err instanceof SuggestionGoneError ? 'This suggestion is no longer waiting.'
+            : `Could not ${verb} "${line.song.title}".`
+      );
     }
+    await load();
     setBusy(false);
   };
 
+  // #215: a pre-filled Catalog draft, opened in the entry form with this line: publishing it
+  // there links the suggesters' songs.
+  const handleAccept = (line: CatalogSuggestionLine) => runAction('accept', line, async () => {
+    const { catalogUid } = await catalogService.acceptSuggestion(line.id);
+    navigate(`/catalog/admin/${catalogUid}?suggestion=${line.id}`);
+    return null;
+  });
+
   // #214: the song is already published in the Catalog — link the line's songs to that entry.
-  const handleLink = async (target: CatalogSuggestionLine) => {
-    if (busy) return;
-    const { title } = target.song;
-    setBusy(true);
-    setError(null);
-    setDoneMessage(null);
-    try {
-      const { linked } = await catalogService.linkSuggestion(target.id);
-      setDoneMessage(`"${title}" linked to the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`);
-      await load();
-    } catch (err) {
-      if (err instanceof SuggestionGoneError) {
-        setError('This suggestion is no longer waiting.');
-        await load();
-      } else {
-        setError(`Could not link "${title}".`);
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
+  const handleLink = (line: CatalogSuggestionLine) => runAction('link', line, async () => {
+    const { linked } = await catalogService.linkSuggestion(line.id);
+    return `"${line.song.title}" linked to the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`;
+  });
 
   // #213: the line's songs leave the queue for good; their owners aren't told.
   const handleReject = async () => {
-    if (!toReject || busy) return;
-    const { title } = toReject.song;
-    setBusy(true);
-    setError(null);
-    setDoneMessage(null);
-    try {
-      await catalogService.rejectSuggestion(toReject.id);
-      setDoneMessage(`"${title}" rejected.`);
-      await load();
-    } catch (err) {
-      if (err instanceof SuggestionGoneError) {
-        setError('This suggestion is no longer waiting.');
-        await load(); // show what is really waiting
-      } else {
-        setError(`Could not reject "${title}".`);
-      }
-    } finally {
-      setBusy(false);
-      setToReject(null);
-    }
+    if (!toReject) return;
+    const line = toReject;
+    await runAction('reject', line, async () => {
+      await catalogService.rejectSuggestion(line.id);
+      return `"${line.song.title}" rejected.`;
+    });
+    setToReject(null);
   };
 
   return (
@@ -158,10 +136,10 @@ export default function CatalogSuggestions() {
                     suggested by {line.suggestedBy} {line.suggestedBy === 1 ? 'user' : 'users'}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                    {line.catalog?.published && 'Already in the Catalog'}
+                    {line.catalog?.published && <Tag>Already in the Catalog</Tag>}
                     {line.catalog && !line.catalog.published && (
                       <>
-                        Draft in progress{' '}
+                        <Tag>Draft in progress</Tag>{' '}
                         <Link
                           to={`/catalog/admin/${line.catalog.uid}?suggestion=${line.id}`}
                           className="text-brand-600 dark:text-brand-400 hover:underline"

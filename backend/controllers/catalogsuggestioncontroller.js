@@ -2,32 +2,25 @@
 
 const createError = require('http-errors');
 const { sequelize, Song, CatalogSong } = require('../models');
-const { pickIntrinsic, normalizeText } = require('./catalogcontroller');
-const { catalogLinksError } = require('../utils/streamingLinks');
-const { linkSuggestionsToPublished } = require('../services/catalogSuggestionLinks');
+const { normalizeText } = require('../utils/normalize');
+const { pickIntrinsic } = require('../utils/catalogFields');
+const { titleKey, artistKey, sameSongAs, waitingInQueue, officialLinks } = require('../utils/catalogSuggestion');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
 
 // #190 / #212: the curators' queue of songs suggested to the Catalog. No copy: it READS the
 // Songlist songs (one source of truth), so an owner's later edit or opt-out shows at once.
 //
-// In the queue: `suggested`, title and artist filled, not linked to the Catalog. Grouped by
-// what makes two songs the same song — the SAME expressions as the unique indexes (migration
-// 20261109000000: case, accents and a leading article don't count), so the queue and the
-// Catalog never disagree. One line per group, shown with its most recently updated song.
-// Only the Catalog's own fields leave this query: no user, nothing personal (#190 privacy).
+// One line per song: identical songs from several users are grouped (same identity as the
+// unique indexes), shown with the most recently updated one. Only the Catalog's own fields
+// leave this query: no user, nothing personal (#190 privacy).
 const SUGGESTIONS_SQL = `
   WITH suggested AS (
     SELECT s.uid, s.title, s.artist, s.album, s.key, s.mode, s.bpm, s.time_signature,
            s.duration_seconds, s.language, s.genre, s.streaming_links, s.pitch_standard,
-           s."updatedAt",
-           lower(f_unaccent(s.title::text)) AS title_key,
-           f_artist_key(s.artist::text) AS artist_key
+           s."updatedAt", ${titleKey('s')} AS title_key, ${artistKey('s')} AS artist_key
       FROM "Songs" s
-     WHERE s.catalog_suggestion = 'suggested'
-       AND s.source_catalog_uid IS NULL
-       AND btrim(coalesce(s.title, '')) <> ''
-       AND btrim(coalesce(s.artist, '')) <> ''
+     WHERE ${waitingInQueue('s')}
   ), ranked AS (
     SELECT *,
            count(*) OVER (PARTITION BY title_key, artist_key) AS suggested_by,
@@ -38,9 +31,7 @@ const SUGGESTIONS_SQL = `
          r.duration_seconds, r.language, r.genre, r.streaming_links, r.pitch_standard,
          r.suggested_by, c.uid AS catalog_uid, c.published_at AS catalog_published_at
     FROM ranked r
-    LEFT JOIN "CatalogSongs" c
-      ON lower(f_unaccent(c.title::text)) = r.title_key
-     AND f_artist_key(c.artist::text) = r.artist_key
+    LEFT JOIN "CatalogSongs" c ON ${sameSongAs('c', 'r')}
    WHERE r.rank = 1
    ORDER BY r.suggested_by DESC, r."updatedAt" DESC
 `;
@@ -60,18 +51,21 @@ const toSuggestion = (r) => ({
     durationSeconds: r.duration_seconds,
     language: r.language,
     genre: r.genre,
-    streamingLinks: r.streaming_links,
+    streamingLinks: officialLinks(r.streaming_links), // never a personal link
     pitchStandard: r.pitch_standard,
   },
   catalog: r.catalog_uid ? { uid: r.catalog_uid, published: r.catalog_published_at != null } : null,
 });
 
-// GET /api/catalog/suggestions (curator only). `pending` = the number of lines.
+// GET /api/catalog/suggestions (curator only).
 const getSuggestions = async (req, res, next) => {
   try {
     const rows = await sequelize.query(SUGGESTIONS_SQL, { type: 'SELECT' });
     const suggestions = rows.map(toSuggestion);
-    res.json({ pending: suggestions.length, suggestions });
+    // The button's count: lines a curator has something to do on — a draft in progress is
+    // already being handled.
+    const pending = suggestions.filter(line => !(line.catalog && !line.catalog.published)).length;
+    res.json({ pending, suggestions });
   } catch (error) {
     logger.error('Error listing Catalog suggestions:', error);
     next(createError(500, 'Error listing Catalog suggestions'));
@@ -79,46 +73,41 @@ const getSuggestions = async (req, res, next) => {
 };
 
 // The songs a queue line stands for: the line's song (`:id`, still waiting) gives the
-// identity; every still-suggested, unlinked song with that identity is in the group — re-read
-// NOW, so an owner who opted out since the queue loaded is left alone. Raw SQL leaves
-// "updatedAt" alone: a curator's decision is not an edit of the owner's song.
+// identity; every song still waiting with that identity is in the group — re-read NOW, so an
+// owner who opted out since the queue loaded is left alone. Raw SQL leaves "updatedAt" alone:
+// a curator's decision is not an edit of the owner's song.
 const TARGET_CTE = `
   target AS (
-    SELECT lower(f_unaccent(title::text)) AS title_key, f_artist_key(artist::text) AS artist_key
-      FROM "Songs"
-     WHERE uid = :id AND catalog_suggestion = 'suggested' AND source_catalog_uid IS NULL
+    SELECT ${titleKey('t')} AS title_key, ${artistKey('t')} AS artist_key
+      FROM "Songs" t
+     WHERE t.uid = :id AND ${waitingInQueue('t')}
   )`;
-const IN_GROUP = `
-  s.catalog_suggestion = 'suggested'
-  AND s.source_catalog_uid IS NULL
-  AND lower(f_unaccent(s.title::text)) = target.title_key
-  AND f_artist_key(s.artist::text) = target.artist_key`;
-const SAME_AS_TARGET = (c) => `lower(f_unaccent(${c}.title::text)) = target.title_key AND f_artist_key(${c}.artist::text) = target.artist_key`;
 
 const updateGroup = (set) => `
   WITH ${TARGET_CTE}
   UPDATE "Songs" s SET ${set}
     FROM target
-   WHERE ${IN_GROUP}
+   WHERE ${waitingInQueue('s')} AND ${sameSongAs('s', 'target')}
   RETURNING s.uid
 `;
+const REJECT_SQL = updateGroup("catalog_suggestion = 'rejected'");
 
 // The Catalog entry a line matches, if any: [] when the line no longer waits.
 const MATCH_SQL = `
   WITH ${TARGET_CTE}
   SELECT c.uid AS catalog_uid, (c.published_at IS NOT NULL) AS published
-    FROM target LEFT JOIN "CatalogSongs" c ON ${SAME_AS_TARGET('c')}
+    FROM target LEFT JOIN "CatalogSongs" c ON ${sameSongAs('c', 'target')}
 `;
 
-// #214 / #215: tie the group's songs to a PUBLISHED entry, stamped as synced so they show no
-// false "newer version" banner. Same link as a song added from the Catalog: Refresh just works.
+// #214: tie the group's songs to the PUBLISHED entry they match, stamped as synced so they show
+// no false "newer version" banner. Same link as a song added from the Catalog: Refresh works.
 const LINK_SQL = `
   WITH ${TARGET_CTE}
   UPDATE "Songs" s
      SET source_catalog_uid = c.uid, source_catalog_synced_at = c."updatedAt"
     FROM target
-    JOIN "CatalogSongs" c ON ${SAME_AS_TARGET('c')} AND c.published_at IS NOT NULL
-   WHERE ${IN_GROUP}
+    JOIN "CatalogSongs" c ON ${sameSongAs('c', 'target')} AND c.published_at IS NOT NULL
+   WHERE ${waitingInQueue('s')} AND ${sameSongAs('s', 'target')}
   RETURNING s.uid
 `;
 
@@ -130,7 +119,7 @@ const NOT_WAITING = 'This suggestion is no longer waiting';
 const rejectSuggestion = async (req, res, next) => {
   if (!isUuid(req.params.id)) return next(createError(404, NOT_WAITING));
   try {
-    const [rows] = await sequelize.query(updateGroup("catalog_suggestion = 'rejected'"), { replacements: { id: req.params.id } });
+    const [rows] = await sequelize.query(REJECT_SQL, { replacements: { id: req.params.id } });
     if (rows.length === 0) return next(createError(404, NOT_WAITING));
     res.json({ rejected: rows.length });
   } catch (error) {
@@ -172,9 +161,9 @@ const acceptSuggestion = async (req, res, next) => {
     if (match && match.catalog_uid) return res.status(409).json({ catalogUid: match.catalog_uid });
 
     const fields = pickIntrinsic(song);
-    // A Songlist accepts any link; a Catalog entry only official track links. Leave the
-    // others out rather than refuse the draft: the curator can add the right ones.
-    if (catalogLinksError(fields.streamingLinks)) fields.streamingLinks = null;
+    // Only official track links go into a draft (a personal one never leaves the Songlist);
+    // the curator can add the right ones.
+    fields.streamingLinks = officialLinks(fields.streamingLinks);
     const draft = await CatalogSong.create({
       title: normalizeText(song.title),
       artist: normalizeText(song.artist) ?? null,
@@ -191,4 +180,4 @@ const acceptSuggestion = async (req, res, next) => {
   }
 };
 
-module.exports = { getSuggestions, rejectSuggestion, linkSuggestion, acceptSuggestion, linkSuggestionsToPublished, updateGroup, LINK_SQL, NOT_WAITING };
+module.exports = { getSuggestions, rejectSuggestion, linkSuggestion, acceptSuggestion };

@@ -1,5 +1,7 @@
 'use strict';
 
+const { SUGGESTION_STATES } = require('../utils/catalogSuggestion');
+
 module.exports = (sequelize, DataTypes) => {
   const Song = sequelize.define('Song', {
     uid: {
@@ -153,7 +155,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: 'private',
-      validate: { isIn: [['private', 'suggested', 'rejected']] },
+      validate: { isIn: [SUGGESTION_STATES] },
       field: 'catalog_suggestion'
     }
   }, {

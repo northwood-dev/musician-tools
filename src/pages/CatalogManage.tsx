@@ -20,7 +20,7 @@ import { Page } from '../components/Page';
 import { Tabs } from '../components/Tabs';
 import { Panel } from '../components/Panel';
 import { EmptyState } from '../components/EmptyState';
-import { Tag } from '../components/Chip';
+import { CountBadge, Tag } from '../components/Chip';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -396,7 +396,7 @@ export default function CatalogManage() {
             aria-label={pendingSuggestions ? `Suggestions, ${pendingSuggestions} waiting` : 'Suggestions'}
           >
             Suggestions
-            {pendingSuggestions ? <span aria-hidden="true" className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs font-semibold text-white">{pendingSuggestions}</span> : null}
+            {pendingSuggestions ? <CountBadge count={pendingSuggestions} /> : null}
           </Link>
           <Link to="/catalog/manage/aliases" className="btn-secondary btn-sm shrink-0">Artist aliases</Link>
           {tab === 'entries' && (

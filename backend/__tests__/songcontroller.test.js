@@ -181,9 +181,9 @@ describe('songcontroller', () => {
   describe('#211 — suggestion to the Catalog', () => {
     const UID = '55555555-5555-4555-8555-555555555555';
     const create = (body) => controller.createSong({ session: { user: 'user-1' }, body: { title: 'Wonderwall', ...body } }, mockRes(), mockNext());
-    async function updateFrom(current, body) {
+    async function updateFrom(current, body, extra = {}) {
       const update = jest.fn();
-      Song.findOne.mockResolvedValue({ userUid: 'user-1', title: 'Wonderwall', catalogSuggestion: current, update });
+      Song.findOne.mockResolvedValue({ userUid: 'user-1', title: 'Wonderwall', catalogSuggestion: current, update, ...extra });
       await controller.updateSong({ params: { uid: UID }, session: { user: 'user-1' }, body }, mockRes(), mockNext());
       return update.mock.calls[0][0].catalogSuggestion;
     }
@@ -210,8 +210,18 @@ describe('songcontroller', () => {
       expect(await updateFrom('suggested', { title: 'Renamed' })).toBe('suggested');
     });
 
-    test('updateSong: an edit of a rejected song (autosave resends the checked box) keeps it rejected', async () => {
-      expect(await updateFrom('rejected', { catalogSuggestion: 'suggested', bpm: 87 })).toBe('rejected');
+    test('updateSong: an edit of a rejected song (the form resends its state as is) keeps it rejected', async () => {
+      expect(await updateFrom('rejected', { catalogSuggestion: 'rejected', bpm: 87 })).toBe('rejected');
+      expect(await updateFrom('rejected', { bpm: 87 })).toBe('rejected');
+    });
+
+    test('updateSong: a quick uncheck + check of a rejected song (only `suggested` reaches the server) suggests it again', async () => {
+      expect(await updateFrom('rejected', { catalogSuggestion: 'suggested' })).toBe('suggested');
+    });
+
+    test('updateSong: a song linked to the Catalog keeps its state, whatever is sent', async () => {
+      expect(await updateFrom('suggested', { catalogSuggestion: 'private' }, { sourceCatalogUid: 'cat-1' })).toBe('suggested');
+      expect(await updateFrom('private', { catalogSuggestion: 'suggested' }, { sourceCatalogUid: 'cat-1' })).toBe('private');
     });
 
     test('updateSong: unchecking a rejected song makes it private, so checking again re-suggests it', async () => {
