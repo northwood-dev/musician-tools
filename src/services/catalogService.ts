@@ -129,6 +129,16 @@ export type CatalogSuggestionLine = {
 };
 export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
 
+// #215: Accept found an entry with the same identity (published, or a draft in progress).
+export class SuggestionInCatalogError extends Error {
+  catalogUid?: string;
+  constructor(catalogUid?: string) {
+    super('This song is already in the Catalog');
+    this.name = 'SuggestionInCatalogError';
+    this.catalogUid = catalogUid;
+  }
+}
+
 // #213: the line's songs are no longer waiting (their owner opted out, or a curator acted).
 export class SuggestionGoneError extends Error {
   constructor() {
@@ -299,11 +309,14 @@ export const catalogService = {
 
   // Publish a draft (curator, 19.6). 409 = a PUBLISHED entry owns the canonical key
   // (CatalogConflictError carries it) ; 404 = gone ; 400 = missing title.
-  async publishCatalogEntry(uid: string): Promise<CatalogSong> {
+  // #215: `suggestionId` = the Suggestions line this draft was accepted from, so publishing
+  // links its songs even if the curator corrected the title or artist.
+  async publishCatalogEntry(uid: string, suggestionId?: string): Promise<CatalogSong> {
     const response = await apiFetch(`${API_BASE}/catalog/${uid}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
+      ...(suggestionId ? { body: JSON.stringify({ suggestionId }) } : {}),
     });
     if (response.status === 409) {
       const body = await response.json().catch(() => ({} as { entry?: CatalogSong }));
@@ -468,6 +481,23 @@ export const catalogService = {
     }
     if (!response.ok) {
       throw new Error('Failed to link the suggestion');
+    }
+    return response.json();
+  },
+
+  // #215: a Catalog draft pre-filled from the line's song, for the curator to review and
+  // publish (publishing links the songs). 409 → an entry with that identity exists already.
+  async acceptSuggestion(id: string): Promise<{ catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/accept`, { method: 'POST', credentials: 'include' });
+    if (response.status === 409) {
+      const body = await response.json().catch(() => ({} as { catalogUid?: string }));
+      throw new SuggestionInCatalogError(body.catalogUid);
+    }
+    if (response.status === 404) {
+      throw new SuggestionGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to accept the suggestion');
     }
     return response.json();
   },

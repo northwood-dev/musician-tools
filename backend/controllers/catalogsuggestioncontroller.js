@@ -1,7 +1,10 @@
 'use strict';
 
 const createError = require('http-errors');
-const { sequelize } = require('../models');
+const { sequelize, Song, CatalogSong } = require('../models');
+const { pickIntrinsic, normalizeText } = require('./catalogcontroller');
+const { catalogLinksError } = require('../utils/streamingLinks');
+const { linkSuggestionsToPublished } = require('../services/catalogSuggestionLinks');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
 
@@ -156,4 +159,36 @@ const linkSuggestion = async (req, res, next) => {
   }
 };
 
-module.exports = { getSuggestions, rejectSuggestion, linkSuggestion, updateGroup, LINK_SQL, NOT_WAITING };
+// POST /api/catalog/suggestions/:id/accept (curator only). #215: a Catalog DRAFT pre-filled
+// with the line's song (its Catalog fields only); the curator reviews it in the entry form and
+// publishes — publishing links the songs. An entry with the same identity already existing
+// (published, or a draft in progress) is a 409 with its uid: nothing is created twice.
+const acceptSuggestion = async (req, res, next) => {
+  if (!isUuid(req.params.id)) return next(createError(404, NOT_WAITING));
+  try {
+    const song = await Song.findOne({ where: { uid: req.params.id, catalogSuggestion: 'suggested', sourceCatalogUid: null } });
+    if (!song) return next(createError(404, NOT_WAITING));
+    const [match] = await sequelize.query(MATCH_SQL, { type: 'SELECT', replacements: { id: req.params.id } });
+    if (match && match.catalog_uid) return res.status(409).json({ catalogUid: match.catalog_uid });
+
+    const fields = pickIntrinsic(song);
+    // A Songlist accepts any link; a Catalog entry only official track links. Leave the
+    // others out rather than refuse the draft: the curator can add the right ones.
+    if (catalogLinksError(fields.streamingLinks)) fields.streamingLinks = null;
+    const draft = await CatalogSong.create({
+      title: normalizeText(song.title),
+      artist: normalizeText(song.artist) ?? null,
+      album: normalizeText(song.album) ?? null,
+      ...fields,
+    });
+    res.status(201).json({ catalogUid: draft.uid });
+  } catch (error) {
+    if (error && error.name === 'SequelizeUniqueConstraintError') {
+      return next(createError(409, 'This song is already in the Catalog')); // created meanwhile
+    }
+    logger.error('Error accepting a Catalog suggestion:', error);
+    next(createError(500, 'Error accepting the suggestion'));
+  }
+};
+
+module.exports = { getSuggestions, rejectSuggestion, linkSuggestion, acceptSuggestion, linkSuggestionsToPublished, updateGroup, LINK_SQL, NOT_WAITING };

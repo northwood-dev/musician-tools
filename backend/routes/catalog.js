@@ -29,6 +29,7 @@ router.get('/exists', authsess, requireCurator, catalogController.getCatalogExis
 router.get('/suggestions', authsess, requireCurator, catalogSuggestionController.getSuggestions);
 router.post('/suggestions/:id/reject', authsess, requireCurator, catalogSuggestionController.rejectSuggestion);
 router.post('/suggestions/:id/link', authsess, requireCurator, catalogSuggestionController.linkSuggestion);
+router.post('/suggestions/:id/accept', authsess, requireCurator, catalogSuggestionController.acceptSuggestion);
 
 // Story 20.1 — Collections (curated themed groupings). ALL registered BEFORE /:uid so
 // "collections" is never captured as a catalog-entry uid. Writes = curator (403);

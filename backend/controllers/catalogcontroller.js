@@ -10,6 +10,7 @@ const { Op, fn, col, cast, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const { catalogLinksError, refreshedLinks } = require('../utils/streamingLinks');
 const logger = require('../logger');
+const { linkSuggestionsToPublished } = require('../services/catalogSuggestionLinks');
 const { isUuid } = require('../utils/uuid');
 const { sameTitle, sameArtist, sameAlias, containsSearchKey, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
@@ -227,6 +228,15 @@ const publishCatalogEntry = async (req, res, next) => {
         // not earn, and that needs a human, not a stack trace swallowed into a generic 500.
         logger.error('Catalog entry published but source_catalog_synced_at NOT re-stamped — holders will see a false update banner:', updated.uid, syncError);
       }
+    }
+
+    // #215: link the songs suggested from Songlists that this entry answers. Same reasoning as
+    // the re-stamp above: the publish succeeded, so a failure here is logged, not a 500 — the
+    // songs simply stay in the queue, where "Link to it" can still link them.
+    try {
+      await linkSuggestionsToPublished(updated, req.body && req.body.suggestionId);
+    } catch (linkError) {
+      logger.error('Catalog entry published but suggested songs NOT linked (they stay in the queue):', updated.uid, linkError);
     }
 
     res.json(updated);
@@ -811,6 +821,9 @@ const importCollectionToSonglist = async (req, res, next) => {
 };
 
 module.exports = {
+  // #215: shared with the Suggestions queue's Accept (a draft built like createCatalogEntry's).
+  pickIntrinsic,
+  normalizeText,
   createCatalogEntry,
   updateCatalogEntry,
   deleteCatalogEntry,

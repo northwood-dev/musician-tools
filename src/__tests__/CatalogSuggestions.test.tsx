@@ -33,6 +33,7 @@ const renderPage = () => render(
     <MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog/manage/suggestions']}>
       <Routes>
         <Route path="/catalog/manage/suggestions" element={<CatalogSuggestions />} />
+        <Route path="/catalog/admin/:uid" element={<div>admin-marker</div>} />
         <Route path="/" element={<div>home-marker</div>} />
       </Routes>
     </MemoryRouter>
@@ -181,5 +182,54 @@ describe('Link to it (#214)', () => {
     await act(async () => { fireEvent.click(button); });
     expect(await screen.findByText('Could not link "Wonderwall".')).toBeInTheDocument();
     expect(screen.getByText('Wonderwall')).toBeInTheDocument();
+  });
+});
+
+describe('Accept and drafts (#215)', () => {
+  let waiting: CatalogSuggestionLine[] = [];
+  beforeEach(() => {
+    waiting = [line()];
+    cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
+  });
+  const acceptButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Accept Wonderwall' });
+
+  test('Accept creates a pre-filled draft and opens it with the suggestion', async () => {
+    cat.acceptSuggestion.mockResolvedValue({ catalogUid: 'draft-1' });
+    renderPage();
+    const button = await acceptButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(cat.acceptSuggestion).toHaveBeenCalledWith('id-Wonderwall');
+    expect(await screen.findByText('admin-marker')).toBeInTheDocument();
+  });
+
+  test('a draft in progress says so, links to it, and offers neither Accept nor Link to it', async () => {
+    waiting = [line({ catalog: { uid: 'draft-1', published: false } })];
+    renderPage();
+    const row = (await screen.findByText('Wonderwall')).closest('tr')!;
+    expect(within(row).getByText('Draft in progress')).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: 'Open the draft of Wonderwall' })).toHaveAttribute('href', '/catalog/admin/draft-1?suggestion=id-Wonderwall');
+    expect(within(row).queryByRole('button', { name: /^Accept / })).toBeNull();
+    expect(within(row).queryByRole('button', { name: /^Link / })).toBeNull();
+  });
+
+  test('a song already published offers Link to it, not Accept', async () => {
+    waiting = [line({ catalog: { uid: 'cat-1', published: true } })];
+    renderPage();
+    const row = (await screen.findByText('Wonderwall')).closest('tr')!;
+    expect(within(row).getByText('Already in the Catalog')).toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: /^Accept / })).toBeNull();
+  });
+
+  test('a song that reached the Catalog meanwhile says so and reloads', async () => {
+    const { SuggestionInCatalogError } = jest.requireActual('../services/catalogService');
+    cat.acceptSuggestion.mockImplementation(async () => {
+      waiting = [line({ catalog: { uid: 'cat-1', published: true } })];
+      throw new SuggestionInCatalogError('cat-1');
+    });
+    renderPage();
+    const button = await acceptButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('This song is already in the Catalog.')).toBeInTheDocument();
+    expect(await screen.findByText('Already in the Catalog')).toBeInTheDocument();
   });
 });

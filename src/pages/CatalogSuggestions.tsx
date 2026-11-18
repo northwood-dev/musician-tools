@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { catalogService, SuggestionGoneError } from '../services/catalogService';
+import { catalogService, SuggestionGoneError, SuggestionInCatalogError } from '../services/catalogService';
 import type { CatalogSuggestionLine } from '../services/catalogService';
 import { ListSkeleton } from '../components/ListSkeleton';
 import { Page } from '../components/Page';
@@ -20,6 +20,7 @@ const details = (song: CatalogSuggestionLine['song']) =>
 export default function CatalogSuggestions() {
   const { user } = useAuth();
   const isCurator = !!user?.isCurator;
+  const navigate = useNavigate();
   const [suggestions, setSuggestions] = useState<CatalogSuggestionLine[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [toReject, setToReject] = useState<CatalogSuggestionLine | null>(null);
@@ -43,6 +44,30 @@ export default function CatalogSuggestions() {
   if (!isCurator) {
     return <Navigate to="/" replace />;
   }
+
+  // #215: a pre-filled Catalog draft, opened in the entry form with this line: publishing it
+  // there links the suggesters' songs.
+  const handleAccept = async (target: CatalogSuggestionLine) => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setDoneMessage(null);
+    try {
+      const { catalogUid } = await catalogService.acceptSuggestion(target.id);
+      navigate(`/catalog/admin/${catalogUid}?suggestion=${target.id}`);
+      return;
+    } catch (err) {
+      if (err instanceof SuggestionInCatalogError) {
+        setError('This song is already in the Catalog.');
+      } else if (err instanceof SuggestionGoneError) {
+        setError('This suggestion is no longer waiting.');
+      } else {
+        setError(`Could not accept "${target.song.title}".`);
+      }
+      await load(); // show what is really there
+    }
+    setBusy(false);
+  };
 
   // #214: the song is already published in the Catalog — link the line's songs to that entry.
   const handleLink = async (target: CatalogSuggestionLine) => {
@@ -133,9 +158,32 @@ export default function CatalogSuggestions() {
                     suggested by {line.suggestedBy} {line.suggestedBy === 1 ? 'user' : 'users'}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                    {line.catalog ? 'Already in the Catalog' : null}
+                    {line.catalog?.published && 'Already in the Catalog'}
+                    {line.catalog && !line.catalog.published && (
+                      <>
+                        Draft in progress{' '}
+                        <Link
+                          to={`/catalog/admin/${line.catalog.uid}?suggestion=${line.id}`}
+                          className="text-brand-600 dark:text-brand-400 hover:underline"
+                          aria-label={`Open the draft of ${line.song.title}`}
+                        >
+                          Open
+                        </Link>
+                      </>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap space-x-2">
+                    {!line.catalog && (
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm min-h-[44px]"
+                        aria-label={`Accept ${line.song.title}`}
+                        onClick={() => handleAccept(line)}
+                        disabled={busy}
+                      >
+                        Accept
+                      </button>
+                    )}
                     {line.catalog?.published && (
                       <button
                         type="button"

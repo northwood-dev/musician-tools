@@ -1,7 +1,11 @@
 // #212: the curators' queue of songs suggested to the Catalog (read-only).
-jest.mock('../models', () => ({ sequelize: { query: jest.fn() } }));
+jest.mock('../models', () => ({
+  sequelize: { query: jest.fn() },
+  Song: { findOne: jest.fn() },
+  CatalogSong: { create: jest.fn() },
+}));
 
-const { sequelize } = require('../models');
+const { sequelize, Song, CatalogSong } = require('../models');
 const controller = require('../controllers/catalogsuggestioncontroller');
 
 function mockRes() {
@@ -161,5 +165,84 @@ describe('linkSuggestion (#214)', () => {
     await controller.linkSuggestion({ params: { id: 'nope' }, session: { user: 'curator' } }, mockRes(), next);
     expect(next.mock.calls[0][0].status).toBe(404);
     expect(sequelize.query).not.toHaveBeenCalled();
+  });
+});
+
+// #215: Accept — a Catalog draft pre-filled from the line's song; publishing it links the songs.
+describe('acceptSuggestion (#215)', () => {
+  const ID = '11111111-1111-4111-8111-111111111111';
+  const SONG = {
+    uid: ID, title: ' Wonderwall ', artist: 'Oasis', album: null, key: 'F#', mode: 'minor', bpm: 87,
+    timeSignature: '4/4', durationSeconds: 258, language: ['English'], genre: ['Rock'], pitchStandard: 440,
+    streamingLinks: [{ label: 'YouTube', url: 'https://www.youtube.com/watch?v=bx1Bh8ZvH84' }],
+    notes: 'my notes', instrument: ['Guitar'], capo: 2, userUid: 'u-9',
+  };
+  const call = async () => {
+    const res = mockRes();
+    const next = jest.fn();
+    await controller.acceptSuggestion({ params: { id: ID }, session: { user: 'curator' } }, res, next);
+    return { res, next };
+  };
+
+  test('creates a draft with the Catalog fields of the line\'s song, nothing personal', async () => {
+    Song.findOne.mockResolvedValue(SONG);
+    sequelize.query.mockResolvedValueOnce([{ catalog_uid: null, published: false }]);
+    CatalogSong.create.mockResolvedValue({ uid: 'draft-1' });
+    const { res } = await call();
+    expect(Song.findOne.mock.calls[0][0].where).toEqual({ uid: ID, catalogSuggestion: 'suggested', sourceCatalogUid: null });
+    const draft = CatalogSong.create.mock.calls[0][0];
+    expect(draft).toEqual(expect.objectContaining({ title: 'Wonderwall', artist: 'Oasis', key: 'F#', bpm: 87, mode: 'Minor', streamingLinks: SONG.streamingLinks }));
+    expect(draft.publishedAt).toBeUndefined(); // a draft
+    for (const personal of ['notes', 'instrument', 'capo', 'userUid', 'uid']) expect(draft).not.toHaveProperty(personal);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({ catalogUid: 'draft-1' });
+  });
+
+  test('links a Catalog entry would refuse are left out of the draft (the curator adds them)', async () => {
+    Song.findOne.mockResolvedValue({ ...SONG, streamingLinks: [{ label: 'Spotify', url: 'https://open.spotify.com/search/wonderwall' }] });
+    sequelize.query.mockResolvedValueOnce([{ catalog_uid: null, published: false }]);
+    CatalogSong.create.mockResolvedValue({ uid: 'draft-1' });
+    await call();
+    expect(CatalogSong.create.mock.calls[0][0].streamingLinks).toBeNull();
+  });
+
+  test('a suggestion no longer waiting is a 404, nothing created', async () => {
+    Song.findOne.mockResolvedValue(null);
+    const { next } = await call();
+    expect(next.mock.calls[0][0].status).toBe(404);
+    expect(CatalogSong.create).not.toHaveBeenCalled();
+  });
+
+  test('an entry with the same identity already exists (draft or published): 409 with its uid, nothing created', async () => {
+    Song.findOne.mockResolvedValue(SONG);
+    sequelize.query.mockResolvedValueOnce([{ catalog_uid: 'cat-1', published: false }]);
+    const { res, next } = await call();
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({ catalogUid: 'cat-1' });
+    expect(CatalogSong.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('linkSuggestionsToPublished (#215, called by publish)', () => {
+  const CAT = '33333333-3333-4333-8333-333333333333';
+  const SUG = '11111111-1111-4111-8111-111111111111';
+  const syncedAt = new Date('2026-11-18T12:00:00.000Z');
+
+  test('links the still-suggested songs with the entry\'s identity OR the accepted suggestion\'s', async () => {
+    sequelize.query.mockResolvedValue([[{ uid: 'a' }], {}]);
+    const linked = await controller.linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, SUG);
+    const [sql, options] = sequelize.query.mock.calls[0];
+    expect(sql).toMatch(/catalog_suggestion = 'suggested'/);
+    expect(sql).toMatch(/source_catalog_uid IS NULL/);
+    expect(sql).toMatch(/UNION/);
+    expect(options.replacements).toEqual({ catalogUid: CAT, suggestionId: SUG, syncedAt });
+    expect(linked).toBe(1);
+  });
+
+  test('without a (valid) accepted suggestion, only the entry\'s identity counts', async () => {
+    sequelize.query.mockResolvedValue([[], {}]);
+    await controller.linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, 'not-a-uuid');
+    expect(sequelize.query.mock.calls[0][1].replacements.suggestionId).toBeNull();
   });
 });
