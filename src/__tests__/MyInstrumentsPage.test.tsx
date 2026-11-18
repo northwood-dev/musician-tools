@@ -280,8 +280,20 @@ describe('#43: leaving the page', () => {
   });
 });
 
-test('a failed load is announced at once (role="alert") (#128)', async () => {
+test('#222: a failed load says so in the list, announced, without banner or empty state; Retry reloads', async () => {
   mockedService.getAll.mockRejectedValue(new Error('network'));
   renderPage();
-  expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load instruments');
+  expect(await screen.findByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load your instruments.");
+  expect(screen.queryByText('Failed to load instruments')).toBeNull(); // no banner for a load
+  expect(screen.queryByText('No instruments saved yet.')).toBeNull(); // never pretends it's empty
+
+  mockedService.getAll.mockRejectedValueOnce(new Error('again'));
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(mockedService.getAll).toHaveBeenCalledTimes(2));
+  expect(await screen.findByText("Couldn't load your instruments.")).toBeInTheDocument(); // said again
+
+  mockedService.getAll.mockResolvedValue([{ uid: 'i1', name: 'My Strat', type: 'Guitar' } as never]);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('My Strat')).toBeInTheDocument();
+  expect(screen.queryByText("Couldn't load your instruments.")).toBeNull();
 });

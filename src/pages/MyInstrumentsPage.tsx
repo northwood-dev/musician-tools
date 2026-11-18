@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 // ...existing code...
 // ...existing code...
 import { instrumentService, type Instrument, type CreateInstrumentDTO, type UpdateInstrumentDTO } from '../services/instrumentService';
@@ -9,6 +9,7 @@ import { ErrorBanner } from '../components/ErrorBanner';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 
 type InstrumentRowForm = { name: string; type: string; brand: string; model: string };
 
@@ -23,6 +24,7 @@ function MyInstrumentsPage() {
   // const { logout } = useAuth();
   const [list, setList] = useState<Instrument[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState('');
@@ -49,19 +51,23 @@ function MyInstrumentsPage() {
     leftPageErrorMessage: 'Your instrument changes could not be saved.',
   });
 
-  useEffect(() => {
-    (async () => {
-      try {
-        setLoading(true);
-        const data = await instrumentService.getAll();
-        setList(data);
-      } catch {
-        setError('Failed to load instruments');
-      } finally {
-        setLoading(false);
-      }
-    })();
+  // #222: a failed load says so in the list (LoadFailed, with Retry), never as an empty list
+  // and not in the page banner — that one is for failed saves.
+  const loadList = useCallback(async () => {
+    setLoadFailed(false);
+    setLoading(true);
+    try {
+      setList(await instrumentService.getAll());
+    } catch {
+      setLoadFailed(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadList();
+  }, [loadList]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,9 +161,10 @@ function MyInstrumentsPage() {
             {/* Notes field removed */}
           </form>
 
+          <LoadFailed failed={loadFailed} onRetry={loadList}>Couldn't load your instruments.</LoadFailed>
           {loading ? (
             <ListSkeleton rows={4} label="Loading…" />
-          ) : list.length === 0 ? (
+          ) : loadFailed ? null : list.length === 0 ? (
             <EmptyState>No instruments saved yet.</EmptyState>
           ) : (
             <div className="card-base overflow-hidden">

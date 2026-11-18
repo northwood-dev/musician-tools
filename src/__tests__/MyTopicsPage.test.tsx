@@ -100,7 +100,7 @@ test('shows an error banner when creation fails', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
   expect(await screen.findByText('Failed to add topic')).toBeInTheDocument();
-  expect(screen.getByRole('alert')).toBeInTheDocument();
+  expect(screen.getByRole('alert', { name: '' })).toBeInTheDocument(); // the save banner, not the load region
 });
 
 test('clears the error banner when a retry succeeds', async () => {
@@ -133,14 +133,19 @@ test('shows a duplicate-specific message on 409', async () => {
   expect(await screen.findByText('Topic already exists')).toBeInTheDocument();
 });
 
-test('failed load does not pretend the topic list is empty', async () => {
+test('#222: a failed load says so once, in the list, announced, never as empty; Retry reloads', async () => {
   mockedService.getAll.mockRejectedValue(new Error('Failed to fetch topics'));
 
   renderPage();
 
-  expect(await screen.findByText('Failed to load topics')).toBeInTheDocument();
-  expect(screen.getByText('Topics could not be loaded.')).toBeInTheDocument();
+  expect(await screen.findByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load your topics.");
+  expect(screen.queryByText('Failed to load topics')).toBeNull(); // no banner for a load
+  expect(screen.queryByText('Topics could not be loaded.')).toBeNull(); // no second message
   expect(screen.queryByText('No topics saved yet.')).not.toBeInTheDocument();
+
+  mockedService.getAll.mockResolvedValue([{ uid: 't1', name: 'Pentatonic scale' } as never]);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Pentatonic scale')).toBeInTheDocument();
 });
 
 test('Edit opens an inline editor pre-filled with the topic values', async () => {
