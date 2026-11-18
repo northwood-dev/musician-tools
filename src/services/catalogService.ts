@@ -117,6 +117,18 @@ export class CollectionNotFoundError extends Error {
 
 const API_BASE = '/api';
 
+// #212: a line of the curators' Suggestions queue: identical songs (case, accents and a
+// leading article ignored) suggested by `suggestedBy` users, shown with the latest one's
+// Catalog fields. `id` is the handle the queue's actions send back. `catalog`: an entry with
+// the same identity already exists (published, or a draft).
+export type CatalogSuggestionLine = {
+  id: string;
+  suggestedBy: number;
+  song: Pick<CatalogSong, 'title' | 'artist' | 'album' | 'key' | 'mode' | 'bpm' | 'timeSignature' | 'durationSeconds' | 'language' | 'genre' | 'streamingLinks' | 'pitchStandard'>;
+  catalog: { uid: string; published: boolean } | null;
+};
+export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
+
 export const catalogService = {
   // Browse the shared Catalog (any logged-in user). Returns the {items,total,page,limit}
   // envelope. `signal` lets the caller abort a superseded request (debounced search).
@@ -419,6 +431,16 @@ export const catalogService = {
     }
     if (!response.ok) {
       throw new Error('Failed to import the collection');
+    }
+    return response.json();
+  },
+
+  // #212: the curators' queue of songs suggested to the Catalog (curator only → 403).
+  // One line per song; `pending` is the number of lines. No user, nothing personal.
+  async getSuggestions(signal?: AbortSignal): Promise<CatalogSuggestions> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions`, { credentials: 'include', signal });
+    if (!response.ok) {
+      throw new Error('Failed to load the suggestions');
     }
     return response.json();
   },

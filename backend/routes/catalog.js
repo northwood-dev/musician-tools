@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 const bodyParser = require('body-parser');
 const catalogController = require('../controllers/catalogcontroller');
+const catalogSuggestionController = require('../controllers/catalogsuggestioncontroller');
 const authsess = require('../middleware/authsess');
 const requireCurator = require('../middleware/requirecurator');
 
@@ -24,6 +25,8 @@ router.get('/facets', authsess, catalogController.getCatalogFacets);
 // Story 19.12 — EXACT (title, artist) dup-check (curator only: it reveals draft
 // existence). BEFORE /:uid so "exists" isn't captured as a uid param.
 router.get('/exists', authsess, requireCurator, catalogController.getCatalogExists);
+// #212: the queue of songs suggested to the Catalog — curator only, BEFORE '/:uid'.
+router.get('/suggestions', authsess, requireCurator, catalogSuggestionController.getSuggestions);
 
 // Story 20.1 — Collections (curated themed groupings). ALL registered BEFORE /:uid so
 // "collections" is never captured as a catalog-entry uid. Writes = curator (403);

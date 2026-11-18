@@ -207,6 +207,18 @@ export default function CatalogManage() {
     }
   };
 
+  // #212: how many suggestions wait in the curators' queue (the Suggestions button's count).
+  // Best effort: a failed count just shows the button without one.
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
+  useEffect(() => {
+    if (!user?.isCurator) return;
+    const ctrl = new AbortController();
+    catalogService.getSuggestions(ctrl.signal)
+      .then(r => { if (!ctrl.signal.aborted) setPendingSuggestions(r?.pending ?? 0); })
+      .catch(() => { /* no count */ });
+    return () => ctrl.abort();
+  }, [user?.isCurator]);
+
   // Role gate (after hooks, so hook order is stable). Not a 404 oracle.
   if (!user?.isCurator) {
     return <Navigate to="/" replace />;
@@ -378,6 +390,14 @@ export default function CatalogManage() {
       title="Manage the Catalog"
       actions={(
         <>
+          <Link
+            to="/catalog/manage/suggestions"
+            className="btn-secondary btn-sm shrink-0"
+            aria-label={pendingSuggestions ? `Suggestions, ${pendingSuggestions} waiting` : 'Suggestions'}
+          >
+            Suggestions
+            {pendingSuggestions ? <span aria-hidden="true" className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs font-semibold text-white">{pendingSuggestions}</span> : null}
+          </Link>
           <Link to="/catalog/manage/aliases" className="btn-secondary btn-sm shrink-0">Artist aliases</Link>
           {tab === 'entries' && (
             <Link to="/catalog/admin" className="btn-primary btn-sm shrink-0">New entry</Link>
