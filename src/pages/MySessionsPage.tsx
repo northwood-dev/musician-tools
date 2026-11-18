@@ -14,6 +14,8 @@ import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { digitsOnly } from '../utils/digitsOnly';
 import { secondsToWholeMinutes } from '../utils/duration';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { Notice } from '../components/Notice';
+import { LoadFailed } from '../components/LoadFailed';
 import { Toast } from '../components/Toast';
 import { Page } from '../components/Page';
 
@@ -244,6 +246,7 @@ function MySessionsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [sessions, setSessions] = useState<PracticeSession[] | null>(null);
   const [sessionsFailed, setSessionsFailed] = useState(false);
+  const [pickersFailed, setPickersFailed] = useState(false);
   const [editingSessionUid, setEditingSessionUid] = useState<string | null>(null);
   // #5: an edit moving the session onto an existing day/instrument, held until
   // the user confirms the merge
@@ -300,60 +303,73 @@ function MySessionsPage() {
     }
   }, []);
 
+  // #223: two loads, each with its own Retry. Songs and topics feed the form's menus: a failure
+  // is said above the form (the menus may be incomplete) and Retry reloads only them, keeping what
+  // was typed. The history says so in place (LoadFailed) and Retry reloads only the sessions.
+  // Neither uses the page banner — that one is for failed saves.
+  const loadSongsAndTopics = async () => {
+    setPickersFailed(false);
+    // allSettled: a failing songlist or topics load must not discard the
+    // other — the form stays usable (possibly with a partial picker)
+    const [songsResult, topicsResult] = await Promise.allSettled([
+      songService.getAllSongs(),
+      topicService.getAll(),
+    ]);
+    if (songsResult.status === 'fulfilled') setSongs(songsResult.value ?? []);
+    if (topicsResult.status === 'fulfilled') setTopics(topicsResult.value ?? []);
+    if (songsResult.status === 'rejected' || topicsResult.status === 'rejected') setPickersFailed(true);
+  };
+
+  const loadSessions = async () => {
+    setSessionsFailed(false);
+    let fetched: PracticeSession[];
+    try {
+      fetched = (await practiceSessionService.getAll()) ?? [];
+    } catch {
+      setSessionsFailed(true);
+      // The deep-linked edit intent cannot survive a failed list load (and
+      // the URL is already cleaned): drop it instead of firing later
+      pendingEditUidRef.current = null;
+      return;
+    }
+    // Merge instead of overwrite: a session logged while this request was
+    // in flight must not vanish when the (stale) response lands
+    setSessions(prev => {
+      if (prev === null) return sortSessions(fetched);
+      const fetchedUids = new Set(fetched.map(s => s.uid));
+      return sortSessions([...prev.filter(s => !fetchedUids.has(s.uid)), ...fetched]);
+    });
+    // FR12 one-shot prefill: the instrument of the most recently LOGGED
+    // session (max createdAt — not the top of the date sort, which a
+    // retroactive session could occupy; missing createdAt counts as
+    // newest, consistent with sortSessions). Guarded by the touched ref
+    // AND a functional update so a user interaction always wins, and only
+    // applied if the value is actually offered by the select (a legacy
+    // free-string instrument would submit invisibly otherwise).
+    const mostRecent = fetched.reduce<PracticeSession | null>((best, s) => {
+      return !best || (s.createdAt ?? NEWEST) > (best.createdAt ?? NEWEST) ? s : best;
+    }, null);
+    if (mostRecent
+      && !instrumentTouchedRef.current
+      && instrumentTypeOptions.includes(mostRecent.instrumentType)) {
+      setInstrumentType(prev => (prev === '' ? mostRecent.instrumentType : prev));
+    }
+    // Apply a pending ?edit deep-link now that the sessions are known;
+    // an unknown uid is silently ignored, and a submit already in flight
+    // (user started typing/logging while the list loaded) wins over the
+    // late-arriving deep-link
+    if (pendingEditUidRef.current) {
+      const target = fetched.find(s => s.uid === pendingEditUidRef.current);
+      pendingEditUidRef.current = null;
+      if (target && !submitInFlightRef.current) startEditSession(target);
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      // allSettled: a failing songlist or topics load must not discard the
-      // other — the form stays usable (possibly with a partial picker)
-      const [songsResult, topicsResult, sessionsResult] = await Promise.allSettled([
-        songService.getAllSongs(),
-        topicService.getAll(),
-        practiceSessionService.getAll(),
-      ]);
-      if (songsResult.status === 'fulfilled') setSongs(songsResult.value ?? []);
-      if (topicsResult.status === 'fulfilled') setTopics(topicsResult.value ?? []);
-      if (songsResult.status === 'rejected' || topicsResult.status === 'rejected') {
-        setError('Failed to load songs and topics');
-      }
-      if (sessionsResult.status === 'fulfilled') {
-        const fetched = sessionsResult.value ?? [];
-        // Merge instead of overwrite: a session logged while this request was
-        // in flight must not vanish when the (stale) response lands
-        setSessions(prev => {
-          if (prev === null) return sortSessions(fetched);
-          const fetchedUids = new Set(fetched.map(s => s.uid));
-          return sortSessions([...prev.filter(s => !fetchedUids.has(s.uid)), ...fetched]);
-        });
-        // FR12 one-shot prefill: the instrument of the most recently LOGGED
-        // session (max createdAt — not the top of the date sort, which a
-        // retroactive session could occupy; missing createdAt counts as
-        // newest, consistent with sortSessions). Guarded by the touched ref
-        // AND a functional update so a user interaction always wins, and only
-        // applied if the value is actually offered by the select (a legacy
-        // free-string instrument would submit invisibly otherwise).
-        const mostRecent = fetched.reduce<PracticeSession | null>((best, s) => {
-          return !best || (s.createdAt ?? NEWEST) > (best.createdAt ?? NEWEST) ? s : best;
-        }, null);
-        if (mostRecent
-          && !instrumentTouchedRef.current
-          && instrumentTypeOptions.includes(mostRecent.instrumentType)) {
-          setInstrumentType(prev => (prev === '' ? mostRecent.instrumentType : prev));
-        }
-        // Apply a pending ?edit deep-link now that the sessions are known;
-        // an unknown uid is silently ignored, and a submit already in flight
-        // (user started typing/logging while the list loaded) wins over the
-        // late-arriving deep-link
-        if (pendingEditUidRef.current) {
-          const target = fetched.find(s => s.uid === pendingEditUidRef.current);
-          pendingEditUidRef.current = null;
-          if (target && !submitInFlightRef.current) startEditSession(target);
-        }
-      } else {
-        setSessionsFailed(true);
-        // The deep-linked edit intent cannot survive a failed list load (and
-        // the URL is already cleaned): drop it instead of firing later
-        pendingEditUidRef.current = null;
-      }
-    })();
+    loadSongsAndTopics();
+    loadSessions();
+    // Mount only: the Retry buttons call them again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // FR13 (Epic 8): a session's total is ALWAYS the sum of its entries' minutes —
@@ -702,6 +718,22 @@ function MySessionsPage() {
       <Toast message={toastMessage} />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
       <Page width="wide" title="My sessions" className="space-y-6">
+        {/* #223: always mounted (#153) — only the message comes and goes. */}
+        <div role="alert" aria-label="Songs and topics error">
+          {pickersFailed && (
+            <Notice
+              tone="error"
+              announce="none"
+              action={(
+                <button type="button" className="btn-secondary btn-sm" aria-label="Retry loading songs and topics" onClick={loadSongsAndTopics}>
+                  Retry
+                </button>
+              )}
+            >
+              Couldn't load your songs and topics: the song and topic menus may be incomplete.
+            </Notice>
+          )}
+        </div>
 
         {/* relative z-20: the entry picker dropdown overflows the card bottom —
             this lifts the whole form card above the History card so the dropdown
@@ -913,13 +945,14 @@ function MySessionsPage() {
             className={editingSessionUid ? 'sr-only' : 'text-sm text-gray-600 dark:text-gray-400'}
           >
             {sessionsFailed
-              ? 'Sessions could not be loaded.'
+              ? null
               : sessions === null
                 ? 'Loading…'
                 : sessions.length === 0
                   ? 'No sessions logged yet.'
                   : null}
           </div>
+          <LoadFailed failed={sessionsFailed && !editingSessionUid} onRetry={loadSessions}>Couldn't load your sessions.</LoadFailed>
           {!editingSessionUid && !sessionsFailed && sessions !== null && sessions.length > 0 && (
             <ul aria-label="Session history" className="space-y-5">
               {groupSessionsByDay(sessions).map(day => (

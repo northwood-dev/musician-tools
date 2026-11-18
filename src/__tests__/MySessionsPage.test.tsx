@@ -216,7 +216,7 @@ test('shows an error banner when creation fails', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
 
   expect(await screen.findByText('Failed to log session')).toBeInTheDocument();
-  expect(screen.getByRole('alert')).toBeInTheDocument();
+  expect(screen.getByRole('alert', { name: '' })).toBeInTheDocument(); // the save banner
 });
 
 test('surfaces specific server validation messages (e.g. clock-skewed client)', async () => {
@@ -638,13 +638,39 @@ test('shows the empty history state', async () => {
   expect(await screen.findByText('No sessions logged yet.')).toBeInTheDocument();
 });
 
-test('a failed history load does not pretend the history is empty', async () => {
+test('#223: a failed history says so, announced, never as empty; Retry reloads only the sessions', async () => {
   mockedService.getAll.mockRejectedValue(new Error('Failed to fetch sessions'));
 
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
 
-  expect(await screen.findByText('Sessions could not be loaded.')).toBeInTheDocument();
+  expect((await screen.findByText("Couldn't load your sessions.")).closest('[role="alert"]')).toHaveAccessibleName('Loading error');
   expect(screen.queryByText('No sessions logged yet.')).not.toBeInTheDocument();
+  const songLoads = mockedSongService.getAllSongs.mock.calls.length;
+  const topicLoads = mockedTopicService.getAll.mock.calls.length;
+
+  mockedService.getAll.mockResolvedValue([{ uid: 's1', date: '2026-06-01', instrumentType: 'Bass', items: [] }]);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('2026-06-01')).toBeInTheDocument();
+  expect(screen.queryByText("Couldn't load your sessions.")).toBeNull();
+  expect(mockedSongService.getAllSongs.mock.calls.length).toBe(songLoads); // only the sessions reloaded
+  expect(mockedTopicService.getAll.mock.calls.length).toBe(topicLoads);
+});
+
+test('#223: failed songs or topics say the menus may be incomplete; Retry reloads only them and keeps the form', async () => {
+  mockedSongService.getAllSongs.mockRejectedValueOnce(new Error('down'));
+
+  render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
+
+  const message = await screen.findByText("Couldn't load your songs and topics: the song and topic menus may be incomplete.");
+  expect(message.closest('[role="alert"]')).not.toBeNull();
+  expect(screen.queryByText('Failed to load songs and topics')).toBeNull(); // no banner for a load
+  fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
+  const sessionLoads = mockedService.getAll.mock.calls.length;
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retry loading songs and topics' }));
+  await waitFor(() => expect(screen.queryByText(/Couldn't load your songs and topics/)).toBeNull());
+  expect(mockedService.getAll.mock.calls.length).toBe(sessionLoads); // only songs and topics reloaded
+  expect((screen.getByLabelText('Instrument') as HTMLSelectElement).value).toBe('Bass'); // form kept
 });
 
 test('a newly logged session appears in the history', async () => {
@@ -766,13 +792,13 @@ test('a successful create recovers the history from a failed initial load', asyn
   });
 
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
-  await screen.findByText('Sessions could not be loaded.');
+  await screen.findByText("Couldn't load your sessions.");
 
   fireEvent.change(screen.getByLabelText('Instrument'), { target: { value: 'Bass' } });
   fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
 
   expect(await screen.findByText(todayLocalDate())).toBeInTheDocument();
-  expect(screen.queryByText('Sessions could not be loaded.')).not.toBeInTheDocument();
+  expect(screen.queryByText("Couldn't load your sessions.")).not.toBeInTheDocument();
 });
 
 test('the initial history is sorted locally even if the server order regresses', async () => {
@@ -1484,7 +1510,8 @@ describe('#84: the entry picker finds a song or topic as the Songlist does', () 
     const listbox = await searchEntry('acdc');
 
     expect(await within(listbox).findByRole('option', { name: 'AC/DC - Back in Black' })).toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    // the page's load regions are always there (#153): none may say anything
+    expect(screen.queryAllByRole('alert').filter(el => el.textContent)).toEqual([]);
     expect(screen.queryByText(/error|failed|couldn/i)).not.toBeInTheDocument();
   });
 
