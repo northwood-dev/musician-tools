@@ -458,6 +458,20 @@ export const catalogService = {
     return response.json();
   },
 
+  // #214: link the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
+  // waiting; 409 → no published entry to link to (none, or a draft) — also "no longer waiting"
+  // from the curator's point of view: the queue just needs reloading.
+  async linkSuggestion(id: string): Promise<{ linked: number; catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/link`, { method: 'POST', credentials: 'include' });
+    if (response.status === 404 || response.status === 409) {
+      throw new SuggestionGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to link the suggestion');
+    }
+    return response.json();
+  },
+
   async getSuggestions(signal?: AbortSignal): Promise<CatalogSuggestions> {
     const response = await apiFetch(`${API_BASE}/catalog/suggestions`, { credentials: 'include', signal });
     if (!response.ok) {

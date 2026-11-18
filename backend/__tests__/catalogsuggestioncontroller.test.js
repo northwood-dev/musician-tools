@@ -113,3 +113,53 @@ describe('rejectSuggestion (#213)', () => {
     expect(sequelize.query).not.toHaveBeenCalled();
   });
 });
+
+// #214: Link to it — the group's songs are tied to the published Catalog entry they match.
+describe('linkSuggestion (#214)', () => {
+  const ID = '11111111-1111-4111-8111-111111111111';
+  const call = async () => {
+    const res = mockRes();
+    const next = jest.fn();
+    await controller.linkSuggestion({ params: { id: ID }, session: { user: 'curator' } }, res, next);
+    return { res, next };
+  };
+
+  test('links the still-suggested, unlinked songs to the published entry, stamped as synced', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([{ catalog_uid: 'cat-1', published: true }]) // the line's match
+      .mockResolvedValueOnce([[{ uid: 'a' }, { uid: 'b' }], {}]); // the UPDATE
+    const { res } = await call();
+    const [sql, options] = sequelize.query.mock.calls[1];
+    expect(sql).toMatch(/SET source_catalog_uid = c\.uid/);
+    expect(sql).toMatch(/source_catalog_synced_at = c\."updatedAt"/);
+    expect(sql).toMatch(/c\.published_at IS NOT NULL/);
+    expect(sql).not.toMatch(/"updatedAt" =/); // the owners' songs are not "edited"
+    expect(options.replacements).toEqual({ id: ID });
+    expect(res.json).toHaveBeenCalledWith({ linked: 2, catalogUid: 'cat-1' });
+  });
+
+  test('a suggestion no longer waiting is a 404', async () => {
+    sequelize.query.mockResolvedValueOnce([]);
+    const { next } = await call();
+    expect(next.mock.calls[0][0].status).toBe(404);
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('no published entry to link to (none, or only a draft) is a 409', async () => {
+    sequelize.query.mockResolvedValueOnce([{ catalog_uid: null, published: false }]);
+    let { next } = await call();
+    expect(next.mock.calls[0][0].status).toBe(409);
+    sequelize.query.mockReset();
+    sequelize.query.mockResolvedValueOnce([{ catalog_uid: 'draft-1', published: false }]);
+    ({ next } = await call());
+    expect(next.mock.calls[0][0].status).toBe(409);
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('a malformed id is a 404 without touching the database', async () => {
+    const next = jest.fn();
+    await controller.linkSuggestion({ params: { id: 'nope' }, session: { user: 'curator' } }, mockRes(), next);
+    expect(next.mock.calls[0][0].status).toBe(404);
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+});

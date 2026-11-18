@@ -140,3 +140,19 @@ test('the refresh dialog says your own links are kept (#35)', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }));
   expect(await screen.findByText(/Update key, BPM/)).toHaveTextContent('Your instrument, tuning, notes and your own links are kept.');
 });
+
+// #214: a song linked through a suggestion IS in the Catalog — it wasn't added from it.
+test('#214: a song linked through a suggestion says "In the Catalog"', async () => {
+  svc.getSong.mockResolvedValue({ ...songWith({ uid: 'cat-1', updatedAt: '2026-01-01', drift: false }), catalogSuggestion: 'suggested' } as Song);
+  renderBanner();
+  const link = await screen.findByRole('link', { name: 'Catalog' });
+  expect(link.closest('p')).toHaveTextContent(/In the\s*Catalog/) // the gap between the two is the flex gap;
+  expect(screen.queryByText(/Added from the/)).toBeNull();
+});
+
+test('#214: a song added from the Catalog still says "Added from the Catalog"', async () => {
+  svc.getSong.mockResolvedValue({ ...songWith({ uid: 'cat-1', updatedAt: '2026-01-01', drift: false }), catalogSuggestion: 'private' } as Song);
+  renderBanner();
+  const link = await screen.findByRole('link', { name: 'Catalog' });
+  expect(link.closest('p')).toHaveTextContent(/Added from the\s*Catalog/);
+});

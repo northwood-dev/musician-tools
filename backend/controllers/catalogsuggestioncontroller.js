@@ -75,23 +75,47 @@ const getSuggestions = async (req, res, next) => {
   }
 };
 
-// The songs a queue line stands for, as an UPDATE target: the line's song (`:id`, still
-// waiting) gives the identity; every still-suggested, unlinked song with that identity is in
-// the group — re-read NOW, so an owner who opted out since the queue loaded is left alone.
-// Raw SQL leaves "updatedAt" alone: a curator's decision is not an edit of the owner's song.
-const updateGroup = (set) => `
-  WITH target AS (
+// The songs a queue line stands for: the line's song (`:id`, still waiting) gives the
+// identity; every still-suggested, unlinked song with that identity is in the group — re-read
+// NOW, so an owner who opted out since the queue loaded is left alone. Raw SQL leaves
+// "updatedAt" alone: a curator's decision is not an edit of the owner's song.
+const TARGET_CTE = `
+  target AS (
     SELECT lower(f_unaccent(title::text)) AS title_key, f_artist_key(artist::text) AS artist_key
       FROM "Songs"
      WHERE uid = :id AND catalog_suggestion = 'suggested' AND source_catalog_uid IS NULL
-  )
-  UPDATE "Songs" s
-     SET ${set}
+  )`;
+const IN_GROUP = `
+  s.catalog_suggestion = 'suggested'
+  AND s.source_catalog_uid IS NULL
+  AND lower(f_unaccent(s.title::text)) = target.title_key
+  AND f_artist_key(s.artist::text) = target.artist_key`;
+const SAME_AS_TARGET = (c) => `lower(f_unaccent(${c}.title::text)) = target.title_key AND f_artist_key(${c}.artist::text) = target.artist_key`;
+
+const updateGroup = (set) => `
+  WITH ${TARGET_CTE}
+  UPDATE "Songs" s SET ${set}
     FROM target
-   WHERE s.catalog_suggestion = 'suggested'
-     AND s.source_catalog_uid IS NULL
-     AND lower(f_unaccent(s.title::text)) = target.title_key
-     AND f_artist_key(s.artist::text) = target.artist_key
+   WHERE ${IN_GROUP}
+  RETURNING s.uid
+`;
+
+// The Catalog entry a line matches, if any: [] when the line no longer waits.
+const MATCH_SQL = `
+  WITH ${TARGET_CTE}
+  SELECT c.uid AS catalog_uid, (c.published_at IS NOT NULL) AS published
+    FROM target LEFT JOIN "CatalogSongs" c ON ${SAME_AS_TARGET('c')}
+`;
+
+// #214 / #215: tie the group's songs to a PUBLISHED entry, stamped as synced so they show no
+// false "newer version" banner. Same link as a song added from the Catalog: Refresh just works.
+const LINK_SQL = `
+  WITH ${TARGET_CTE}
+  UPDATE "Songs" s
+     SET source_catalog_uid = c.uid, source_catalog_synced_at = c."updatedAt"
+    FROM target
+    JOIN "CatalogSongs" c ON ${SAME_AS_TARGET('c')} AND c.published_at IS NOT NULL
+   WHERE ${IN_GROUP}
   RETURNING s.uid
 `;
 
@@ -112,4 +136,24 @@ const rejectSuggestion = async (req, res, next) => {
   }
 };
 
-module.exports = { getSuggestions, rejectSuggestion, updateGroup, NOT_WAITING };
+// POST /api/catalog/suggestions/:id/link (curator only). #214: the song is already in the
+// Catalog — link the group's songs to that entry instead of creating a duplicate. Only a
+// PUBLISHED entry: a draft's songs are linked when it is published (#215).
+const linkSuggestion = async (req, res, next) => {
+  if (!isUuid(req.params.id)) return next(createError(404, NOT_WAITING));
+  try {
+    const replacements = { id: req.params.id };
+    const [match] = await sequelize.query(MATCH_SQL, { type: 'SELECT', replacements });
+    if (!match) return next(createError(404, NOT_WAITING));
+    if (!match.catalog_uid || !match.published) {
+      return next(createError(409, 'No published Catalog entry to link to'));
+    }
+    const [rows] = await sequelize.query(LINK_SQL, { replacements });
+    res.json({ linked: rows.length, catalogUid: match.catalog_uid });
+  } catch (error) {
+    logger.error('Error linking a Catalog suggestion:', error);
+    next(createError(500, 'Error linking the suggestion'));
+  }
+};
+
+module.exports = { getSuggestions, rejectSuggestion, linkSuggestion, updateGroup, LINK_SQL, NOT_WAITING };

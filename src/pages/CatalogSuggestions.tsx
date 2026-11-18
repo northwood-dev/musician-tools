@@ -44,6 +44,29 @@ export default function CatalogSuggestions() {
     return <Navigate to="/" replace />;
   }
 
+  // #214: the song is already published in the Catalog — link the line's songs to that entry.
+  const handleLink = async (target: CatalogSuggestionLine) => {
+    if (busy) return;
+    const { title } = target.song;
+    setBusy(true);
+    setError(null);
+    setDoneMessage(null);
+    try {
+      const { linked } = await catalogService.linkSuggestion(target.id);
+      setDoneMessage(`"${title}" linked to the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`);
+      await load();
+    } catch (err) {
+      if (err instanceof SuggestionGoneError) {
+        setError('This suggestion is no longer waiting.');
+        await load();
+      } else {
+        setError(`Could not link "${title}".`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // #213: the line's songs leave the queue for good; their owners aren't told.
   const handleReject = async () => {
     if (!toReject || busy) return;
@@ -112,7 +135,18 @@ export default function CatalogSuggestions() {
                   <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
                     {line.catalog ? 'Already in the Catalog' : null}
                   </td>
-                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                  <td className="px-3 py-2 text-right whitespace-nowrap space-x-2">
+                    {line.catalog?.published && (
+                      <button
+                        type="button"
+                        className="btn-primary btn-sm min-h-[44px]"
+                        aria-label={`Link ${line.song.title} to the Catalog entry`}
+                        onClick={() => handleLink(line)}
+                        disabled={busy}
+                      >
+                        Link to it
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn-secondary btn-sm min-h-[44px]"

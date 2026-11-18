@@ -136,3 +136,50 @@ describe('Reject (#213)', () => {
     await dialogClosed();
   });
 });
+
+describe('Link to it (#214)', () => {
+  const dialogFree = () => waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  let waiting: CatalogSuggestionLine[] = [];
+  beforeEach(() => {
+    waiting = [line({ suggestedBy: 2, catalog: { uid: 'cat-1', published: true } })];
+    cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
+  });
+  const linkButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Link Wonderwall to the Catalog entry' });
+
+  test('a song already published in the Catalog is linked to it, and leaves the queue', async () => {
+    cat.linkSuggestion.mockImplementation(async () => { waiting = []; return { linked: 2, catalogUid: 'cat-1' }; });
+    renderPage();
+    const button = await linkButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(cat.linkSuggestion).toHaveBeenCalledWith('id-Wonderwall');
+    expect(await screen.findByText('"Wonderwall" linked to the Catalog entry (2 songs).')).toBeInTheDocument();
+    expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
+    await dialogFree();
+  });
+
+  test('only a published entry offers Link to it', async () => {
+    waiting = [line({ catalog: { uid: 'draft-1', published: false } }), line({ title: 'Zombie', catalog: null })];
+    renderPage();
+    await screen.findByText('Wonderwall');
+    expect(screen.queryByRole('button', { name: /^Link / })).not.toBeInTheDocument();
+  });
+
+  test('a suggestion no longer waiting says so and reloads', async () => {
+    const { SuggestionGoneError } = jest.requireActual('../services/catalogService');
+    cat.linkSuggestion.mockImplementation(async () => { waiting = []; throw new SuggestionGoneError(); });
+    renderPage();
+    const button = await linkButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('This suggestion is no longer waiting.')).toBeInTheDocument();
+    expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
+  });
+
+  test('a failure says so and keeps the line', async () => {
+    cat.linkSuggestion.mockRejectedValue(new Error('down'));
+    renderPage();
+    const button = await linkButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('Could not link "Wonderwall".')).toBeInTheDocument();
+    expect(screen.getByText('Wonderwall')).toBeInTheDocument();
+  });
+});
