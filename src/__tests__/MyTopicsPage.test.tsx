@@ -273,6 +273,17 @@ describe('#16: ?edit=<uid> deep link from the session history', () => {
     await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
   });
 
+  test('#218 review: a link that met a failed load still opens its topic after Retry', async () => {
+    mockedService.getAll.mockRejectedValueOnce(new Error('down'));
+    renderPage('/my-topics?edit=t1');
+    await screen.findByText("Couldn't load your topics.");
+    expect(screen.getByLabelText('search')).toHaveTextContent('?edit=t1'); // not consumed by the failure
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByLabelText('Edit name')).toHaveValue('Pentatonic scale');
+    await waitFor(() => expect(screen.getByLabelText('search')).toHaveTextContent(/^$/));
+  });
+
   test('a second deep link while on the page opens that topic too', async () => {
     mockedService.getAll.mockResolvedValue([existingTopic, { uid: 't2', name: 'Walking bass' }]);
     renderPage('/my-topics?edit=t1');

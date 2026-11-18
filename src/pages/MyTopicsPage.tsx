@@ -53,11 +53,13 @@ function MyTopicsPage() {
     setLoading(true);
     try {
       setList(await topicService.getAll());
+      // Only a SUCCESSFUL load releases a pending ?edit= link: consumed by a failure, the
+      // link would be gone by the time Retry brings the topic it points to (#218 review).
+      setListLoaded(true);
     } catch {
       setLoadFailed(true);
     } finally {
       setLoading(false);
-      setListLoaded(true);
     }
   }, []);
 

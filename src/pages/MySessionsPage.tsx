@@ -246,7 +246,7 @@ function MySessionsPage() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [sessions, setSessions] = useState<PracticeSession[] | null>(null);
   const [sessionsFailed, setSessionsFailed] = useState(false);
-  const [pickersFailed, setPickersFailed] = useState(false);
+  const [songsAndTopicsFailed, setSongsAndTopicsFailed] = useState(false);
   const [editingSessionUid, setEditingSessionUid] = useState<string | null>(null);
   // #5: an edit moving the session onto an existing day/instrument, held until
   // the user confirms the merge
@@ -308,7 +308,7 @@ function MySessionsPage() {
   // was typed. The history says so in place (LoadFailed) and Retry reloads only the sessions.
   // Neither uses the page banner — that one is for failed saves.
   const loadSongsAndTopics = async () => {
-    setPickersFailed(false);
+    setSongsAndTopicsFailed(false);
     // allSettled: a failing songlist or topics load must not discard the
     // other — the form stays usable (possibly with a partial picker)
     const [songsResult, topicsResult] = await Promise.allSettled([
@@ -317,7 +317,7 @@ function MySessionsPage() {
     ]);
     if (songsResult.status === 'fulfilled') setSongs(songsResult.value ?? []);
     if (topicsResult.status === 'fulfilled') setTopics(topicsResult.value ?? []);
-    if (songsResult.status === 'rejected' || topicsResult.status === 'rejected') setPickersFailed(true);
+    if (songsResult.status === 'rejected' || topicsResult.status === 'rejected') setSongsAndTopicsFailed(true);
   };
 
   const loadSessions = async () => {
@@ -368,7 +368,10 @@ function MySessionsPage() {
   useEffect(() => {
     loadSongsAndTopics();
     loadSessions();
-    // Mount only: the Retry buttons call them again.
+    // Mount only; the Retry buttons call them again. The loaders are left out of the deps on
+    // purpose: they are plain functions rebuilt every render (loadSessions reaches
+    // startEditSession, itself rebuilt every render), so listing them would reload on every
+    // render. They only read refs and call state setters, so the mount-time copies stay correct.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -720,7 +723,7 @@ function MySessionsPage() {
       <Page width="wide" title="My sessions" className="space-y-6">
         {/* #223: always mounted (#153) — only the message comes and goes. */}
         <div role="alert" aria-label="Songs and topics error">
-          {pickersFailed && (
+          {songsAndTopicsFailed && (
             <Notice
               tone="error"
               announce="none"
@@ -945,7 +948,7 @@ function MySessionsPage() {
             className={editingSessionUid ? 'sr-only' : 'text-sm text-gray-600 dark:text-gray-400'}
           >
             {sessionsFailed
-              ? null
+              ? null // the LoadFailed region below speaks for a failed history
               : sessions === null
                 ? 'Loading…'
                 : sessions.length === 0
