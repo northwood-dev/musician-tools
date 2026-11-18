@@ -435,6 +435,8 @@ describe('catalogcontroller', () => {
     expect(arg.capo).toBeUndefined();
     expect(arg.notes).toBeUndefined();
     expect(arg.myInstrumentUid).toBeUndefined();
+    // #211: never suggested — left to the column default (private); it is in the Catalog already
+    expect(arg.catalogSuggestion).toBeUndefined();
     expect(arg.userUid).toBe('u1');
     expect(res.status).toHaveBeenCalledWith(201);
     expect(next).not.toHaveBeenCalled();

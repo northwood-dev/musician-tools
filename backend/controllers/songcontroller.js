@@ -176,7 +176,7 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body || {};
+    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode, catalogSuggestion } = req.body || {};
 
     const linksError = songlistLinksError(streamingLinks) || instrumentLinksError(instrumentLinks);
     if (linksError) return next(createError(400, linksError));
@@ -225,7 +225,8 @@ const createSong = async (req, res, next) => {
       lastPlayed: lastPlayed ? new Date(lastPlayed) : null,
       streamingLinks,
       timeSignature,
-      mode: normalizeMode(mode) ?? null // canonical casing so the Mode select matches (21.x)
+      mode: normalizeMode(mode) ?? null, // canonical casing so the Mode select matches (21.x)
+      catalogSuggestion: catalogSuggestion === 'suggested' ? 'suggested' : 'private' // #211
     });
 
     res.status(201).json(song);
@@ -237,6 +238,16 @@ const createSong = async (req, res, next) => {
     logger.error('Error creating song:', error);
     next(createError(500, 'Error creating song'));
   }
+};
+
+// #211: the owner's checkbox moves a song between `private` and `suggested`. The form autosaves
+// its whole state, so a rejected song (shown checked) resends `suggested` on every edit: that must
+// NOT re-suggest it — only unchecking (→ private) then checking does. A client never sets
+// `rejected` (a curator's decision); anything unknown or absent keeps the current state.
+const nextCatalogSuggestion = (current, requested) => {
+  if (requested === 'private') return 'private';
+  if (requested === 'suggested') return current === 'rejected' ? 'rejected' : 'suggested';
+  return current;
 };
 
 // PUT update song
@@ -263,7 +274,7 @@ const updateSong = async (req, res, next) => {
       return next(createError(404, 'Song not found'));
     }
 
-    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body || {};
+    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode, catalogSuggestion } = req.body || {};
 
     const linksError = songlistLinksError(streamingLinks) || instrumentLinksError(instrumentLinks);
     if (linksError) return next(createError(400, linksError));
@@ -305,7 +316,8 @@ const updateSong = async (req, res, next) => {
       myInstrumentUid: myInstrumentUid !== undefined ? myInstrumentUid : song.myInstrumentUid,
       streamingLinks: streamingLinks !== undefined ? streamingLinks : song.streamingLinks,
       timeSignature: timeSignature !== undefined ? timeSignature : song.timeSignature,
-      mode: normalizedMode !== undefined ? normalizedMode : song.mode
+      mode: normalizedMode !== undefined ? normalizedMode : song.mode,
+      catalogSuggestion: nextCatalogSuggestion(song.catalogSuggestion, catalogSuggestion)
     });
 
     res.json(song);

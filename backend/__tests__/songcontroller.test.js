@@ -177,6 +177,53 @@ describe('songcontroller', () => {
     expect(update2.mock.calls[0][0].durationSeconds).toBe(420);
   });
 
+  // #211: a song typed by hand is suggested to the Catalog unless its owner unchecks the box.
+  describe('#211 — suggestion to the Catalog', () => {
+    const UID = '55555555-5555-4555-8555-555555555555';
+    const create = (body) => controller.createSong({ session: { user: 'user-1' }, body: { title: 'Wonderwall', ...body } }, mockRes(), mockNext());
+    async function updateFrom(current, body) {
+      const update = jest.fn();
+      Song.findOne.mockResolvedValue({ userUid: 'user-1', title: 'Wonderwall', catalogSuggestion: current, update });
+      await controller.updateSong({ params: { uid: UID }, session: { user: 'user-1' }, body }, mockRes(), mockNext());
+      return update.mock.calls[0][0].catalogSuggestion;
+    }
+
+    test('createSong: suggested only when the form asks for it, private otherwise', async () => {
+      await create({ catalogSuggestion: 'suggested' });
+      expect(Song.create.mock.calls.at(-1)[0].catalogSuggestion).toBe('suggested');
+      await create({ catalogSuggestion: 'private' });
+      expect(Song.create.mock.calls.at(-1)[0].catalogSuggestion).toBe('private');
+      await create({});
+      expect(Song.create.mock.calls.at(-1)[0].catalogSuggestion).toBe('private');
+    });
+
+    test('createSong: a client cannot create a song as rejected (or any other value)', async () => {
+      await create({ catalogSuggestion: 'rejected' });
+      expect(Song.create.mock.calls.at(-1)[0].catalogSuggestion).toBe('private');
+      await create({ catalogSuggestion: 'public' });
+      expect(Song.create.mock.calls.at(-1)[0].catalogSuggestion).toBe('private');
+    });
+
+    test('updateSong: the checkbox toggles private ↔ suggested; absent keeps the state', async () => {
+      expect(await updateFrom('private', { catalogSuggestion: 'suggested' })).toBe('suggested');
+      expect(await updateFrom('suggested', { catalogSuggestion: 'private' })).toBe('private');
+      expect(await updateFrom('suggested', { title: 'Renamed' })).toBe('suggested');
+    });
+
+    test('updateSong: an edit of a rejected song (autosave resends the checked box) keeps it rejected', async () => {
+      expect(await updateFrom('rejected', { catalogSuggestion: 'suggested', bpm: 87 })).toBe('rejected');
+    });
+
+    test('updateSong: unchecking a rejected song makes it private, so checking again re-suggests it', async () => {
+      expect(await updateFrom('rejected', { catalogSuggestion: 'private' })).toBe('private');
+      expect(await updateFrom('private', { catalogSuggestion: 'suggested' })).toBe('suggested');
+    });
+
+    test('updateSong: a client cannot reject its own song (only a curator can)', async () => {
+      expect(await updateFrom('suggested', { catalogSuggestion: 'rejected' })).toBe('suggested');
+    });
+  });
+
   describe('16.1 — trim title/artist/album (dedup)', () => {
     test('createSong trims title, artist and album', async () => {
       await controller.createSong(
