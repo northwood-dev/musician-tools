@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import type React from 'react';
-import type { CreateSongDTO, Song } from '../services/songService';
+import type { CatalogSuggestion, CreateSongDTO, Song } from '../services/songService';
 import type { SongPlay } from '../services/songPlayService';
 import { instrumentTypeOptions, instrumentTechniquesMap } from '../constants/instrumentTypes';
 import SongFormInstruments from './SongFormInstruments';
@@ -35,6 +35,7 @@ type SongFormProps = {
   onToggleTechnique: (technique: string) => void;
   onSetInstrumentLinksForInstrument?: (instrumentType: string, links: Array<{ label?: string; url: string }>) => void;
   onSetStreamingLinks?: (links: StreamingLink[]) => void;
+  onSetCatalogSuggestion?: (value: Exclude<CatalogSuggestion, 'rejected'>) => void;
   onSubmit: (e: React.FormEvent) => void;
   onDelete?: () => void;
   onMarkAsPlayedNow?: (instrumentType: string) => void;
@@ -61,7 +62,7 @@ const getAvailableTechniques = (instrumentType: string) => {
 };
 
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onSetDurationSeconds, onChangeInstruments, onSetTechniques, onToggleGenre, onToggleLanguage, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSubmit, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata, duplicate = null, onEditDuplicate } = props;
+  const { mode, form, loading, onChange, onSetDurationSeconds, onChangeInstruments, onSetTechniques, onToggleGenre, onToggleLanguage, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSetCatalogSuggestion, onSubmit, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata, duplicate = null, onEditDuplicate } = props;
   // Passes only the field so the memo depends on form.instrument alone, not on the whole form.
   const currentInstruments = useMemo(() => instrumentsOf({ instrument: form.instrument }), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
@@ -182,6 +183,27 @@ export function SongForm(props: SongFormProps) {
           disabled={loading}
         />
       </div>
+      {/* #211: a song typed by hand is suggested to the Catalog (checked by default). A song
+          linked to the Catalog is in it already: no checkbox. `rejected` shows checked — the
+          owner isn't told; unchecking then checking suggests it again. */}
+      {onSetCatalogSuggestion && !form.sourceCatalogUid && (
+        <div>
+          <label className="inline-flex items-center gap-2 cursor-pointer text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-brand-500 dark:accent-brand-400"
+              checked={form.catalogSuggestion === 'suggested' || form.catalogSuggestion === 'rejected'}
+              onChange={(e) => onSetCatalogSuggestion(e.target.checked ? 'suggested' : 'private')}
+              disabled={loading}
+              aria-describedby="song-catalog-suggestion-help"
+            />
+            Suggest this song for the Catalog
+          </label>
+          <p id="song-catalog-suggestion-help" className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Shares only the title, artist, musical details (key, BPM…) and official links, never your notes or instruments. Uncheck it for your own compositions.
+          </p>
+        </div>
+      )}
       {duplicate && (
         <DuplicateBanner>
           <p>

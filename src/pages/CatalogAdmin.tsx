@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Navigate, Link, useParams, useNavigate } from 'react-router-dom';
+import { Navigate, Link, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogService, CatalogConflictError, CatalogNotFoundError } from '../services/catalogService';
 import type { CreateCatalogDTO, CatalogSong, CatalogFacets } from '../services/catalogService';
@@ -79,6 +79,9 @@ export default function CatalogAdmin() {
   // existing fiche in place. No uid = create mode (story 19.2, unchanged).
   const { uid } = useParams();
   const isEdit = Boolean(uid);
+  // #215: the Suggestions line this draft was accepted from (Accept opens it with ?suggestion=).
+  const [searchParams] = useSearchParams();
+  const suggestionId = searchParams.get('suggestion') || undefined;
   const navigate = useNavigate();
   const [loading, setLoading] = useState(isEdit);
   const [notFound, setNotFound] = useState(false);
@@ -319,8 +322,14 @@ export default function CatalogAdmin() {
     setConflictMessage(null);
     try {
       await catalogService.updateCatalogEntry(workingUid, form);
-      await catalogService.publishCatalogEntry(workingUid);
-      navigate('/catalog/manage');
+      if (suggestionId) {
+        // #215: publishing links the suggesters' songs; back to the queue for the next one.
+        await catalogService.publishCatalogEntry(workingUid, suggestionId);
+        navigate('/catalog/manage/suggestions');
+      } else {
+        await catalogService.publishCatalogEntry(workingUid);
+        navigate('/catalog/manage');
+      }
     } catch (err) {
       if (err instanceof CatalogConflictError) {
         const t = (form.title || '').trim();

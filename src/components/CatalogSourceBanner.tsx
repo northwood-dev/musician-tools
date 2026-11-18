@@ -23,6 +23,9 @@ export default function CatalogSourceBanner({
   beforeRefresh?: () => Promise<boolean>;
 }) {
   const [source, setSource] = useState<Song['sourceCatalog'] | null>(null);
+  // #214: linked through a suggestion its owner made (the song IS in the Catalog), as opposed
+  // to added from it — songs added from the Catalog are never `suggested`.
+  const [viaSuggestion, setViaSuggestion] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [feedback, setFeedback] = useState<{ message: string; isError: boolean } | null>(null);
@@ -40,7 +43,11 @@ export default function CatalogSourceBanner({
     const ctrl = new AbortController();
     setFeedback(null);
     songService.getSong(songUid)
-      .then(song => { if (!ctrl.signal.aborted) setSource(song.sourceCatalog ?? null); })
+      .then(song => {
+        if (ctrl.signal.aborted) return;
+        setSource(song.sourceCatalog ?? null);
+        setViaSuggestion(song.catalogSuggestion === 'suggested');
+      })
       .catch(err => { if (!ctrl.signal.aborted) console.error('CatalogSourceBanner: failed to load song source', err); }); // degrade: no banner
     return () => ctrl.abort();
   }, [songUid]);
@@ -96,7 +103,7 @@ export default function CatalogSourceBanner({
       {/* Provenance (Niveau 1) */}
       {source && (
         <p className="flex flex-wrap items-center gap-x-1 text-sm text-gray-500 dark:text-gray-400">
-          <span aria-hidden="true">↳</span>Added from the
+          <span aria-hidden="true">↳</span>{viaSuggestion ? 'In the' : 'Added from the'}
           <Link
             to={`/catalog/${source.uid}`}
             className="inline-flex min-h-[44px] items-center text-brand-600 dark:text-brand-400 hover:underline"

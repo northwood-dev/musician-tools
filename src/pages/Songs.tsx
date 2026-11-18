@@ -53,6 +53,7 @@ const initialSong: CreateSongDTO = {
   timeSignature: '',
   mode: '',
   lastPlayed: undefined,
+  catalogSuggestion: 'suggested', // #211: a song typed by hand is suggested by default
 };
 
 /** A copy of the set without that value (#188: one chip removes one value). */
@@ -2166,6 +2167,7 @@ function Songs() {
             onToggleTechnique={toggleFormTechnique}
             onSetInstrumentLinksForInstrument={setInstrumentLinksForInstrument}
             onSetStreamingLinks={setStreamingLinks}
+            onSetCatalogSuggestion={(catalogSuggestion) => setForm(prev => ({ ...prev, catalogSuggestion }))}
             onSubmit={handleSubmit}
             duplicate={liveDuplicate}
             onEditDuplicate={liveDuplicate ? () => openSongForEdit(liveDuplicate, editingUid === null) : undefined}

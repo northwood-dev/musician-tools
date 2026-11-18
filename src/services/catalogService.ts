@@ -117,6 +117,36 @@ export class CollectionNotFoundError extends Error {
 
 const API_BASE = '/api';
 
+// #212: a line of the curators' Suggestions queue: identical songs (case, accents and a
+// leading article ignored) suggested by `suggestedBy` users, shown with the latest one's
+// Catalog fields. `id` is the handle the queue's actions send back. `catalog`: an entry with
+// the same identity already exists (published, or a draft).
+export type CatalogSuggestionLine = {
+  id: string;
+  suggestedBy: number;
+  song: Pick<CatalogSong, 'title' | 'artist' | 'album' | 'key' | 'mode' | 'bpm' | 'timeSignature' | 'durationSeconds' | 'language' | 'genre' | 'streamingLinks' | 'pitchStandard'>;
+  catalog: { uid: string; published: boolean } | null;
+};
+export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
+
+// #215: Accept found an entry with the same identity (published, or a draft in progress).
+export class SuggestionInCatalogError extends Error {
+  catalogUid?: string;
+  constructor(catalogUid?: string) {
+    super('This song is already in the Catalog');
+    this.name = 'SuggestionInCatalogError';
+    this.catalogUid = catalogUid;
+  }
+}
+
+// #213: the line's songs are no longer waiting (their owner opted out, or a curator acted).
+export class SuggestionGoneError extends Error {
+  constructor() {
+    super('This suggestion is no longer waiting');
+    this.name = 'SuggestionGoneError';
+  }
+}
+
 export const catalogService = {
   // Browse the shared Catalog (any logged-in user). Returns the {items,total,page,limit}
   // envelope. `signal` lets the caller abort a superseded request (debounced search).
@@ -279,11 +309,14 @@ export const catalogService = {
 
   // Publish a draft (curator, 19.6). 409 = a PUBLISHED entry owns the canonical key
   // (CatalogConflictError carries it) ; 404 = gone ; 400 = missing title.
-  async publishCatalogEntry(uid: string): Promise<CatalogSong> {
+  // #215: `suggestionId` = the Suggestions line this draft was accepted from, so publishing
+  // links its songs even if the curator corrected the title or artist.
+  async publishCatalogEntry(uid: string, suggestionId?: string): Promise<CatalogSong> {
     const response = await apiFetch(`${API_BASE}/catalog/${uid}/publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
+      ...(suggestionId ? { body: JSON.stringify({ suggestionId }) } : {}),
     });
     if (response.status === 409) {
       const body = await response.json().catch(() => ({} as { entry?: CatalogSong }));
@@ -419,6 +452,61 @@ export const catalogService = {
     }
     if (!response.ok) {
       throw new Error('Failed to import the collection');
+    }
+    return response.json();
+  },
+
+  // #213: the line's songs leave the queue for good (their owners aren't told). 404 → the
+  // suggestion is no longer waiting (opted out, linked or already rejected meanwhile).
+  async rejectSuggestion(id: string): Promise<{ rejected: number }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/reject`, { method: 'POST', credentials: 'include' });
+    if (response.status === 404) {
+      throw new SuggestionGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to reject the suggestion');
+    }
+    return response.json();
+  },
+
+  // #214: link the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
+  // waiting; 409 → no published entry to link to (none, or a draft) — also "no longer waiting"
+  // from the curator's point of view: the queue just needs reloading.
+  async linkSuggestion(id: string): Promise<{ linked: number; catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/link`, { method: 'POST', credentials: 'include' });
+    if (response.status === 404 || response.status === 409) {
+      throw new SuggestionGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to link the suggestion');
+    }
+    return response.json();
+  },
+
+  // #215: a Catalog draft pre-filled from the line's song, for the curator to review and
+  // publish (publishing links the songs). 409 → an entry with that identity exists already.
+  async acceptSuggestion(id: string): Promise<{ catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/accept`, { method: 'POST', credentials: 'include' });
+    if (response.status === 409) {
+      const body = await response.json().catch(() => ({} as { catalogUid?: string }));
+      throw new SuggestionInCatalogError(body.catalogUid);
+    }
+    if (response.status === 404) {
+      throw new SuggestionGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to accept the suggestion');
+    }
+    return response.json();
+  },
+
+  // #212: the curators' queue of songs suggested to the Catalog (curator only → 403). One line
+  // per song; `pending` counts the lines a curator has something to do on (not the drafts in
+  // progress). No user, nothing personal, only official links.
+  async getSuggestions(signal?: AbortSignal): Promise<CatalogSuggestions> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions`, { credentials: 'include', signal });
+    if (!response.ok) {
+      throw new Error('Failed to load the suggestions');
     }
     return response.json();
   },

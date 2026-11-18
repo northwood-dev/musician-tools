@@ -12,7 +12,7 @@ const { sumMinutes } = require('../utils/sessionMerge');
 const { findOrCreateDaySession } = require('../services/daySession');
 // Story 19.8 — shared normalizers (reject-to-null; INTEGER columns can't 500 on a
 // decimal / non-numeric / out-of-INT4 input). normalizeLanguage moved here too.
-const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
+const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode, normalizeText } = require('../utils/normalize');
 
 const normalizeCapo = (value) => {
   if (value === undefined) return undefined;
@@ -22,20 +22,6 @@ const normalizeCapo = (value) => {
   return parsed;
 };
 
-// Trim a free-text field before persisting (title/artist/album). undefined =
-// field absent from the payload -> leave it untouched on update. Whitespace-only
-// collapses to null so a stray trailing space never becomes a distinct "empty"
-// value in the suggestion/filter lists. Mirrors normalizeLanguage's contract.
-const normalizeText = (value) => {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  // Non-string (number/boolean/object/array): leave it as-is so the caller's
-  // prior semantics hold (e.g. a numeric/falsy title still fails the required
-  // check) instead of coercing it into "0"/"false"/"[object Object]".
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-};
 
 // Story 17.1: look up the user's existing song that collides with (title, artist)
 // on the SAME key as the unique index (utils/songIdentity).
@@ -176,7 +162,7 @@ const createSong = async (req, res, next) => {
       return next(createError(401, 'Unauthorized'));
     }
 
-    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body || {};
+    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode, catalogSuggestion } = req.body || {};
 
     const linksError = songlistLinksError(streamingLinks) || instrumentLinksError(instrumentLinks);
     if (linksError) return next(createError(400, linksError));
@@ -225,7 +211,8 @@ const createSong = async (req, res, next) => {
       lastPlayed: lastPlayed ? new Date(lastPlayed) : null,
       streamingLinks,
       timeSignature,
-      mode: normalizeMode(mode) ?? null // canonical casing so the Mode select matches (21.x)
+      mode: normalizeMode(mode) ?? null, // canonical casing so the Mode select matches (21.x)
+      catalogSuggestion: catalogSuggestion === 'suggested' ? 'suggested' : 'private' // #211
     });
 
     res.status(201).json(song);
@@ -237,6 +224,18 @@ const createSong = async (req, res, next) => {
     logger.error('Error creating song:', error);
     next(createError(500, 'Error creating song'));
   }
+};
+
+// #211: the owner's checkbox moves a song between `private` and `suggested`. The form keeps a
+// rejected song's state as it is (`rejected`, shown checked) on every autosave, so `suggested`
+// only ever comes from the owner clicking the box — after a rejection, that suggests it again
+// (a quick uncheck + check may never send the `private` in between). A client never sets
+// `rejected` (a curator's decision). A song linked to the Catalog is in it: its state is frozen
+// (no checkbox; it decides the banner's wording).
+const nextCatalogSuggestion = (song, requested) => {
+  if (song.sourceCatalogUid) return song.catalogSuggestion;
+  if (requested === 'private' || requested === 'suggested') return requested;
+  return song.catalogSuggestion;
 };
 
 // PUT update song
@@ -263,7 +262,7 @@ const updateSong = async (req, res, next) => {
       return next(createError(404, 'Song not found'));
     }
 
-    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode } = req.body || {};
+    const { title, bpm, durationSeconds, key, capo, notes, instrument, artist, album, language, genre, pitchStandard, instrumentTuning, technique, instrumentLinks, instrumentDifficulty, myInstrumentUid, lastPlayed, streamingLinks, timeSignature, mode, catalogSuggestion } = req.body || {};
 
     const linksError = songlistLinksError(streamingLinks) || instrumentLinksError(instrumentLinks);
     if (linksError) return next(createError(400, linksError));
@@ -305,7 +304,8 @@ const updateSong = async (req, res, next) => {
       myInstrumentUid: myInstrumentUid !== undefined ? myInstrumentUid : song.myInstrumentUid,
       streamingLinks: streamingLinks !== undefined ? streamingLinks : song.streamingLinks,
       timeSignature: timeSignature !== undefined ? timeSignature : song.timeSignature,
-      mode: normalizedMode !== undefined ? normalizedMode : song.mode
+      mode: normalizedMode !== undefined ? normalizedMode : song.mode,
+      catalogSuggestion: nextCatalogSuggestion(song, catalogSuggestion)
     });
 
     res.json(song);

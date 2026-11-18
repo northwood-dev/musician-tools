@@ -74,4 +74,17 @@ const normalizeMode = (value) => {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 };
 
-module.exports = { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode, MODE_VALUES };
+// Trim a free-text field before persisting (title/artist/album). undefined = field absent from
+// the payload -> leave it untouched on update. Whitespace-only collapses to null so a stray space
+// never becomes a distinct "empty" value. Non-string (number/boolean/object) is left as-is so the
+// caller's required-title check still fails on it instead of coercing it into "0"/"false".
+// Shared by the song and Catalog controllers (#190 review: was copied in both).
+const normalizeText = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+};
+
+module.exports = { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode, normalizeText, MODE_VALUES };

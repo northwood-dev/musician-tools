@@ -15,6 +15,7 @@ import ProfilePage from './pages/ProfilePage';
 import CatalogAdmin from './pages/CatalogAdmin';
 import CatalogManage from './pages/CatalogManage';
 import CatalogArtistAliases from './pages/CatalogArtistAliases';
+import CatalogSuggestions from './pages/CatalogSuggestions';
 import CatalogCollectionCompose from './pages/CatalogCollectionCompose';
 import CatalogCollection from './pages/CatalogCollection';
 import Catalog from './pages/Catalog';
@@ -69,6 +70,8 @@ export const routes: RouteObject[] = [
               { path: 'catalog/manage', element: <CatalogManage /> },
               // #76: curator page for artist aliases. Static path, no clash with catalog/:uid.
               { path: 'catalog/manage/aliases', element: <CatalogArtistAliases /> },
+              // #212: curators' queue of songs suggested from Songlists. Static path, like aliases.
+              { path: 'catalog/manage/suggestions', element: <CatalogSuggestions /> },
               // Story 20.2 — curator Collection composer (search + Add/Remove, rename,
               // delete). Deeper static+:uid path; no clash with catalog/:uid.
               { path: 'catalog/manage/collections/:uid', element: <CatalogCollectionCompose /> },

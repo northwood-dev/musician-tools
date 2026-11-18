@@ -28,7 +28,14 @@ export type Song = {
   // Story 21.1/21.2: present (from getSong) when this song is a Catalog copy AND the
   // source is still published. `drift` = the source changed since this copy was synced.
   sourceCatalog?: { uid: string; updatedAt: string; drift: boolean };
+  // Story 19.4: the Catalog entry this song is linked to (added from it, or #190: accepted).
+  sourceCatalogUid?: string | null;
+  // #211: suggested to the Catalog? Set by the owner's checkbox (private ↔ suggested);
+  // `rejected` only by a curator. The server keeps a rejected song rejected on an edit.
+  catalogSuggestion?: CatalogSuggestion;
 };
+
+export type CatalogSuggestion = 'private' | 'suggested' | 'rejected';
 
 export type CreateSongDTO = Omit<Song, 'uid' | 'createdAt' | 'updatedAt'>;
 export type UpdateSongDTO = Partial<CreateSongDTO>;

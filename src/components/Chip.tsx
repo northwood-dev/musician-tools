@@ -8,6 +8,8 @@ import type { ReactNode, Ref } from 'react';
 //   <ToggleChip>     a filter or option that is on or off (aria-pressed).
 //   <Chip>           a static chip holding other content (a link and its own ✕ button).
 //   <Tag>            a small static label (e.g. "Draft").
+//   <CountBadge>     a small count on a button or link (e.g. Suggestions waiting). Decorative:
+//                    the control's own name carries the number for screen readers.
 const SHAPE = 'inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-sm motion-safe:transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 const ON = 'bg-brand-500 text-white hover:bg-brand-600 dark:bg-brand-600 dark:hover:bg-brand-700';
 const OFF = 'border border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700';
@@ -76,6 +78,14 @@ export function Tag({ children, title }: { children: ReactNode; title?: string }
   return (
     <span className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200" title={title}>
       {children}
+    </span>
+  );
+}
+
+export function CountBadge({ count }: { count: number }) {
+  return (
+    <span aria-hidden="true" className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-brand-500 px-1.5 text-xs font-semibold text-white dark:bg-brand-400 dark:text-gray-900">
+      {count}
     </span>
   );
 }

@@ -34,6 +34,7 @@ const routeTree = (
     <Route path="/catalog/admin" element={<CatalogAdmin />} />
     <Route path="/catalog/admin/:uid" element={<CatalogAdmin />} />
     <Route path="/catalog/manage" element={<div>manage-marker</div>} />
+    <Route path="/catalog/manage/suggestions" element={<div>suggestions-marker</div>} />
     <Route path="/" element={<div>home-marker</div>} />
   </Routes>
 );
@@ -152,6 +153,20 @@ test('a draft shows a Publish button; publishing flips it and returns to the hub
 
   await waitFor(() => expect(cat.publishCatalogEntry).toHaveBeenCalledWith('c1'));
   await screen.findByText('manage-marker');
+});
+
+test('#215: a draft opened from an accepted suggestion publishes with it, then returns to the queue', async () => {
+  mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
+  cat.getCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Wonderwall', artist: 'Oasis', publishedAt: null });
+  cat.updateCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Wonderwall' });
+  cat.publishCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Wonderwall', publishedAt: '2026-01-01' });
+  renderAt('/catalog/admin/c1?suggestion=sug-1');
+
+  await waitFor(() => expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Wonderwall'));
+  fireEvent.click(screen.getByRole('button', { name: 'Publish' }));
+
+  await waitFor(() => expect(cat.publishCatalogEntry).toHaveBeenCalledWith('c1', 'sug-1'));
+  await screen.findByText('suggestions-marker');
 });
 
 test('publish 409 (a published entry owns the key) shows a calm banner, stays a draft', async () => {

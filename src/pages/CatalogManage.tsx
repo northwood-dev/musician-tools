@@ -20,7 +20,7 @@ import { Page } from '../components/Page';
 import { Tabs } from '../components/Tabs';
 import { Panel } from '../components/Panel';
 import { EmptyState } from '../components/EmptyState';
-import { Tag } from '../components/Chip';
+import { CountBadge, Tag } from '../components/Chip';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -207,6 +207,18 @@ export default function CatalogManage() {
     }
   };
 
+  // #212: how many suggestions wait in the curators' queue (the Suggestions button's count).
+  // Best effort: a failed count just shows the button without one.
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
+  useEffect(() => {
+    if (!user?.isCurator) return;
+    const ctrl = new AbortController();
+    catalogService.getSuggestions(ctrl.signal)
+      .then(r => { if (!ctrl.signal.aborted) setPendingSuggestions(r?.pending ?? 0); })
+      .catch(() => { /* no count */ });
+    return () => ctrl.abort();
+  }, [user?.isCurator]);
+
   // Role gate (after hooks, so hook order is stable). Not a 404 oracle.
   if (!user?.isCurator) {
     return <Navigate to="/" replace />;
@@ -378,6 +390,14 @@ export default function CatalogManage() {
       title="Manage the Catalog"
       actions={(
         <>
+          <Link
+            to="/catalog/manage/suggestions"
+            className="btn-secondary btn-sm shrink-0"
+            aria-label={pendingSuggestions ? `Suggestions, ${pendingSuggestions} waiting` : 'Suggestions'}
+          >
+            Suggestions
+            {pendingSuggestions ? <CountBadge count={pendingSuggestions} /> : null}
+          </Link>
           <Link to="/catalog/manage/aliases" className="btn-secondary btn-sm shrink-0">Artist aliases</Link>
           {tab === 'entries' && (
             <Link to="/catalog/admin" className="btn-primary btn-sm shrink-0">New entry</Link>

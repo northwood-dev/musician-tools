@@ -1,5 +1,7 @@
 'use strict';
 
+const { SUGGESTION_STATES } = require('../utils/catalogSuggestion');
+
 module.exports = (sequelize, DataTypes) => {
   const Song = sequelize.define('Song', {
     uid: {
@@ -144,6 +146,17 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
       defaultValue: null,
       field: 'source_catalog_synced_at'
+    },
+    catalogSuggestion: {
+      // #190/#211: is this hand-typed song suggested to the Catalog? `private` by DEFAULT so
+      // that any creation path other than the "Add song" form (Add from the Catalog, a
+      // collection, a future one) can never share a song whose owner didn't see the checkbox.
+      // `rejected` is set by a curator only. The queue reads this — no copy (one source of truth).
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'private',
+      validate: { isIn: [SUGGESTION_STATES] },
+      field: 'catalog_suggestion'
     }
   }, {
     tableName: 'Songs',

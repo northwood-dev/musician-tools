@@ -10,31 +10,16 @@ const { Op, fn, col, cast, where: whereFn } = require('sequelize');
 const createError = require('http-errors');
 const { catalogLinksError, refreshedLinks } = require('../utils/streamingLinks');
 const logger = require('../logger');
+const { linkSuggestionsToPublished } = require('../services/catalogSuggestionLinks');
 const { isUuid } = require('../utils/uuid');
 const { sameTitle, sameArtist, sameAlias, containsSearchKey, withoutLeadingArticle, searchKey } = require('../utils/songIdentity');
 // Story 19.8 — shared normalizers (bpm/pitchStandard reject-to-null on the INTEGER
 // columns ; language title-cased like the Song form ; durationSeconds factored out).
-const { normalizeInt, normalizeDurationSeconds, normalizeLanguage, normalizeMode } = require('../utils/normalize');
-
-// Trim a free-text field before persisting (title/artist/album). undefined = field
-// absent from the payload -> leave it untouched on update. Whitespace-only -> null.
-// Non-string left as-is so the required-title check still fails on a falsy title.
-// Replicated from songcontroller (additive strict: we do not import/modify it).
-const normalizeText = (value) => {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
-  if (typeof value !== 'string') return value;
-  const trimmed = value.trim();
-  return trimmed === '' ? null : trimmed;
-};
+const { normalizeText } = require('../utils/normalize');
+const { INTRINSIC_FIELDS, pickIntrinsic } = require('../utils/catalogFields');
 
 
-// The intrinsic subset copied 1:1 from CatalogSong to a personal Song (story 19.4).
-// Instrument/personal fields are NOT part of the Catalog (decision DL-17).
-const INTRINSIC_FIELDS = [
-  'key', 'bpm', 'mode', 'timeSignature', 'durationSeconds',
-  'language', 'genre', 'streamingLinks', 'pitchStandard'
-];
+
 
 // Look up the existing catalog entry that collides with (title, artist) on the
 // SAME key as the GLOBAL unique index (utils/songIdentity).
@@ -62,19 +47,6 @@ async function respondDuplicateCatalogEntry(res, error, title, artist, excludeUi
   return true;
 }
 
-// Pick the intrinsic fields present in the payload into a create/update object.
-function pickIntrinsic(body) {
-  const out = {};
-  for (const f of INTRINSIC_FIELDS) {
-    if (body[f] !== undefined) out[f] = body[f];
-  }
-  if (out.durationSeconds !== undefined) out.durationSeconds = normalizeDurationSeconds(out.durationSeconds);
-  if (out.bpm !== undefined) out.bpm = normalizeInt(out.bpm, { min: 1, max: 1000 });
-  if (out.pitchStandard !== undefined) out.pitchStandard = normalizeInt(out.pitchStandard, { min: 380, max: 500 });
-  if (out.language !== undefined) out.language = normalizeLanguage(out.language); // title-case parity with Song (19.8)
-  if (out.mode !== undefined) out.mode = normalizeMode(out.mode); // canonical casing so copies' Mode select matches (21.x)
-  return out;
-}
 
 // POST /api/catalog (curator) — create a catalog entry.
 const createCatalogEntry = async (req, res, next) => {
@@ -227,6 +199,15 @@ const publishCatalogEntry = async (req, res, next) => {
         // not earn, and that needs a human, not a stack trace swallowed into a generic 500.
         logger.error('Catalog entry published but source_catalog_synced_at NOT re-stamped — holders will see a false update banner:', updated.uid, syncError);
       }
+    }
+
+    // #215: link the songs suggested from Songlists that this entry answers. Same reasoning as
+    // the re-stamp above: the publish succeeded, so a failure here is logged, not a 500 — the
+    // songs simply stay in the queue, where "Link to it" can still link them.
+    try {
+      await linkSuggestionsToPublished(updated, req.body && req.body.suggestionId);
+    } catch (linkError) {
+      logger.error('Catalog entry published but suggested songs NOT linked (they stay in the queue):', updated.uid, linkError);
     }
 
     res.json(updated);

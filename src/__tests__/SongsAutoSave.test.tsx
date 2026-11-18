@@ -148,6 +148,25 @@ describe('Songs — auto-create at debounce (story 17.2)', () => {
     expect(createSong).toHaveBeenCalledTimes(1);
   });
 
+  test('#211: a new song is created suggested to the Catalog; unchecking the box makes it private', async () => {
+    createSong.mockResolvedValueOnce({ uid: 'new-s', title: 'Mine', artist: '', instrument: [], catalogSuggestion: 'private' });
+    await openAddForm();
+    const box = screen.getByRole('checkbox', { name: 'Suggest this song for the Catalog' });
+    expect(box).toBeChecked();
+    fireEvent.click(box);
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Mine' } });
+    await waitFor(() => expect(createSong).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    expect(createSong.mock.calls[0][0]).toEqual(expect.objectContaining({ title: 'Mine', catalogSuggestion: 'private' }));
+  });
+
+  test('#211: left checked, the new song is created suggested', async () => {
+    createSong.mockResolvedValueOnce({ uid: 'new-t', title: 'Cover', artist: '', instrument: [], catalogSuggestion: 'suggested' });
+    await openAddForm();
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Cover' } });
+    await waitFor(() => expect(createSong).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    expect(createSong.mock.calls[0][0]).toEqual(expect.objectContaining({ catalogSuggestion: 'suggested' }));
+  });
+
   test('an empty title never creates a song', async () => {
     await openAddForm();
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: '   ' } }); // whitespace only

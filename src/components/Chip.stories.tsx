@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
-import { Chip, RemovableChip, ToggleChip, Tag } from './Chip';
+import { Chip, CountBadge, RemovableChip, ToggleChip, Tag } from './Chip';
 import { CloseButton } from './CloseButton';
 
 // The chip block (#159): removable, toggle, static (holding a link and its own ✕) and tag.
@@ -28,6 +28,7 @@ export const All: Story = {
           <CloseButton label="Remove YouTube link" onClick={fn()} tone="inherit" className="-my-1 -mr-2" />
         </Chip>
         <Tag>Draft</Tag>
+        <button type="button" className="btn-secondary btn-sm" aria-label="Suggestions, 3 waiting">Suggestions<CountBadge count={3} /></button>
       </div>
     </div>
   ),

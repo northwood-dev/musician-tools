@@ -383,3 +383,59 @@ test('an invalid duration is announced at once (role="alert") (#27)', () => {
   fireEvent.blur(input);
   expect(screen.getByRole('alert')).toHaveTextContent(/seconds must be 0–59/i);
 });
+
+// #211: a song typed by hand is suggested to the Catalog unless its owner unchecks the box.
+describe('Suggest this song for the Catalog (#211)', () => {
+  const box = () => screen.getByRole('checkbox', { name: 'Suggest this song for the Catalog' });
+
+  function renderWithSuggestion(overrides: Partial<CreateSongDTO>) {
+    const onSetCatalogSuggestion = jest.fn();
+    render(
+      <SongForm
+        mode="add"
+        form={{ ...baseForm, ...overrides } as CreateSongDTO}
+        loading={false}
+        onChange={jest.fn()}
+        onToggleGenre={jest.fn()}
+        onToggleLanguage={jest.fn()}
+        onChangeInstruments={jest.fn()}
+        onSetTechniques={jest.fn()}
+        onSetMyInstrumentUid={jest.fn()}
+        onToggleTechnique={jest.fn()}
+        onSubmit={jest.fn()}
+        onSetCatalogSuggestion={onSetCatalogSuggestion}
+      />
+    );
+    return { onSetCatalogSuggestion };
+  }
+
+  test('is checked for a suggested song and says what is shared and what never is', () => {
+    renderWithSuggestion({ catalogSuggestion: 'suggested' });
+    expect(box()).toBeChecked();
+    expect(screen.getByText(/never your notes or instruments/i)).toBeInTheDocument();
+    expect(screen.getByText(/uncheck it for your own compositions/i)).toBeInTheDocument();
+  });
+
+  test('unchecking makes the song private, checking suggests it', () => {
+    const { onSetCatalogSuggestion } = renderWithSuggestion({ catalogSuggestion: 'suggested' });
+    fireEvent.click(box());
+    expect(onSetCatalogSuggestion).toHaveBeenLastCalledWith('private');
+  });
+
+  test('a private song is unchecked; checking suggests it', () => {
+    const { onSetCatalogSuggestion } = renderWithSuggestion({ catalogSuggestion: 'private' });
+    expect(box()).not.toBeChecked();
+    fireEvent.click(box());
+    expect(onSetCatalogSuggestion).toHaveBeenLastCalledWith('suggested');
+  });
+
+  test('a rejected song shows the box checked (the owner is not told)', () => {
+    renderWithSuggestion({ catalogSuggestion: 'rejected' });
+    expect(box()).toBeChecked();
+  });
+
+  test('a song linked to the Catalog has no checkbox', () => {
+    renderWithSuggestion({ catalogSuggestion: 'private', sourceCatalogUid: 'cat-1' });
+    expect(screen.queryByRole('checkbox', { name: 'Suggest this song for the Catalog' })).not.toBeInTheDocument();
+  });
+});

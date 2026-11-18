@@ -17,9 +17,10 @@ jest.mock('../models', () => ({
   ArtistAlias: {
     findOne: jest.fn(),
   },
+  sequelize: { query: jest.fn().mockResolvedValue([[], {}]) },
 }));
 
-const { CatalogSong, Song, User, ArtistAlias } = require('../models');
+const { CatalogSong, Song, User, ArtistAlias, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const controller = require('../controllers/catalogcontroller');
 
@@ -435,6 +436,8 @@ describe('catalogcontroller', () => {
     expect(arg.capo).toBeUndefined();
     expect(arg.notes).toBeUndefined();
     expect(arg.myInstrumentUid).toBeUndefined();
+    // #211: never suggested — left to the column default (private); it is in the Catalog already
+    expect(arg.catalogSuggestion).toBeUndefined();
     expect(arg.userUid).toBe('u1');
     expect(res.status).toHaveBeenCalledWith(201);
     expect(next).not.toHaveBeenCalled();
@@ -559,6 +562,32 @@ describe('catalogcontroller', () => {
     await controller.addToSonglist({ params: { uid: UID }, session: { user: 'u1' } }, mockRes(), next);
     expect(next.mock.calls[0][0].status).toBe(404);
     expect(Song.create).not.toHaveBeenCalled();
+  });
+
+  // #215: publishing links the songs suggested from Songlists (the entry's identity, plus the
+  // suggestion the curator accepted — they may have corrected a typo in the title).
+  test('#215: publishCatalogEntry links the suggested songs, passing the accepted suggestion', async () => {
+    const freshUpdatedAt = new Date('2026-11-18T10:00:00.000Z');
+    const SUG = '11111111-1111-4111-8111-111111111111';
+    const entry = { uid: UID, title: 'Wonderwall', artist: 'Oasis', publishedAt: null, update: jest.fn(async (u) => ({ uid: UID, ...u, updatedAt: freshUpdatedAt })) };
+    CatalogSong.findByPk.mockResolvedValue(entry);
+    sequelize.query.mockResolvedValueOnce([[{ uid: 's1' }, { uid: 's2' }], {}]);
+    const res = mockRes();
+    await controller.publishCatalogEntry({ params: { uid: UID }, body: { suggestionId: SUG } }, res, mockNext());
+    const options = sequelize.query.mock.calls.at(-1)[1];
+    expect(options.replacements).toEqual({ catalogUid: UID, suggestionId: SUG, syncedAt: freshUpdatedAt });
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ uid: UID }));
+  });
+
+  test('#215: a failed linking does not fail the publish (it is logged)', async () => {
+    const entry = { uid: UID, title: 'Wonderwall', artist: 'Oasis', publishedAt: null, update: jest.fn(async (u) => ({ uid: UID, ...u, updatedAt: new Date() })) };
+    CatalogSong.findByPk.mockResolvedValue(entry);
+    sequelize.query.mockRejectedValueOnce(new Error('db down'));
+    const res = mockRes();
+    const next = mockNext();
+    await controller.publishCatalogEntry({ params: { uid: UID } }, res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalled();
   });
 
   test('publishCatalogEntry sets publishedAt (Date) and returns the entry', async () => {

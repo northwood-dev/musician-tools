@@ -50,6 +50,19 @@ beforeEach(() => {
   cat.deleteCatalogEntry.mockResolvedValue(undefined);
 });
 
+test('#212: a Suggestions link shows how many suggestions are waiting', async () => {
+  cat.getSuggestions.mockResolvedValue({ pending: 3, suggestions: [] });
+  renderManage();
+  const link = await screen.findByRole('link', { name: 'Suggestions, 3 waiting' });
+  expect(link).toHaveAttribute('href', '/catalog/manage/suggestions');
+});
+
+test('#212: with nothing waiting, the Suggestions link has no count', async () => {
+  cat.getSuggestions.mockResolvedValue({ pending: 0, suggestions: [] });
+  renderManage();
+  expect(await screen.findByRole('link', { name: 'Suggestions' })).toBeInTheDocument();
+});
+
 test('a curator sees the list of entries + a New entry shortcut', async () => {
   renderManage();
   await screen.findByText('Zombie');
