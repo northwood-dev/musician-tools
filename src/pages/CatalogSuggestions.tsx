@@ -96,7 +96,7 @@ export default function CatalogSuggestions() {
 
   return (
     <Page
-      width="content"
+      width="wide"
       title="Suggestions"
       description="Songs typed into a Songlist and suggested to the Catalog by their owners. Identical songs are grouped; who suggested them is never shown."
     >
@@ -118,8 +118,7 @@ export default function CatalogSuggestions() {
           <table className="min-w-full text-sm">
             <thead className="bg-gray-50 dark:bg-gray-800">
               <tr className="text-left text-gray-500 dark:text-gray-400">
-                <th scope="col" className="px-3 py-2 font-medium">Title</th>
-                <th scope="col" className="px-3 py-2 font-medium">Artist</th>
+                <th scope="col" className="px-3 py-2 font-medium">Song</th>
                 <th scope="col" className="px-3 py-2 font-medium">Details</th>
                 <th scope="col" className="px-3 py-2 font-medium">Suggested</th>
                 <th scope="col" className="px-3 py-2 font-medium">Catalog</th>
@@ -129,8 +128,10 @@ export default function CatalogSuggestions() {
             <tbody>
               {suggestions.map(line => (
                 <tr key={line.id} className="border-t border-gray-100 dark:border-gray-700">
-                  <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">{line.song.title}</td>
-                  <td className="px-3 py-2 text-gray-700 dark:text-gray-200">{line.song.artist}</td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-gray-900 dark:text-gray-100">{line.song.title}</div>
+                    <div className="text-gray-600 dark:text-gray-300">{line.song.artist}</div>
+                  </td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">{details(line.song)}</td>
                   <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">
                     suggested by {line.suggestedBy} {line.suggestedBy === 1 ? 'user' : 'users'}
