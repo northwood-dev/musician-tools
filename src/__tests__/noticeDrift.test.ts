@@ -8,6 +8,16 @@ import { join, relative } from 'path';
 // states use other shades and are not matched.
 const SRC = join(__dirname, '..');
 const OWNER = 'components/Notice.tsx';
+const LIVE_NOTICE_OWNER = 'components/LiveNotice.tsx';
+
+// #225: a message that must be read out goes through <LiveNotice>, which keeps its region on
+// the page. A hand-written `role="alert"` / `role="status"` element wrapping a <Notice> (only an
+// expression between them, e.g. `{error && <Notice …`) is the copy it replaced. Read over the
+// whole file: such a wrapper usually spans lines. Returns the 1-based lines where they start.
+const HAND_WRITTEN_LIVE_REGION = /role=["'](alert|status)["'][^>]*>\s*\{[^<]*<Notice\b/g;
+function handWrittenLiveRegions(source: string): number[] {
+  return [...source.matchAll(HAND_WRITTEN_LIVE_REGION)].map(m => source.slice(0, m.index).split('\n').length);
+}
 
 // Each recipe is a set of classes that must ALL be on one line, in any order.
 const RECIPES: [string, RegExp[]][] = [
@@ -38,4 +48,22 @@ test('no message box recipe is written by hand outside <Notice>', () => {
     });
   }
   expect(offenders).toEqual([]);
+});
+
+test('no announcement region is written by hand around a <Notice> (#225: use <LiveNotice>)', () => {
+  const offenders: string[] = [];
+  for (const file of sourceFiles(SRC)) {
+    const rel = relative(SRC, file);
+    if (rel === LIVE_NOTICE_OWNER) continue;
+    for (const line of handWrittenLiveRegions(readFileSync(file, 'utf8'))) offenders.push(`${rel}:${line} — a hand-written region around a Notice`);
+  }
+  expect(offenders).toEqual([]);
+});
+
+test('the live-region rule catches the wrappers, even over several lines, and nothing else (probe)', () => {
+  expect(handWrittenLiveRegions('<div role="alert">{error && <Notice tone="error" announce="none">{error}</Notice>}</div>')).toEqual([1]);
+  expect(handWrittenLiveRegions('x\n<div role="status" aria-label="Result">\n  {done && (\n    <Notice tone="success">{done}</Notice>\n  )}\n</div>')).toEqual([2]);
+  expect(handWrittenLiveRegions('<div role="status" aria-label="History status">{sessions === null ? "Loading…" : null}</div>')).toEqual([]);
+  expect(handWrittenLiveRegions('<div role="alert"><p>Boom</p><Notice tone="error">x</Notice></div>')).toEqual([]); // a tag in between: not a bare wrapper
+  expect(handWrittenLiveRegions('<LiveNotice tone="error">{error}</LiveNotice>')).toEqual([]);
 });

@@ -14,7 +14,7 @@ import { instrumentTypeOptions } from '../constants/instrumentTypes';
 import { digitsOnly } from '../utils/digitsOnly';
 import { secondsToWholeMinutes } from '../utils/duration';
 import { ErrorBanner } from '../components/ErrorBanner';
-import { Notice } from '../components/Notice';
+import { LiveNotice } from '../components/LiveNotice';
 import { LoadFailed } from '../components/LoadFailed';
 import { Toast } from '../components/Toast';
 import { Page } from '../components/Page';
@@ -721,22 +721,17 @@ function MySessionsPage() {
       <Toast message={toastMessage} />
       <ErrorBanner message={error} onDismiss={() => setError(null)} />
       <Page width="wide" title="My sessions" className="space-y-6">
-        {/* #223: always mounted (#153) — only the message comes and goes. */}
-        <div role="alert" aria-label="Songs and topics error">
-          {songsAndTopicsFailed && (
-            <Notice
-              tone="error"
-              announce="none"
-              action={(
-                <button type="button" className="btn-secondary btn-sm" aria-label="Retry loading songs and topics" onClick={loadSongsAndTopics}>
-                  Retry
-                </button>
-              )}
-            >
-              Couldn't load your songs and topics: the song and topic menus may be incomplete.
-            </Notice>
+        <LiveNotice
+          tone="error"
+          label="Songs and topics error"
+          action={(
+            <button type="button" className="btn-secondary btn-sm" aria-label="Retry loading songs and topics" onClick={loadSongsAndTopics}>
+              Retry
+            </button>
           )}
-        </div>
+        >
+          {songsAndTopicsFailed && "Couldn't load your songs and topics: the song and topic menus may be incomplete."}
+        </LiveNotice>
 
         {/* relative z-20: the entry picker dropdown overflows the card bottom —
             this lifts the whole form card above the History card so the dropdown

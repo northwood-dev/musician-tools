@@ -8,7 +8,7 @@ import { LoadFailed } from '../components/LoadFailed';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
-import { Notice } from '../components/Notice';
+import { LiveNotice } from '../components/LiveNotice';
 import { Tag } from '../components/Chip';
 
 // #190 / #212: the curators' queue of songs typed into Songlists and suggested to the Catalog.
@@ -101,9 +101,8 @@ export default function CatalogSuggestions() {
       title="Suggestions"
       description="Songs typed into a Songlist and suggested to the Catalog by their owners. Identical songs are grouped; who suggested them is never shown."
     >
-      {/* Always mounted: a region that appears with its message may not be announced (#153). */}
-      <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
-      <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
+      <LiveNotice tone="error" className="mb-4">{error}</LiveNotice>
+      <LiveNotice tone="success" className="mb-4">{doneMessage}</LiveNotice>
       <LoadFailed failed={loadFailed} onRetry={load}>Couldn't load the suggestions.</LoadFailed>
       {!loadFailed && suggestions === null && <ListSkeleton rows={6} />}
       {!loadFailed && suggestions?.length === 0 && (

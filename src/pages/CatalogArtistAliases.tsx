@@ -7,7 +7,7 @@ import { LoadFailed } from '../components/LoadFailed';
 import { artistAliasService, ArtistAliasConflictError } from '../services/artistAliasService';
 import type { ArtistAliasWithCount } from '../services/artistAliasService';
 import { searchKey } from '../utils/searchKey';
-import { Notice } from '../components/Notice';
+import { LiveNotice } from '../components/LiveNotice';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 
@@ -117,10 +117,8 @@ export default function CatalogArtistAliases() {
         </button>
       </form>
 
-      {/* Always mounted: a region that appears with its message may not be announced. The
-          regions announce; the Notice inside only draws the box (#153). */}
-      <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
-      <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
+      <LiveNotice tone="error" className="mb-4">{error}</LiveNotice>
+      <LiveNotice tone="success" className="mb-4">{doneMessage}</LiveNotice>
 
       <LoadFailed failed={loadFailed} onRetry={load}>Couldn't load the artist aliases.</LoadFailed>
 
