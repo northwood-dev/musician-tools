@@ -15,7 +15,7 @@ test('the same region then holds the message', () => {
   expect(region).toHaveTextContent('"Wonderwall" rejected.');
 });
 
-test('an error is an alert; other tones are a status, unless overridden', () => {
+test('an error is an alert', () => {
   render(<LiveNotice tone="error">Could not reject.</LiveNotice>);
   expect(screen.getByRole('alert')).toHaveTextContent('Could not reject.');
 });
@@ -33,4 +33,9 @@ test('the box itself is not a second live region', () => {
 test('an action sits in the box', () => {
   render(<LiveNotice tone="error" action={<button type="button">Retry</button>}>Boom</LiveNotice>);
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+});
+
+test('0 is a message, not "nothing"', () => {
+  render(<LiveNotice tone="info">{0}</LiveNotice>);
+  expect(screen.getByRole('status')).toHaveTextContent('0');
 });
