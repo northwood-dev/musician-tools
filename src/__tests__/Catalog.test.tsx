@@ -77,7 +77,8 @@ test('empty results show the no-match message when a query is active', async () 
 test('a fetch error shows Retry, and Retry actually refetches (not a no-op)', async () => {
   svc.listCatalog.mockRejectedValueOnce(new Error('boom'));
   render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
-  await screen.findByText('Something went wrong.');
+  // #216: says what didn't load, announced at once
+  expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load the Catalog.");
   const callsAfterError = svc.listCatalog.mock.calls.length;
 
   svc.listCatalog.mockResolvedValue(resp([{ uid: 'a', title: 'Zombie', artist: 'The Cranberries' }], 1));

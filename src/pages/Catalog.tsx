@@ -6,6 +6,7 @@ import CatalogList from '../components/CatalogList';
 import CatalogFilters from '../components/CatalogFilters';
 import CollectionCard from '../components/CollectionCard';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 import { Pagination } from '../components/Pagination';
 import { useSonglistMatcher } from '../hooks/useSonglistMatcher';
 import { useRowSelection } from '../hooks/useRowSelection';
@@ -240,16 +241,9 @@ export default function Catalog() {
       )}
 
       {error && (
-        <div className="text-center py-10">
-          <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-          <button
-            type="button"
-            className="btn-secondary mt-3"
-            onClick={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}
-          >
-            Retry
-          </button>
-        </div>
+        <LoadFailed onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
+          Couldn't load the Catalog.
+        </LoadFailed>
       )}
 
       {/* Bulk bar + recap live OUTSIDE the results branch: a filter with no matches (or
