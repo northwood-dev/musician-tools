@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { CloseButton } from './CloseButton';
+import { defaultAnnounce } from './noticeAnnounce';
 
 // The message block of the design pass (#141, #153): one recipe per tone, dark mode
 // included, instead of the red / amber / green / grey boxes copied by hand page by page.
@@ -38,7 +39,7 @@ const SHAPE = {
 export function Notice({
   tone,
   children,
-  announce = tone === 'error' ? 'alert' : 'status',
+  announce = defaultAnnounce(tone),
   label,
   onDismiss,
   dismissLabel = 'Dismiss',
