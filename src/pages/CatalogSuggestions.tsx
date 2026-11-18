@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { catalogService, SuggestionGoneError, SuggestionInCatalogError } from '../services/catalogService';
 import type { CatalogSuggestionLine } from '../services/catalogService';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
@@ -104,10 +105,7 @@ export default function CatalogSuggestions() {
       <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
       <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
       {loadFailed && (
-        <div className="text-center py-10">
-          <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-          <button type="button" className="btn-secondary mt-3" onClick={load}>Retry</button>
-        </div>
+        <LoadFailed onRetry={load}>Couldn't load the suggestions.</LoadFailed>
       )}
       {!loadFailed && suggestions === null && <ListSkeleton rows={6} />}
       {!loadFailed && suggestions?.length === 0 && (

@@ -173,7 +173,8 @@ test('cancelling a removal removes nothing', async () => {
 test('a failing list says so and offers a retry that works', async () => {
   svc.listWithCounts.mockRejectedValue(new Error('boom'));
   renderPage();
-  await screen.findByText('Something went wrong.');
+  // #216: says what didn't load, announced
+  expect((await screen.findByText("Couldn't load the artist aliases.")).closest('[role="alert"]')).not.toBeNull();
 
   svc.listWithCounts.mockResolvedValue([RHCP]);
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));

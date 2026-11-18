@@ -1,12 +1,14 @@
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
 
-// #158 / #173 drift guard: a list loads with <ListSkeleton>, an empty list uses
-// <EmptyState>, and visible text uses the real ellipsis "…". Any word followed by three
-// dots ("Saving...", "Search songs..."), or a hand-written centred grey empty-state
-// paragraph, fails here.
+// #158 / #173 / #216 drift guard: a list loads with <ListSkeleton>, an empty list uses
+// <EmptyState>, a list that failed to load uses <LoadFailed>, and visible text uses the
+// real ellipsis "…". Any word followed by three dots ("Saving...", "Search songs..."), a
+// hand-written centred grey empty-state paragraph, or a hand-written failed-load state
+// ("Something went wrong." as text, a centred secondary Retry) fails here.
 const SRC = join(__dirname, '..');
 const OWNER = 'components/EmptyState.tsx';
+const LOAD_FAILED_OWNER = 'components/LoadFailed.tsx';
 
 // #173: a word directly followed by three dots, in visible text ("Saving...", "Search
 // songs..."). JavaScript spread / rest (`{...props}`, `[...list]`, `(...args)`) has no
@@ -26,7 +28,7 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-test('no three-dot ellipsis in visible text, and no hand-written empty state', () => {
+test('no three-dot ellipsis in visible text, and no hand-written empty or failed-load state', () => {
   const offenders: string[] = [];
   for (const file of sourceFiles(SRC)) {
     const rel = relative(SRC, file);
@@ -34,6 +36,9 @@ test('no three-dot ellipsis in visible text, and no hand-written empty state', (
       for (const text of threeDotTexts(line)) offenders.push(`${rel}:${i + 1} — "${text}" (use the real ellipsis …)`);
       if (rel !== OWNER && /\btext-center\b/.test(line) && /\btext-gray-500\b/.test(line) && /\bpy-(6|8|10)\b/.test(line)) {
         offenders.push(`${rel}:${i + 1} — a hand-written empty state (use <EmptyState>)`);
+      }
+      if (rel !== LOAD_FAILED_OWNER && (/>\s*Something went wrong\.\s*</.test(line) || (/\bbtn-secondary\b/.test(line) && /\bmt-3\b/.test(line) && /\bRetry\b/.test(line)))) {
+        offenders.push(`${rel}:${i + 1} — a hand-written failed-load state (use <LoadFailed>)`);
       }
     });
   }

@@ -6,6 +6,7 @@ import type { CatalogListResponse, CatalogCollection } from '../services/catalog
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { BulkActionBar } from '../components/BulkActionBar';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 import { Pagination } from '../components/Pagination';
 import { Toast } from '../components/Toast';
 import { RowSelectionCheckbox, SelectAllCheckbox } from '../components/SelectionCheckbox';
@@ -431,10 +432,7 @@ export default function CatalogManage() {
             </div>
 
             {collectionsError ? (
-              <div className="text-center py-10">
-                <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-                <button type="button" className="btn-secondary mt-3" onClick={() => setCollectionsToken(t => t + 1)}>Retry</button>
-              </div>
+              <LoadFailed onRetry={() => setCollectionsToken(t => t + 1)}>Couldn't load the collections.</LoadFailed>
             ) : collections === null ? (
               <ListSkeleton rows={4} />
             ) : collections.length === 0 ? (
@@ -603,16 +601,9 @@ export default function CatalogManage() {
         )}
 
         {error && (
-          <div className="text-center py-10">
-            <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-            <button
-              type="button"
-              className="btn-secondary mt-3"
-              onClick={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}
-            >
-              Retry
-            </button>
-          </div>
+          <LoadFailed onRetry={() => { setError(false); setLoading(true); setRefetchToken(t => t + 1); }}>
+            Couldn't load the Catalog entries.
+          </LoadFailed>
         )}
 
         {!error && data && (

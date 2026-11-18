@@ -71,7 +71,9 @@ test('an empty queue says so', async () => {
 test('a failed load offers Retry', async () => {
   cat.getSuggestions.mockRejectedValueOnce(new Error('down')).mockResolvedValue({ pending: 0, suggestions: [] });
   renderPage();
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  // #216: says what didn't load, announced
+  expect((await screen.findByText("Couldn't load the suggestions.")).closest('[role="alert"]')).not.toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
 });
 

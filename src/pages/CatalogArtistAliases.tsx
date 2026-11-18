@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { LoadFailed } from '../components/LoadFailed';
 import { artistAliasService, ArtistAliasConflictError } from '../services/artistAliasService';
 import type { ArtistAliasWithCount } from '../services/artistAliasService';
 import { searchKey } from '../utils/searchKey';
@@ -122,10 +123,7 @@ export default function CatalogArtistAliases() {
       <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
 
       {loadFailed && (
-        <div className="text-center py-10">
-          <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
-          <button type="button" className="btn-secondary mt-3" onClick={load}>Retry</button>
-        </div>
+        <LoadFailed onRetry={load}>Couldn't load the artist aliases.</LoadFailed>
       )}
 
       {!loadFailed && aliases === null && <ListSkeleton rows={6} />}

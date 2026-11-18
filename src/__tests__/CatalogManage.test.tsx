@@ -63,6 +63,15 @@ test('#212: with nothing waiting, the Suggestions link has no count', async () =
   expect(await screen.findByRole('link', { name: 'Suggestions' })).toBeInTheDocument();
 });
 
+test('#216: a failed entries list says so, announced, and Retry reloads it', async () => {
+  cat.listCatalog.mockRejectedValue(new Error('offline'));
+  renderManage();
+  expect((await screen.findByText("Couldn't load the Catalog entries.")).closest('[role="alert"]')).not.toBeNull();
+  cat.listCatalog.mockResolvedValue(twoEntries);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Zombie')).toBeInTheDocument();
+});
+
 test('a curator sees the list of entries + a New entry shortcut', async () => {
   renderManage();
   await screen.findByText('Zombie');

@@ -75,3 +75,12 @@ test('the Curate tabs work from the keyboard and show the selected tab\'s panel'
   expect(await screen.findByRole('tabpanel', { name: 'Entries' })).toHaveTextContent(/All entries/);
   expect(screen.queryByText('Rock 90s')).not.toBeInTheDocument();
 });
+
+test('#216: a failed collections tab says so, announced, and Retry reloads it', async () => {
+  cat.listCollections.mockRejectedValue(new Error('offline'));
+  renderCollectionsTab();
+  expect((await screen.findByText("Couldn't load the collections.")).closest('[role="alert"]')).not.toBeNull();
+  cat.listCollections.mockResolvedValue([{ uid: 'col1', name: 'Rock 90s', description: null, songCount: 3 }]);
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('Rock 90s')).toBeInTheDocument();
+});
