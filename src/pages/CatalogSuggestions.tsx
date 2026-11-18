@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { catalogService } from '../services/catalogService';
+import { catalogService, SuggestionGoneError } from '../services/catalogService';
 import type { CatalogSuggestionLine } from '../services/catalogService';
 import { ListSkeleton } from '../components/ListSkeleton';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { Notice } from '../components/Notice';
 
 // #190 / #212: the curators' queue of songs typed into Songlists and suggested to the Catalog.
 // One line per song (identical songs from several users grouped), shown with the latest
@@ -20,6 +22,10 @@ export default function CatalogSuggestions() {
   const isCurator = !!user?.isCurator;
   const [suggestions, setSuggestions] = useState<CatalogSuggestionLine[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [toReject, setToReject] = useState<CatalogSuggestionLine | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [doneMessage, setDoneMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoadFailed(false);
@@ -38,12 +44,39 @@ export default function CatalogSuggestions() {
     return <Navigate to="/" replace />;
   }
 
+  // #213: the line's songs leave the queue for good; their owners aren't told.
+  const handleReject = async () => {
+    if (!toReject || busy) return;
+    const { title } = toReject.song;
+    setBusy(true);
+    setError(null);
+    setDoneMessage(null);
+    try {
+      await catalogService.rejectSuggestion(toReject.id);
+      setDoneMessage(`"${title}" rejected.`);
+      await load();
+    } catch (err) {
+      if (err instanceof SuggestionGoneError) {
+        setError('This suggestion is no longer waiting.');
+        await load(); // show what is really waiting
+      } else {
+        setError(`Could not reject "${title}".`);
+      }
+    } finally {
+      setBusy(false);
+      setToReject(null);
+    }
+  };
+
   return (
     <Page
       width="content"
       title="Suggestions"
       description="Songs typed into a Songlist and suggested to the Catalog by their owners. Identical songs are grouped; who suggested them is never shown."
     >
+      {/* Always mounted: a region that appears with its message may not be announced (#153). */}
+      <div role="alert">{error && <Notice tone="error" announce="none" className="mb-4">{error}</Notice>}</div>
+      <div role="status">{doneMessage && <Notice tone="success" announce="none" className="mb-4">{doneMessage}</Notice>}</div>
       {loadFailed && (
         <div className="text-center py-10">
           <p className="text-gray-600 dark:text-gray-300">Something went wrong.</p>
@@ -64,6 +97,7 @@ export default function CatalogSuggestions() {
                 <th scope="col" className="px-3 py-2 font-medium">Details</th>
                 <th scope="col" className="px-3 py-2 font-medium">Suggested</th>
                 <th scope="col" className="px-3 py-2 font-medium">Catalog</th>
+                <th scope="col" className="px-3 py-2"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
@@ -78,12 +112,33 @@ export default function CatalogSuggestions() {
                   <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
                     {line.catalog ? 'Already in the Catalog' : null}
                   </td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      className="btn-secondary btn-sm min-h-[44px]"
+                      aria-label={`Reject ${line.song.title}`}
+                      onClick={() => setToReject(line)}
+                      disabled={busy}
+                    >
+                      Reject
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      <ConfirmDialog
+        isOpen={toReject !== null}
+        title="Reject this suggestion"
+        message={toReject ? `Reject "${toReject.song.title}"${toReject.song.artist ? ` by ${toReject.song.artist}` : ''}? It leaves the queue. The users who suggested it aren't told, and their songs don't change.` : ''}
+        confirmText={busy ? 'Rejecting…' : 'Reject'}
+        cancelText="Cancel"
+        isDangerous
+        onConfirm={handleReject}
+        onCancel={() => { if (!busy) setToReject(null); }}
+      />
     </Page>
   );
 }

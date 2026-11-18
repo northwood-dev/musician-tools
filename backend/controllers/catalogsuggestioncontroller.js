@@ -3,6 +3,7 @@
 const createError = require('http-errors');
 const { sequelize } = require('../models');
 const logger = require('../logger');
+const { isUuid } = require('../utils/uuid');
 
 // #190 / #212: the curators' queue of songs suggested to the Catalog. No copy: it READS the
 // Songlist songs (one source of truth), so an owner's later edit or opt-out shows at once.
@@ -74,4 +75,41 @@ const getSuggestions = async (req, res, next) => {
   }
 };
 
-module.exports = { getSuggestions };
+// The songs a queue line stands for, as an UPDATE target: the line's song (`:id`, still
+// waiting) gives the identity; every still-suggested, unlinked song with that identity is in
+// the group — re-read NOW, so an owner who opted out since the queue loaded is left alone.
+// Raw SQL leaves "updatedAt" alone: a curator's decision is not an edit of the owner's song.
+const updateGroup = (set) => `
+  WITH target AS (
+    SELECT lower(f_unaccent(title::text)) AS title_key, f_artist_key(artist::text) AS artist_key
+      FROM "Songs"
+     WHERE uid = :id AND catalog_suggestion = 'suggested' AND source_catalog_uid IS NULL
+  )
+  UPDATE "Songs" s
+     SET ${set}
+    FROM target
+   WHERE s.catalog_suggestion = 'suggested'
+     AND s.source_catalog_uid IS NULL
+     AND lower(f_unaccent(s.title::text)) = target.title_key
+     AND f_artist_key(s.artist::text) = target.artist_key
+  RETURNING s.uid
+`;
+
+const NOT_WAITING = 'This suggestion is no longer waiting';
+
+// POST /api/catalog/suggestions/:id/reject (curator only). #213: the group's songs leave the
+// queue for good; their owners aren't told and see no change (the box stays checked). Only an
+// owner unchecking then checking suggests one again.
+const rejectSuggestion = async (req, res, next) => {
+  if (!isUuid(req.params.id)) return next(createError(404, NOT_WAITING));
+  try {
+    const [rows] = await sequelize.query(updateGroup("catalog_suggestion = 'rejected'"), { replacements: { id: req.params.id } });
+    if (rows.length === 0) return next(createError(404, NOT_WAITING));
+    res.json({ rejected: rows.length });
+  } catch (error) {
+    logger.error('Error rejecting a Catalog suggestion:', error);
+    next(createError(500, 'Error rejecting the suggestion'));
+  }
+};
+
+module.exports = { getSuggestions, rejectSuggestion, updateGroup, NOT_WAITING };

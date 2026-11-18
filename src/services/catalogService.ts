@@ -129,6 +129,14 @@ export type CatalogSuggestionLine = {
 };
 export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
 
+// #213: the line's songs are no longer waiting (their owner opted out, or a curator acted).
+export class SuggestionGoneError extends Error {
+  constructor() {
+    super('This suggestion is no longer waiting');
+    this.name = 'SuggestionGoneError';
+  }
+}
+
 export const catalogService = {
   // Browse the shared Catalog (any logged-in user). Returns the {items,total,page,limit}
   // envelope. `signal` lets the caller abort a superseded request (debounced search).
@@ -437,6 +445,19 @@ export const catalogService = {
 
   // #212: the curators' queue of songs suggested to the Catalog (curator only → 403).
   // One line per song; `pending` is the number of lines. No user, nothing personal.
+  // #213: the line's songs leave the queue for good (their owners aren't told). 404 → the
+  // suggestion is no longer waiting (opted out, linked or already rejected meanwhile).
+  async rejectSuggestion(id: string): Promise<{ rejected: number }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/reject`, { method: 'POST', credentials: 'include' });
+    if (response.status === 404) {
+      throw new SuggestionGoneError();
+    }
+    if (!response.ok) {
+      throw new Error('Failed to reject the suggestion');
+    }
+    return response.json();
+  },
+
   async getSuggestions(signal?: AbortSignal): Promise<CatalogSuggestions> {
     const response = await apiFetch(`${API_BASE}/catalog/suggestions`, { credentials: 'include', signal });
     if (!response.ok) {

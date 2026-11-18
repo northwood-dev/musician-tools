@@ -27,6 +27,7 @@ router.get('/facets', authsess, catalogController.getCatalogFacets);
 router.get('/exists', authsess, requireCurator, catalogController.getCatalogExists);
 // #212: the queue of songs suggested to the Catalog — curator only, BEFORE '/:uid'.
 router.get('/suggestions', authsess, requireCurator, catalogSuggestionController.getSuggestions);
+router.post('/suggestions/:id/reject', authsess, requireCurator, catalogSuggestionController.rejectSuggestion);
 
 // Story 20.1 — Collections (curated themed groupings). ALL registered BEFORE /:uid so
 // "collections" is never captured as a catalog-entry uid. Writes = curator (403);
