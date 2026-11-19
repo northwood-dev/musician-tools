@@ -179,7 +179,7 @@ export class SuggestionGoneError extends Error {
 }
 
 // An entry's uid, as the server checks it (backend utils/uuid).
-const UID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const catalogService = {
   // Browse the shared Catalog (any logged-in user). Returns the {items,total,page,limit}
@@ -245,7 +245,7 @@ export const catalogService = {
   async getCatalogEntry(uid: string, signal?: AbortSignal): Promise<CatalogSong> {
     // #240: what is not an entry's uid is "not found", as the server says — without asking
     // it: /catalog/suggestions would reach the curators' suggestions API, not an entry.
-    if (!UID.test(uid)) throw new CatalogNotFoundError();
+    if (!UUID_PATTERN.test(uid)) throw new CatalogNotFoundError();
     const response = await apiFetch(`${API_BASE}/catalog/${uid}`, {
       credentials: 'include',
       signal,
