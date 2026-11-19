@@ -4,6 +4,7 @@ import { instrumentTechniquesMap, instrumentTuningsMap } from '../constants/inst
 import { instrumentLinkError } from '../utils/streamingLinks';
 import { CloseButton } from './CloseButton';
 import { ToggleChip } from './Chip';
+import { LastPlayedValue } from './LastPlayedValue';
 import { Disclosure } from './Disclosure';
 
 interface SongFormInstrumentsProps {
@@ -118,7 +119,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
             aside={<>
             {formatLastPlayed && (
               <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                Last played: <span className="font-medium">{playsUnknown ? '?' : getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
+                Last played: <span className="font-medium"><LastPlayedValue unknown={playsUnknown} value={getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)} /></span>
               </span>
             )}
             {onMarkAsPlayedNow && mode === 'edit' && (

@@ -18,6 +18,7 @@ import { Panel } from './Panel';
 import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
 import { LoadFailed } from './LoadFailed';
+import { LastPlayedValue } from './LastPlayedValue';
 import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
 import { findExistingIn } from '../hooks/useSonglistMatcher';
 import { songLabel } from '../utils/songLabel';
@@ -462,8 +463,7 @@ export default function SongsList(props: SongsListProps) {
                         <td className="p-2 align-middle max-w-sm truncate" title={song.title}>{song.title}</td>
                         <td className="p-2 pr-4 align-middle text-right whitespace-nowrap w-px">
                           {!props.instrumentFilter ? 'Select instrument'
-                            : props.unknownPlays.has(song.uid) ? <span title="Couldn't load when this song was last played">?</span>
-                              : props.formatLastPlayed(props.getLastPlayedForSong(song.uid))}
+                            : <LastPlayedValue unknown={props.unknownPlays.has(song.uid)} value={props.formatLastPlayed(props.getLastPlayedForSong(song.uid))} />}
                         </td>
                       </tr>
                     ))}
