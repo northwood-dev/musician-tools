@@ -18,6 +18,14 @@ Rules:
 - The copy action from Catalog → Songlist is phrased **"Add to my songlist"**.
 - Keep these exact words in user-facing strings, comments, and identifiers.
 
+## Artist before title
+
+Wherever a song shows both, the **artist comes before the title** (#229):
+- Lists, tables, cards: the `<SongName>` brick — artist above, title below and emphasized.
+- Sentences (messages, confirmations, tooltips): `songLabel()` → `The Breeders — Cannonball`.
+- Forms: the Artist field before the Title field.
+- Tables with separate columns: `Artist` before `Title`; the default sort doesn't change.
+
 ## Agent skills
 
 ### Workflow
