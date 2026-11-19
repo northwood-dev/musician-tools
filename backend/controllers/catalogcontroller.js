@@ -203,7 +203,7 @@ const publishCatalogEntry = async (req, res, next) => {
 
     // #215: link the songs suggested from Songlists that this entry answers. Same reasoning as
     // the re-stamp above: the publish succeeded, so a failure here is logged, not a 500 — the
-    // songs simply stay in the queue, where "Link to it" can still link them.
+    // songs simply stay in the queue, where Merge can still tie them (#236).
     try {
       await linkSuggestionsToPublished(updated, req.body && req.body.suggestionId);
     } catch (linkError) {

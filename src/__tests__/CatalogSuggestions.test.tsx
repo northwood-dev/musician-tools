@@ -153,49 +153,196 @@ describe('Reject (#213)', () => {
   });
 });
 
-describe('Link to it (#214)', () => {
+describe('Merge (#214, #236)', () => {
   const dialogFree = () => waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   let waiting: CatalogSuggestionLine[] = [];
   beforeEach(() => {
-    waiting = [line({ suggestedBy: 2, catalog: { uid: 'cat-1', published: true } })];
+    waiting = [line({ suggestedBy: 2, catalog: { uid: 'cat-1', published: true, differences: [] } })];
     cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
   });
-  const linkButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Link Oasis — Wonderwall to the Catalog entry' });
+  const row = async () => (await screen.findByText('Wonderwall')).closest('tr')!;
+  const mergeButton = async () => within(await row()).getByRole('button', { name: 'Merge Oasis — Wonderwall into the Catalog entry' });
 
-  test('a song already published in the Catalog is linked to it, and leaves the queue', async () => {
-    cat.linkSuggestion.mockImplementation(async () => { waiting = []; return { linked: 2, catalogUid: 'cat-1' }; });
+  test('the page says what Merge does', async () => {
     renderPage();
-    const button = await linkButton();
+    await row();
+    expect(screen.getByText(/Merge combines a suggestion with the Catalog entry that already exists/)).toBeInTheDocument();
+  });
+
+  test('with no difference, Merge ties the songs to the entry, and the line leaves the queue', async () => {
+    cat.mergeSuggestion.mockImplementation(async () => { waiting = []; return { linked: 2, catalogUid: 'cat-1' }; });
+    renderPage();
+    const button = await mergeButton();
+    expect(button).toHaveTextContent('Merge');
     await act(async () => { fireEvent.click(button); });
-    expect(cat.linkSuggestion).toHaveBeenCalledWith('id-Wonderwall');
-    expect(await screen.findByText('"Oasis — Wonderwall" linked to the Catalog entry (2 songs).')).toBeInTheDocument();
+    expect(cat.mergeSuggestion).toHaveBeenCalledWith('id-Wonderwall', undefined); // no decisions to send
+    expect(await screen.findByText('"Oasis — Wonderwall" merged into the Catalog entry (2 songs).')).toBeInTheDocument();
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
     await dialogFree();
   });
 
-  test('only a published entry offers Link to it', async () => {
+  test('values that differ show a tag', async () => {
+    waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ] } })];
+    renderPage();
+    expect(within(await row()).getByText('Differs from the Catalog')).toBeInTheDocument();
+  });
+
+  test('no difference, no tag', async () => {
+    renderPage();
+    expect(within(await row()).queryByText('Differs from the Catalog')).toBeNull();
+  });
+
+  test('only a published entry offers Merge', async () => {
     waiting = [line({ catalog: { uid: 'draft-1', published: false } }), line({ title: 'Zombie', catalog: null })];
     renderPage();
     await screen.findByText('Wonderwall');
-    expect(screen.queryByRole('button', { name: /^Link / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Merge / })).not.toBeInTheDocument();
+  });
+
+  // #237: with differences, Merge opens a dialog where each differing field is decided.
+  describe('the Merge into the Catalog entry dialog (#237)', () => {
+    const differing = () => line({ suggestedBy: 4, catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 2 }, { value: 94, users: 1 }, { value: 118, users: 1 }] },
+      { field: 'genre', catalog: ['Rock'], suggested: [{ value: ['Grunge', 'Rock'], users: 1 }] },
+    ] } });
+    const openDialog = async () => {
+      fireEvent.click(await mergeButton());
+      return screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    };
+    beforeEach(() => { waiting = [differing()]; });
+
+    test('one group per differing field: the Catalog value, each other suggested value with its users, and Reject', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      const bpm = within(dialog).getByRole('group', { name: 'BPM' });
+      expect(within(bpm).getByText('Catalog: 94')).toBeInTheDocument();
+      expect(within(bpm).getAllByRole('radio')).toHaveLength(3);
+      for (const name of ['Accept 120 (2 users)', 'Accept 118 (1 user)', 'Reject — keep 94 (1 user)']) {
+        expect(within(bpm).getByRole('radio', { name })).not.toBeChecked();
+      }
+      const genre = within(dialog).getByRole('group', { name: 'Genres' });
+      expect(within(genre).getByText('Catalog: Rock')).toBeInTheDocument();
+      expect(within(genre).getByRole('radio', { name: 'Accept Grunge, Rock (1 user)' })).toBeInTheDocument();
+      expect(within(genre).getByRole('radio', { name: 'Reject — keep Rock' })).toBeInTheDocument();
+    });
+
+    test('Merge stays disabled until every field is decided, then sends the decisions', async () => {
+      cat.mergeSuggestion.mockImplementation(async () => { waiting = []; return { linked: 4, catalogUid: 'cat-1' }; });
+      renderPage();
+      const dialog = await openDialog();
+      const merge = within(dialog).getByRole('button', { name: 'Merge' });
+      expect(merge).toBeDisabled();
+      fireEvent.click(within(dialog).getByRole('radio', { name: 'Accept 120 (2 users)' }));
+      expect(merge).toBeDisabled();
+      fireEvent.click(within(dialog).getByRole('radio', { name: 'Reject — keep Rock' }));
+      expect(merge).toBeEnabled();
+      await act(async () => { fireEvent.click(merge); });
+      expect(cat.mergeSuggestion).toHaveBeenCalledWith('id-Wonderwall', { bpm: { accept: 120 }, genre: 'reject' });
+      expect(await screen.findByText('"Oasis — Wonderwall" merged into the Catalog entry (4 songs).')).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
+    // #234 review (Q2): a suggester who left a value empty is tied with the banner.
+    test('says that suggesters who left a value empty will be offered the Catalog value', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      expect(within(dialog).getByText(/left a value empty will be offered the Catalog's value/)).toBeInTheDocument();
+    });
+
+    test('Edit the Catalog entry opens the entry form', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      expect(within(dialog).getByRole('link', { name: 'Edit the Catalog entry' })).toHaveAttribute('href', '/catalog/admin/cat-1');
+    });
+
+    test('Cancel closes the dialog and merges nothing', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(cat.mergeSuggestion).not.toHaveBeenCalled();
+    });
+  });
+
+  // #234 review (Q1 b): the group changed under the curator — the server refuses with the
+  // differences as they are now, and the dialog shows them, to decide again.
+  const CHANGED = 'The suggestions changed: review them again.';
+  const nowDiffering = [{ field: 'key' as const, catalog: 'F#', suggested: [{ value: 'A', users: 1 }] }];
+
+  test('values that came to differ meanwhile open the dialog with them', async () => {
+    const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionDifferencesError(nowDiffering));
+    renderPage();
+    const button = await mergeButton();
+    await act(async () => { fireEvent.click(button); });
+    const dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    expect(within(dialog).getByText(CHANGED)).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'Key' })).toBeInTheDocument();
+  });
+
+  test('a group that changed while the dialog was open: the dialog shows it again, choices cleared', async () => {
+    const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
+    waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ] } })];
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionDifferencesError([
+      ...nowDiffering, { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ]));
+    renderPage();
+    fireEvent.click(await mergeButton());
+    let dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Accept 120 (1 user)' }));
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' })); });
+    dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    expect(await within(dialog).findByText(CHANGED)).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'Key' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('radio', { name: 'Accept 120 (1 user)' })).not.toBeChecked();
+    expect(within(dialog).getByRole('button', { name: 'Merge' })).toBeDisabled();
+  });
+
+  test('a group that no longer differs at all: the dialog closes and says so', async () => {
+    const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
+    waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ] } })];
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionDifferencesError([]));
+    renderPage();
+    fireEvent.click(await mergeButton());
+    const dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Accept 120 (1 user)' }));
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' })); });
+    await dialogFree();
+    expect(await screen.findByText(CHANGED)).toBeInTheDocument();
+  });
+
+  // Spec story 20.
+  test('an entry no longer published says so', async () => {
+    const { SuggestionNotPublishedError } = jest.requireActual('../services/catalogService');
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionNotPublishedError());
+    renderPage();
+    const button = await mergeButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('The Catalog entry is no longer published.')).toBeInTheDocument();
   });
 
   test('a suggestion no longer waiting says so and reloads', async () => {
     const { SuggestionGoneError } = jest.requireActual('../services/catalogService');
-    cat.linkSuggestion.mockImplementation(async () => { waiting = []; throw new SuggestionGoneError(); });
+    cat.mergeSuggestion.mockImplementation(async () => { waiting = []; throw new SuggestionGoneError(); });
     renderPage();
-    const button = await linkButton();
+    const button = await mergeButton();
     await act(async () => { fireEvent.click(button); });
     expect(await screen.findByText('This suggestion is no longer waiting.')).toBeInTheDocument();
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
   });
 
   test('a failure says so and keeps the line', async () => {
-    cat.linkSuggestion.mockRejectedValue(new Error('down'));
+    cat.mergeSuggestion.mockRejectedValue(new Error('down'));
     renderPage();
-    const button = await linkButton();
+    const button = await mergeButton();
     await act(async () => { fireEvent.click(button); });
-    expect(await screen.findByText('Could not link "Oasis — Wonderwall".')).toBeInTheDocument();
+    expect(await screen.findByText('Could not merge "Oasis — Wonderwall".')).toBeInTheDocument();
     expect(screen.getByText('Wonderwall')).toBeInTheDocument();
   });
 });
@@ -223,20 +370,20 @@ describe('Review and drafts (#215, #230)', () => {
     expect(screen.getByText(/nothing is published until you click Publish/i)).toBeInTheDocument();
   });
 
-  test('a draft in progress offers Review, which opens that draft, and not Link to it', async () => {
+  test('a draft in progress offers Review, which opens that draft, and not Merge', async () => {
     waiting = [line({ catalog: { uid: 'draft-1', published: false } })];
     renderPage();
     const row = (await screen.findByText('Wonderwall')).closest('tr')!;
     expect(within(row).getByRole('link', { name: 'Review Oasis — Wonderwall' })).toHaveAttribute('href', '/catalog/admin/draft-1?suggestion=id-Wonderwall');
     expect(within(row).queryByRole('link', { name: /^Open the draft/ })).toBeNull();
-    expect(within(row).queryByRole('button', { name: /^Link / })).toBeNull();
+    expect(within(row).queryByRole('button', { name: /^Merge / })).toBeNull();
   });
 
-  test('a song already published offers Link to it, not Review', async () => {
+  test('a song already published offers Merge, not Review', async () => {
     waiting = [line({ catalog: { uid: 'cat-1', published: true } })];
     renderPage();
     const row = (await screen.findByText('Wonderwall')).closest('tr')!;
-    expect(within(row).getByRole('button', { name: /^Link / })).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: /^Merge / })).toBeInTheDocument();
     expect(within(row).queryByRole('button', { name: /^Review / })).toBeNull();
     expect(within(row).queryByRole('link', { name: /^Review / })).toBeNull();
   });

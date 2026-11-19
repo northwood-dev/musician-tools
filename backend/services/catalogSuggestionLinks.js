@@ -3,10 +3,12 @@
 const { sequelize } = require('../models');
 const { isUuid } = require('../utils/uuid');
 const { titleKey, artistKey, sameSongAs, waitingInQueue } = require('../utils/catalogSuggestion');
+const { sameValuesSql } = require('../utils/catalogDifferences');
 
 // #190 / #215: when a Catalog entry is published, the songs suggested from Songlists that it
-// answers are linked to it — the same link as a song added from the Catalog, stamped as synced
-// (no false "newer version" banner), so Refresh just works.
+// answers are linked to it — the same link as a song added from the Catalog, so Refresh just
+// works. #237: as with Merge, a song is stamped up to date only if its values equal the
+// published entry's; any other shows its owner the "different values" banner.
 //
 // Which songs: still waiting in the queue (an owner who opted out meanwhile is respected), whose
 // identity is the PUBLISHED entry's, or the one of the suggestion the curator accepted
@@ -27,8 +29,11 @@ const LINK_ON_PUBLISH_SQL = `
      WHERE a.uid = :suggestionId
   )
   UPDATE "Songs" s
-     SET source_catalog_uid = :catalogUid, source_catalog_synced_at = :syncedAt
+     SET source_catalog_uid = :catalogUid,
+         source_catalog_synced_at = CASE WHEN ${sameValuesSql('s', 'e')}
+                                         THEN CAST(:syncedAt AS timestamptz) ELSE NULL END
     FROM identities i
+    JOIN "CatalogSongs" e ON e.uid = :catalogUid
    WHERE ${waitingInQueue('s')} AND ${sameSongAs('s', 'i')}
   RETURNING s.uid
 `;

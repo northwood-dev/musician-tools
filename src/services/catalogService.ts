@@ -125,9 +125,21 @@ export type CatalogSuggestionLine = {
   id: string;
   suggestedBy: number;
   song: Pick<CatalogSong, 'title' | 'artist' | 'album' | 'key' | 'mode' | 'bpm' | 'timeSignature' | 'durationSeconds' | 'language' | 'genre' | 'streamingLinks' | 'pitchStandard'>;
-  catalog: { uid: string; published: boolean } | null;
+  // A published entry also says where the group differs from it (#236): the entry's value and
+  // each value suggested, with how many users suggested it.
+  catalog: { uid: string; published: boolean; differences?: SuggestionDifference[] } | null;
+};
+export type SuggestionDifference = {
+  field: 'key' | 'mode' | 'bpm' | 'timeSignature' | 'durationSeconds' | 'language' | 'genre' | 'pitchStandard';
+  catalog: string | number | string[] | null;
+  suggested: { value: string | number | string[]; users: number }[];
 };
 export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
+
+// #237: a curator's decision on one differing field — keep the entry's value, or accept ONE
+// suggested value. One per differing field.
+export type MergeDecision = 'reject' | { accept: SuggestionDifference['suggested'][number]['value'] };
+export type MergeDecisions = Partial<Record<SuggestionDifference['field'], MergeDecision>>;
 
 // #215: Accept found an entry with the same identity (published, or a draft in progress).
 export class SuggestionInCatalogError extends Error {
@@ -136,6 +148,25 @@ export class SuggestionInCatalogError extends Error {
     super('This song is already in the Catalog');
     this.name = 'SuggestionInCatalogError';
     this.catalogUid = catalogUid;
+  }
+}
+
+// #236: Merge found values that differ from the entry — or, with decisions, the group changed
+// since the dialog showed it. Carries the differences as they are now, to decide again.
+export class SuggestionDifferencesError extends Error {
+  differences: SuggestionDifference[];
+  constructor(differences: SuggestionDifference[] = []) {
+    super('Some values differ from the Catalog entry');
+    this.name = 'SuggestionDifferencesError';
+    this.differences = differences;
+  }
+}
+
+// Merge: the Catalog entry the line matches is no longer published (spec #234 story 20).
+export class SuggestionNotPublishedError extends Error {
+  constructor() {
+    super('The Catalog entry is no longer published');
+    this.name = 'SuggestionNotPublishedError';
   }
 }
 
@@ -469,16 +500,27 @@ export const catalogService = {
     return response.json();
   },
 
-  // #214: link the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
-  // waiting; 409 → no published entry to link to (none, or a draft) — also "no longer waiting"
-  // from the curator's point of view: the queue just needs reloading.
-  async linkSuggestion(id: string): Promise<{ linked: number; catalogUid: string }> {
-    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/link`, { method: 'POST', credentials: 'include' });
-    if (response.status === 404 || response.status === 409) {
+  // #214 / #236: tie the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
+  // waiting; 409 "differences" → values to decide (or decide again) first; 409 "not_published"
+  // → the entry is no longer published.
+  // #237: `decisions` — one per differing field: 'reject', or { accept: <a suggested value> }.
+  async mergeSuggestion(id: string, decisions?: MergeDecisions): Promise<{ linked: number; catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/merge`, {
+      method: 'POST',
+      credentials: 'include',
+      ...(decisions ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisions }) } : {}),
+    });
+    if (response.status === 409) {
+      const body = await response.json().catch(() => ({} as { error?: string; differences?: SuggestionDifference[] }));
+      if (body.error === 'differences') throw new SuggestionDifferencesError(body.differences ?? []);
+      if (body.error === 'not_published') throw new SuggestionNotPublishedError();
+      throw new SuggestionGoneError();
+    }
+    if (response.status === 404) {
       throw new SuggestionGoneError();
     }
     if (!response.ok) {
-      throw new Error('Failed to link the suggestion');
+      throw new Error('Failed to merge the suggestion');
     }
     return response.json();
   },

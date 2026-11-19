@@ -28,7 +28,7 @@ router.get('/exists', authsess, requireCurator, catalogController.getCatalogExis
 // #212: the queue of songs suggested to the Catalog — curator only, BEFORE '/:uid'.
 router.get('/suggestions', authsess, requireCurator, catalogSuggestionController.getSuggestions);
 router.post('/suggestions/:id/reject', authsess, requireCurator, catalogSuggestionController.rejectSuggestion);
-router.post('/suggestions/:id/link', authsess, requireCurator, catalogSuggestionController.linkSuggestion);
+router.post('/suggestions/:id/merge', authsess, requireCurator, catalogSuggestionController.mergeSuggestion);
 router.post('/suggestions/:id/accept', authsess, requireCurator, catalogSuggestionController.acceptSuggestion);
 
 // Story 20.1 — Collections (curated themed groupings). ALL registered BEFORE /:uid so

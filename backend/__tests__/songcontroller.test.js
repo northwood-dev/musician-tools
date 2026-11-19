@@ -932,6 +932,66 @@ describe('refreshSongFromCatalog (story 21.1)', () => {
   });
 });
 
+// #235: "Keep mine" — the owner keeps their values; the song is stamped with the entry's current
+// version, so the "different values" banner goes until the entry changes again.
+describe('keepSongValues (#235)', () => {
+  beforeEach(() => jest.clearAllMocks());
+  const call = async () => {
+    const res = mockRes();
+    const next = mockNext();
+    await controller.keepSongValues({ session: { user: 'user-1' }, params: { uid: SONG_UID } }, res, next);
+    return { res, next };
+  };
+
+  test('stamps the song with the entry version and changes nothing else', async () => {
+    const song = catalogCopy();
+    Song.findOne.mockResolvedValue(song);
+    CatalogSong.findByPk.mockResolvedValue(publishedCatalog());
+    const { res, next } = await call();
+    expect(next).not.toHaveBeenCalled();
+    expect(song.update).toHaveBeenCalledWith({ sourceCatalogSyncedAt: '2026-06-01T00:00:00.000Z' });
+    expect(res.json).toHaveBeenCalled();
+  });
+
+  test("404 when the song is someone else's or unknown, or the uid is malformed", async () => {
+    Song.findOne.mockResolvedValue(null);
+    const { next } = await call();
+    expect(next.mock.calls[0][0].status).toBe(404);
+    const bad = mockNext();
+    await controller.keepSongValues({ session: { user: 'user-1' }, params: { uid: 'nope' } }, mockRes(), bad);
+    expect(bad.mock.calls[0][0].status).toBe(404);
+  });
+
+  test('401 without a session', async () => {
+    const next = mockNext();
+    await controller.keepSongValues({ session: {}, params: { uid: SONG_UID } }, mockRes(), next);
+    expect(next.mock.calls[0][0].status).toBe(401);
+  });
+
+  test('409 not_from_catalog when the song has no Catalog source', async () => {
+    const song = catalogCopy({ sourceCatalogUid: null });
+    Song.findOne.mockResolvedValue(song);
+    const { res } = await call();
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].error).toBe('not_from_catalog');
+    expect(song.update).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['gone', null],
+    ['a draft', { publishedAt: null }],
+  ])('409 source_unavailable when the entry is %s', async (_name, entry) => {
+    const song = catalogCopy();
+    Song.findOne.mockResolvedValue(song);
+    CatalogSong.findByPk.mockResolvedValue(entry && publishedCatalog(entry));
+    const { res } = await call();
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].error).toBe('source_unavailable');
+    expect(song.update).not.toHaveBeenCalled();
+  });
+
+});
+
 describe('addInstrumentToSongs (#71: one instrument on several songs)', () => {
   const A = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const B = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
