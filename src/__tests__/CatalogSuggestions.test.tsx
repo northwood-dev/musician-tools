@@ -45,21 +45,33 @@ beforeEach(() => {
   auth.mockReturnValue({ user: { uid: 'u1', isCurator: true } });
 });
 
+// #230: headers that say what the columns hold.
+test('the columns are Song, Key · BPM · Time, Suggested by and Status', async () => {
+  cat.getSuggestions.mockResolvedValue({ pending: 1, suggestions: [line()] });
+  renderPage();
+  await screen.findByText('Wonderwall');
+  expect(screen.getAllByRole('columnheader').map(h => h.textContent)).toEqual(['Song', 'Key · BPM · Time', 'Suggested by', 'Status', 'Actions']);
+});
+
 test('lists one line per suggested song, with how many users suggested it', async () => {
   cat.getSuggestions.mockResolvedValue({ pending: 2, suggestions: [line({ suggestedBy: 3 }), line({ title: 'Zombie', artist: 'The Cranberries' })] });
   renderPage();
   const row = (await screen.findByText('Wonderwall')).closest('tr')!;
   expect(within(row).getByText('Oasis')).toBeInTheDocument();
-  expect(within(row).getByText('suggested by 3 users')).toBeInTheDocument();
+  expect(within(row).getByText('3 users')).toBeInTheDocument();
   const other = screen.getByText('Zombie').closest('tr')!;
-  expect(within(other).getByText('suggested by 1 user')).toBeInTheDocument();
+  expect(within(other).getByText('1 user')).toBeInTheDocument();
 });
 
-test('marks a song already in the Catalog', async () => {
-  cat.getSuggestions.mockResolvedValue({ pending: 1, suggestions: [line({ catalog: { uid: 'c1', published: true } })] });
+test.each([
+  ['nothing in the Catalog yet', null, 'New'],
+  ['a draft in progress', { uid: 'd1', published: false }, 'Draft in progress'],
+  ['a published entry', { uid: 'c1', published: true }, 'Already in the Catalog'],
+])('Status of a song with %s', async (_name, catalog, status) => {
+  cat.getSuggestions.mockResolvedValue({ pending: 1, suggestions: [line({ catalog })] });
   renderPage();
   const row = (await screen.findByText('Wonderwall')).closest('tr')!;
-  expect(within(row).getByText('Already in the Catalog')).toBeInTheDocument();
+  expect(within(row).getByText(status)).toBeInTheDocument();
 });
 
 test('an empty queue says so', async () => {
@@ -94,7 +106,7 @@ describe('Reject (#213)', () => {
     cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
   });
   const reject = async () => {
-    fireEvent.click(within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Reject Wonderwall' }));
+    fireEvent.click(within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Reject Oasis — Wonderwall' }));
     // act: a failed reject settles in the same tick as the click.
     await act(async () => { fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Reject' })); });
   };
@@ -102,11 +114,12 @@ describe('Reject (#213)', () => {
   test('asks first, then removes the line and says it is done', async () => {
     cat.rejectSuggestion.mockImplementation(async () => { waiting = []; return { rejected: 1 }; });
     renderPage();
-    fireEvent.click(within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Reject Wonderwall' }));
+    fireEvent.click(within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Reject Oasis — Wonderwall' }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText(/aren't told/i)).toBeInTheDocument();
+    expect(within(dialog).getByText(/^Reject "Oasis — Wonderwall"\?/)).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reject' }));
-    expect(await screen.findByText('"Wonderwall" rejected.')).toBeInTheDocument();
+    expect(await screen.findByText('"Oasis — Wonderwall" rejected.')).toBeInTheDocument();
     expect(cat.rejectSuggestion).toHaveBeenCalledWith('id-Wonderwall');
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
     await dialogClosed();
@@ -114,7 +127,7 @@ describe('Reject (#213)', () => {
 
   test('Cancel rejects nothing', async () => {
     renderPage();
-    fireEvent.click(within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Reject Wonderwall' }));
+    fireEvent.click(within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Reject Oasis — Wonderwall' }));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
     expect(cat.rejectSuggestion).not.toHaveBeenCalled();
     await dialogClosed();
@@ -134,7 +147,7 @@ describe('Reject (#213)', () => {
     cat.rejectSuggestion.mockRejectedValue(new Error('down'));
     renderPage();
     await reject();
-    expect(await screen.findByText('Could not reject "Wonderwall".')).toBeInTheDocument();
+    expect(await screen.findByText('Could not reject "Oasis — Wonderwall".')).toBeInTheDocument();
     expect(screen.getByText('Wonderwall')).toBeInTheDocument();
     await dialogClosed();
   });
@@ -147,7 +160,7 @@ describe('Link to it (#214)', () => {
     waiting = [line({ suggestedBy: 2, catalog: { uid: 'cat-1', published: true } })];
     cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
   });
-  const linkButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Link Wonderwall to the Catalog entry' });
+  const linkButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Link Oasis — Wonderwall to the Catalog entry' });
 
   test('a song already published in the Catalog is linked to it, and leaves the queue', async () => {
     cat.linkSuggestion.mockImplementation(async () => { waiting = []; return { linked: 2, catalogUid: 'cat-1' }; });
@@ -155,7 +168,7 @@ describe('Link to it (#214)', () => {
     const button = await linkButton();
     await act(async () => { fireEvent.click(button); });
     expect(cat.linkSuggestion).toHaveBeenCalledWith('id-Wonderwall');
-    expect(await screen.findByText('"Wonderwall" linked to the Catalog entry (2 songs).')).toBeInTheDocument();
+    expect(await screen.findByText('"Oasis — Wonderwall" linked to the Catalog entry (2 songs).')).toBeInTheDocument();
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
     await dialogFree();
   });
@@ -182,44 +195,50 @@ describe('Link to it (#214)', () => {
     renderPage();
     const button = await linkButton();
     await act(async () => { fireEvent.click(button); });
-    expect(await screen.findByText('Could not link "Wonderwall".')).toBeInTheDocument();
+    expect(await screen.findByText('Could not link "Oasis — Wonderwall".')).toBeInTheDocument();
     expect(screen.getByText('Wonderwall')).toBeInTheDocument();
   });
 });
 
-describe('Accept and drafts (#215)', () => {
+describe('Review and drafts (#215, #230)', () => {
   let waiting: CatalogSuggestionLine[] = [];
   beforeEach(() => {
     waiting = [line()];
     cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
   });
-  const acceptButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Accept Wonderwall' });
+  const reviewButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Review Oasis — Wonderwall' });
 
-  test('Accept creates a pre-filled draft and opens it with the suggestion', async () => {
+  test('Review creates a pre-filled draft and opens it with the suggestion', async () => {
     cat.acceptSuggestion.mockResolvedValue({ catalogUid: 'draft-1' });
     renderPage();
-    const button = await acceptButton();
+    const button = await reviewButton();
     await act(async () => { fireEvent.click(button); });
     expect(cat.acceptSuggestion).toHaveBeenCalledWith('id-Wonderwall');
     expect(await screen.findByText('admin-marker')).toBeInTheDocument();
   });
 
-  test('a draft in progress says so, links to it, and offers neither Accept nor Link to it', async () => {
+  test('the page says nothing is published before Publish', async () => {
+    renderPage();
+    await screen.findByText('Wonderwall');
+    expect(screen.getByText(/nothing is published until you click Publish/i)).toBeInTheDocument();
+  });
+
+  test('a draft in progress offers Review, which opens that draft, and not Link to it', async () => {
     waiting = [line({ catalog: { uid: 'draft-1', published: false } })];
     renderPage();
     const row = (await screen.findByText('Wonderwall')).closest('tr')!;
-    expect(within(row).getByText('Draft in progress')).toBeInTheDocument();
-    expect(within(row).getByRole('link', { name: 'Open the draft of Wonderwall' })).toHaveAttribute('href', '/catalog/admin/draft-1?suggestion=id-Wonderwall');
-    expect(within(row).queryByRole('button', { name: /^Accept / })).toBeNull();
+    expect(within(row).getByRole('link', { name: 'Review Oasis — Wonderwall' })).toHaveAttribute('href', '/catalog/admin/draft-1?suggestion=id-Wonderwall');
+    expect(within(row).queryByRole('link', { name: /^Open the draft/ })).toBeNull();
     expect(within(row).queryByRole('button', { name: /^Link / })).toBeNull();
   });
 
-  test('a song already published offers Link to it, not Accept', async () => {
+  test('a song already published offers Link to it, not Review', async () => {
     waiting = [line({ catalog: { uid: 'cat-1', published: true } })];
     renderPage();
     const row = (await screen.findByText('Wonderwall')).closest('tr')!;
-    expect(within(row).getByText('Already in the Catalog')).toBeInTheDocument();
-    expect(within(row).queryByRole('button', { name: /^Accept / })).toBeNull();
+    expect(within(row).getByRole('button', { name: /^Link / })).toBeInTheDocument();
+    expect(within(row).queryByRole('button', { name: /^Review / })).toBeNull();
+    expect(within(row).queryByRole('link', { name: /^Review / })).toBeNull();
   });
 
   test('a song that reached the Catalog meanwhile says so and reloads', async () => {
@@ -229,9 +248,46 @@ describe('Accept and drafts (#215)', () => {
       throw new SuggestionInCatalogError('cat-1');
     });
     renderPage();
-    const button = await acceptButton();
+    const button = await reviewButton();
     await act(async () => { fireEvent.click(button); });
     expect(await screen.findByText('This song is already in the Catalog.')).toBeInTheDocument();
     expect(await screen.findByText('Already in the Catalog')).toBeInTheDocument();
+  });
+});
+
+describe('The song name (#230)', () => {
+  let waiting: CatalogSuggestionLine[] = [];
+  beforeEach(() => {
+    waiting = [line()];
+    cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
+  });
+  const songCell = async () => (await screen.findByText('Wonderwall')).closest('td')!;
+
+  test('shows the artist before the title', async () => {
+    renderPage();
+    expect((await songCell()).textContent).toMatch(/^Oasis.*Wonderwall$/);
+  });
+
+  test('on a new song, opens a pre-filled draft as Review does', async () => {
+    cat.acceptSuggestion.mockResolvedValue({ catalogUid: 'draft-1' });
+    renderPage();
+    const name = within(await songCell()).getByRole('button', { name: 'Open Oasis — Wonderwall' });
+    await act(async () => { fireEvent.click(name); });
+    expect(cat.acceptSuggestion).toHaveBeenCalledWith('id-Wonderwall');
+    expect(await screen.findByText('admin-marker')).toBeInTheDocument();
+  });
+
+  test('on a draft in progress, opens that draft', async () => {
+    waiting = [line({ catalog: { uid: 'draft-1', published: false } })];
+    renderPage();
+    expect(within(await songCell()).getByRole('link', { name: 'Open Oasis — Wonderwall' }))
+      .toHaveAttribute('href', '/catalog/admin/draft-1?suggestion=id-Wonderwall');
+  });
+
+  test('on a song already in the Catalog, opens its published entry', async () => {
+    waiting = [line({ catalog: { uid: 'cat-1', published: true } })];
+    renderPage();
+    expect(within(await songCell()).getByRole('link', { name: 'Open Oasis — Wonderwall' }))
+      .toHaveAttribute('href', '/catalog/cat-1');
   });
 });
