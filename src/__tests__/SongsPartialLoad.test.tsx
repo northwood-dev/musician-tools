@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderSongs } from '../test/renderSongs';
 import { songPlayService } from '../services/songPlayService';
 import { instrumentService } from '../services/instrumentService';
+import { songService } from '../services/songService';
 
 // #242: what the Songlist loads besides the songs — each song's plays, the user's instruments.
 // When some of it doesn't load, one notice says what is missing, with a Retry that asks again
@@ -41,6 +42,11 @@ jest.mock('../services/playlistService', () => ({
 const getPlays = songPlayService.getPlays as jest.Mock;
 const getLastPlays = songPlayService.getLastPlays as jest.Mock;
 const getInstruments = instrumentService.getAll as jest.Mock;
+const getAllSongs = songService.getAllSongs as jest.Mock;
+const TWO_SONGS = [
+  { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], lastPlayed: '2026-03-01T10:00:00.000Z' },
+  { uid: 'song-b', title: 'Bravo', artist: 'B', instrument: ['Guitar'], lastPlayed: '2026-03-02T10:00:00.000Z' },
+];
 
 const PLAYS_FAILED = "Couldn't load when your songs were last played.";
 const INSTRUMENTS_FAILED = "Couldn't load your instruments.";
@@ -48,6 +54,9 @@ const BOTH_FAILED = "Couldn't load when your songs were last played, nor your in
 const retryButton = (name: RegExp | string) => screen.getByRole('button', { name });
 const lastPlayedCell = (title: string) => within(screen.getByText(title).closest('tr')!).getAllByRole('cell').at(-1)!;
 const formLastPlayed = () => screen.getByText(/Last played:/);
+const rowTitlesInOrder = () => screen.getAllByRole('row').slice(1)
+  .map(row => within(row).queryAllByRole('cell')[2]?.textContent?.trim() ?? '')
+  .filter(Boolean);
 const goTo = async (router: { navigate: (path: string) => Promise<void> }, path: string) => {
   await act(async () => { await router.navigate(path); });
 };
@@ -57,6 +66,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   localStorage.setItem('songsInstrumentFilter', 'Guitar');
   lastPlaysFail = false;
+  getAllSongs.mockResolvedValue(TWO_SONGS);
   failingPlays.clear();
   instrumentsFail = false;
   getLastPlays.mockImplementation(() => (lastPlaysFail ? Promise.reject(new Error('network')) : Promise.resolve(PLAYS)));
@@ -65,12 +75,53 @@ beforeEach(() => {
 });
 
 describe('the list', () => {
-  test('asks for the plays once, whatever the number of songs (#244)', async () => {
-    renderSongs();
-    await waitFor(() => expect(lastPlayedCell('Alpha')).toHaveTextContent('Mar 1, 2026'));
-    expect(lastPlayedCell('Bravo')).toHaveTextContent('Mar 2, 2026');
-    expect(getLastPlays).toHaveBeenCalled();
+  test('asks for the plays in one request, whatever the number of songs (#244)', async () => {
+    const callsFor = async (songs: typeof TWO_SONGS) => {
+      getAllSongs.mockResolvedValue(songs);
+      getLastPlays.mockClear();
+      const { unmount } = renderSongs();
+      await screen.findByText(songs[songs.length - 1].title);
+      await waitFor(() => expect(lastPlayedCell('Alpha')).toHaveTextContent('Mar 1, 2026'));
+      const calls = getLastPlays.mock.calls.length;
+      unmount();
+      return calls;
+    };
+    const twelve = [...TWO_SONGS, ...Array.from({ length: 10 }, (_, i) => ({ uid: `song-${i}`, title: `Song ${i}`, artist: 'C', instrument: ['Guitar'], lastPlayed: '2025-01-01T10:00:00.000Z' }))];
+    const withTwo = await callsFor(TWO_SONGS);
+    expect(withTwo).toBeGreaterThan(0);
+    expect(await callsFor(twelve)).toBe(withTwo);
     expect(getPlays).not.toHaveBeenCalled();
+  });
+});
+
+// A list that keeps known and unknown songs together: the plays request failed, a song's own
+// page then loaded its plays, and reloading the songs on the way back failed (the list stays).
+describe('known and unknown songs in the same list', () => {
+  const mixedList = async () => {
+    lastPlaysFail = true;
+    localStorage.setItem('songsSortColumn', 'lastPlayed');
+    localStorage.setItem('songsSortDirection', 'asc');
+    const { router } = renderSongs();
+    await screen.findByText(PLAYS_FAILED);
+    await goTo(router, '/songs/song-a');
+    await waitFor(() => expect(formLastPlayed()).toHaveTextContent('Last played: Mar 1, 2026'));
+    getAllSongs.mockRejectedValue(new Error('network'));
+    await goTo(router, '/songs');
+    await screen.findByText('Bravo');
+  };
+
+  test('with an instrument chosen, unknown plays go last, whichever the direction', async () => {
+    await mixedList();
+    await waitFor(() => expect(lastPlayedCell('Bravo')).toHaveTextContent('?'));
+    expect(rowTitlesInOrder()).toEqual(['Alpha', 'Bravo']); // by date, Bravo (none held) would come first
+    fireEvent.click(screen.getByText('Last played'));
+    await waitFor(() => expect(rowTitlesInOrder()).toEqual(['Alpha', 'Bravo']));
+  });
+
+  test('without an instrument chosen (no dates shown), the sort is left as it was', async () => {
+    localStorage.removeItem('songsInstrumentFilter');
+    await mixedList();
+    expect(rowTitlesInOrder()).toEqual(['Bravo', 'Alpha']);
   });
 });
 

@@ -65,6 +65,10 @@ const withoutValue = (values: Set<string>, value: string) => {
   return next;
 };
 
+// #242 / #244: what one round of plays requests learned — each asked song's plays, and the
+// songs whose request failed (their plays are unknown).
+type PlaysRound = { plays: Map<string, SongPlay[]>; failed: Set<string> };
+
 function Songs() {
   const normalizeCapoValue = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
@@ -555,7 +559,7 @@ function Songs() {
   // #244: the list's plays in ONE request — each song's latest play per instrument, which is
   // all the list shows and sorts by. It succeeds or fails as a whole: on failure every asked
   // song's plays are unknown ("?"), never taken for "never played" (#242).
-  const fetchLastPlays = async (uids: string[]) => {
+  const fetchLastPlays = async (uids: string[]): Promise<PlaysRound> => {
     const plays = new Map<string, SongPlay[]>();
     try {
       const bySong = await songPlayService.getLastPlays();
@@ -569,7 +573,7 @@ function Songs() {
 
   // #242: what one round of plays requests learned, merged into the page: the songs that
   // answered are known, the ones that failed are unknown.
-  const applyPlays = (asked: string[], { plays, failed }: { plays: Map<string, SongPlay[]>; failed: Set<string> }) => {
+  const applyPlays = (asked: string[], { plays, failed }: PlaysRound) => {
     const answered = asked.filter(uid => !failed.has(uid));
     setSongPlays(prev => {
       const next = new Map(prev);
@@ -597,22 +601,28 @@ function Songs() {
     }
   };
 
+  // The list's unknown plays, asked again in the one request — the answer dropped if the songs
+  // reloaded meanwhile (that load's answer is the newer one). Retry and bulk marking use it.
+  const refetchUnknownPlays = async () => {
+    const songsRequest = songsRequestRef.current;
+    const asked = [...unknownPlays];
+    if (asked.length === 0) return;
+    const result = await fetchLastPlays(asked);
+    if (songsRequest === songsRequestRef.current) applyPlays(asked, result);
+  };
+
   // #242: Retry asks again only for the plays that didn't load — once at a time. On a song's
-  // page, its own whole history; on the list, the one request, dropped if the songs reloaded
-  // meanwhile (that load's answer is the newer one).
+  // page, its own whole history; on the list, the one request.
   const retryingPlaysRef = useRef(false);
   const retryPlays = async () => {
     if (retryingPlaysRef.current) return;
     retryingPlaysRef.current = true;
-    const songsRequest = songsRequestRef.current;
     const openSong = editingUidRef.current;
     try {
       if (openSong) {
         await loadEditingSongPlays(openSong, () => editingUidRef.current === openSong);
       } else {
-        const asked = [...unknownPlays];
-        const result = await fetchLastPlays(asked);
-        if (songsRequest === songsRequestRef.current) applyPlays(asked, result);
+        await refetchUnknownPlays();
       }
     } finally {
       retryingPlaysRef.current = false;
@@ -1028,8 +1038,7 @@ function Songs() {
     let current = true;
     void loadEditingSongPlays(editingUid, () => current);
     return () => { current = false; };
-    // loadEditingSongPlays only sets state; the effect follows the open song.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadEditingSongPlays only sets state; the effect follows the open song
   }, [editingUid]);
 
   // The server's answer replaces what the page holds, so membership never drifts from it.
@@ -1500,10 +1509,7 @@ function Songs() {
         return next;
       });
       // #242 / #244: plays were unknown — ask again now (the new play alone isn't the history).
-      if (unknownPlays.size > 0) {
-        const asked = [...unknownPlays];
-        applyPlays(asked, await fetchLastPlays(asked));
-      }
+      await refetchUnknownPlays();
       songSelection.clear();
     } catch (err) {
       setError('Error while updating songs');
@@ -1948,6 +1954,12 @@ function Songs() {
     return [...items].sort((a, b) => {
       // Special handling for lastPlayed to use instrument-filtered times from songPlays
       if (sortColumn === 'lastPlayed') {
+        // #242: with an instrument chosen (the column shows dates), unknown plays go last,
+        // whichever the direction. Without one the column shows no dates: order unchanged.
+        // (#244: a list keeps a mix when the plays request failed, a song's page then loaded
+        // its own, and the songs' reload on the way back failed.)
+        const aUnknown = !!instrumentFilter && unknownPlays.has(a.uid);
+        if (aUnknown !== (!!instrumentFilter && unknownPlays.has(b.uid))) return aUnknown ? 1 : -1;
         const aLastPlayed = getLastPlayedForSong(a.uid);
         const bLastPlayed = getLastPlayedForSong(b.uid);
         const aTime = aLastPlayed ? new Date(aLastPlayed).getTime() : 0;

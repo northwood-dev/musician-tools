@@ -571,11 +571,11 @@ const markSongPlayed = async (req, res, next) => {
   }
 };
 
-// GET song plays history
 // GET /api/songs/last-plays (#244): the Songlist's plays in ONE request instead of one per song.
-// Only what the list shows and sorts by: each song's latest play per instrument type (NULL — a
-// play without instrument — is a group of its own), grouped by song, most recent first. A song
-// never played is absent. A song's page keeps getSongPlays for its whole history.
+// Only what the list shows and sorts by: each song's latest play per instrument TYPE (the list
+// filters by type, never by a precise instrument); a play without instrument (NULL) is a group
+// of its own. Grouped by song, most recent first; a song never played is absent. A song's page
+// keeps getSongPlays for its whole history.
 const LAST_PLAYS_SQL = `
   SELECT uid, "songUid", "instrumentType", "instrumentUid", "playedAt"
     FROM (
@@ -604,6 +604,7 @@ const getLastPlays = async (req, res, next) => {
   }
 };
 
+// GET song plays history
 const getSongPlays = async (req, res, next) => {
   try {
     const userId = req.session.user;
