@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BulkSetInstrument, type InstrumentAdded } from '../components/BulkSetInstrument';
 import { PlaylistsLoadMessage, type PlaylistsLoadStatus } from '../components/PlaylistsLoadMessage';
 import { usePlaylistMembership, withMember } from '../hooks/usePlaylistMembership';
@@ -74,6 +74,7 @@ function Songs() {
 
   const [songs, setSongs] = useState<Song[]>([]);
   const [songsLoaded, setSongsLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [form, setForm] = useState<CreateSongDTO>(initialSong);
   // Story 18.2: editingUid + the list/form mode are DERIVED from the URL (see the
   // useParams block below), not useState — /songs (list), /songs/new (add),
@@ -548,37 +549,46 @@ function Songs() {
 
   const artistAliases = useArtistAliases();
 
+  // #224: the one way the songs load — on opening the list, on coming back to it, and on Retry.
+  // A reload never takes back a list already loaded (same rule as the playlists): the skeleton
+  // and the failed-load block only stand for a page that has no list yet, and a failed reload
+  // keeps the list shown. Only the latest request's answer counts (StrictMode, quick returns).
+  const songsRequestRef = useRef(0);
+  const songsLoadedRef = useRef(false);
+  const loadSongs = useCallback(async () => {
+    const request = ++songsRequestRef.current;
+    const latest = () => request === songsRequestRef.current;
+    if (!songsLoadedRef.current) setLoading(true);
+    try {
+      const data = await songService.getAllSongs();
+      if (!latest()) return;
+      songsLoadedRef.current = true;
+      setSongs(data);
+      setSongsLoaded(true);
+      setLoadFailed(false);
+      const playsMap = new Map<string, SongPlay[]>();
+      await Promise.all(
+        data.map(async (song) => {
+          try {
+            const plays = await songPlayService.getPlays(song.uid);
+            playsMap.set(song.uid, plays);
+          } catch (err) {
+            console.error(`Failed to load plays for ${song.uid}:`, err);
+            playsMap.set(song.uid, []);
+          }
+        })
+      );
+      if (latest()) setSongPlays(playsMap);
+    } catch (err) {
+      if (!latest()) return;
+      console.error(err);
+      if (!songsLoadedRef.current) setLoadFailed(true);
+    } finally {
+      if (latest()) setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const loadSongs = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await songService.getAllSongs();
-        setSongs(data);
-        setSongsLoaded(true);
-        // Charger les plays pour toutes les chansons
-        const playsMap = new Map<string, SongPlay[]>();
-        await Promise.all(
-          data.map(async (song) => {
-            try {
-              const plays = await songPlayService.getPlays(song.uid);
-              playsMap.set(song.uid, plays);
-            } catch (err) {
-              console.error(`Failed to load plays for ${song.uid}:`, err);
-              playsMap.set(song.uid, []);
-            }
-          })
-        );
-        setSongPlays(playsMap);
-      } catch (err) {
-        setError('Error while loading songs');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadSongs();
-    loadPlaylists();
     (async () => {
       try {
         const list = await instrumentService.getAll();
@@ -758,37 +768,17 @@ function Songs() {
     } catch { /* ignore */ }
   }, [sortDirection]);
 
-  // When returning to the list page, reload songs from server
+  // Opening the page (the list or a song: the form needs the songs too, e.g. for duplicates),
+  // and coming back to the list from a song: (re)load the songs and playlists.
+  const openedRef = useRef(false);
   useEffect(() => {
-    if (page === 'list') {
-      const reloadData = async () => {
-        try {
-          const data = await songService.getAllSongs();
-          setSongs(data);
-
-          void loadPlaylists();
-
-          // Reload song plays
-          const playsMap = new Map<string, SongPlay[]>();
-          await Promise.all(
-            data.map(async (song) => {
-              try {
-                const plays = await songPlayService.getPlays(song.uid);
-                playsMap.set(song.uid, plays);
-              } catch (err) {
-                console.error(`Failed to load plays for ${song.uid}:`, err);
-                playsMap.set(song.uid, []);
-              }
-            })
-          );
-          setSongPlays(playsMap);
-        } catch (err) {
-          console.error('Error reloading data:', err);
-        }
-      };
-      reloadData();
+    const opening = !openedRef.current;
+    openedRef.current = true;
+    if (opening || page === 'list') {
+      void loadSongs();
+      void loadPlaylists();
     }
-  }, [page]);
+  }, [page, loadSongs]);
 
   useEffect(() => {
     try {
@@ -1954,7 +1944,7 @@ function Songs() {
             <span aria-hidden="true">←</span> Back to songlist
           </button>
         </Page>
-      ) : page === 'list' && songs.length === 0 && !loading && !error ? (
+      ) : page === 'list' && songs.length === 0 && !loading && !error && !loadFailed ? (
         // Story 19.4 (DL-13): a genuinely empty songlist points to the Catalog. Only
         // when loaded with no error (degrades to the normal list/error UI otherwise).
         <Page width="content" className="text-center">
@@ -1974,6 +1964,8 @@ function Songs() {
           filteredSongs={filteredSongs}
           displayedSongs={displayedSongs}
           loading={loading}
+          loadFailed={loadFailed}
+          onRetryLoad={() => { void loadSongs(); }}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           // #191: the added song joins the list (it matches the search, so it replaces the

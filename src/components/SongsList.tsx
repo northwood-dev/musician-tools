@@ -17,6 +17,7 @@ import { Page } from './Page';
 import { Panel } from './Panel';
 import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
+import { LoadFailed } from './LoadFailed';
 import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
 import { findExistingIn } from '../hooks/useSonglistMatcher';
 import { songLabel } from '../utils/songLabel';
@@ -27,6 +28,9 @@ export interface SongsListProps {
   filteredSongs: Song[];
   displayedSongs: Song[];
   loading: boolean;
+  /** #224: the songs didn't load — said in place of the list, with Retry. */
+  loadFailed: boolean;
+  onRetryLoad: () => void;
   
   // Search & filters
   searchQuery: string;
@@ -299,7 +303,8 @@ export default function SongsList(props: SongsListProps) {
             <ActiveFilterChips chips={props.activeFilterChips} onRemove={props.onRemoveFilterChip} onClearAll={props.clearAllFilters} onEmptied={focusSearch} />
           </div>
           {/* Bulk actions: the shared bar (22.1) hides itself when nothing is selected. */}
-          <BulkActionBar count={props.selectedSongs.size} noun="song(s)">
+          {/* #224: no bulk action on songs that didn't load (a selection kept from a visit). */}
+          <BulkActionBar count={props.loadFailed ? 0 : props.selectedSongs.size} noun="song(s)">
             {props.bulkSetInstrument}
             <div className="relative">
               <button
@@ -386,9 +391,10 @@ export default function SongsList(props: SongsListProps) {
               Delete selected
             </button>
           </BulkActionBar>
+          <LoadFailed failed={props.loadFailed} onRetry={props.onRetryLoad}>Couldn't load your songlist.</LoadFailed>
           {props.loading ? (
             <ListSkeleton rows={6} label="Loading…" />
-          ) : props.filteredSongs.length === 0 ? (
+          ) : props.loadFailed ? null : props.filteredSongs.length === 0 ? (
             <div className="card-base">
               <EmptyState
                 action={props.activeFilterCount > 0 && (
