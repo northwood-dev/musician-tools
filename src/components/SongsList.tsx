@@ -286,7 +286,7 @@ export default function SongsList(props: SongsListProps) {
                 aria-keyshortcuts="/"
                 id="songs-search"
                 type="text"
-                placeholder="Search by title, artist, or album…"
+                placeholder="Search by artist, title, or album…"
                 value={props.searchQuery}
                 onChange={e => props.setSearchQuery(e.target.value)}
                 className="input-base pr-10"

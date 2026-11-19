@@ -26,7 +26,7 @@ jest.mock('../services/profileService', () => ({
 import { songService } from '../services/songService';
 
 const getAllSongs = songService.getAllSongs as jest.Mock;
-const searchField = () => screen.getByPlaceholderText('Search by title, artist, or album…');
+const searchField = () => screen.getByPlaceholderText('Search by artist, title, or album…');
 const press = (key: string, target: Element = document.body) => fireEvent.keyDown(target, { key });
 
 beforeEach(() => {

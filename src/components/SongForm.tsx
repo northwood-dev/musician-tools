@@ -201,7 +201,7 @@ export function SongForm(props: SongFormProps) {
             Suggest this song for the Catalog
           </label>
           <p id="song-catalog-suggestion-help" className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Shares only the title, artist, musical details (key, BPM…) and official links, never your notes or instruments. Uncheck it for your own compositions.
+            Shares only the artist, title, musical details (key, BPM…) and official links, never your notes or instruments. Uncheck it for your own compositions.
           </p>
         </div>
       )}

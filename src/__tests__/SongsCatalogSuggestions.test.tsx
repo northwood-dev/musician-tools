@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 
 const search = async (text: string) => {
-  fireEvent.change(await screen.findByPlaceholderText(/Search by title, artist, or album/), { target: { value: text } });
+  fireEvent.change(await screen.findByPlaceholderText(/Search by artist, title, or album/), { target: { value: text } });
 };
 
 test('a search with no Songlist match shows up to 5 Catalog entries and a link to see them all', async () => {

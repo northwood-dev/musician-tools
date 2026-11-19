@@ -56,7 +56,7 @@ const filterOnNoInstrument = async () => {
   await filterOnInstrument((option as HTMLOptionElement).value);
 };
 const search = (text: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search by title, artist, or album…'), { target: { value: text } });
+  fireEvent.change(screen.getByPlaceholderText('Search by artist, title, or album…'), { target: { value: text } });
 // The add settles a promise after the click (the request, then the panel closing and the
 // toast), so the click runs inside an async act that lets it finish.
 const setInstrument = async (instrument: string) => {
@@ -268,7 +268,7 @@ describe('#98: Songlist labels once filters are used', () => {
 
     expect(await screen.findByText('Alpha')).toBeInTheDocument();
     expect(screen.queryByText('Beta')).not.toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Search by title, artist, or album…')).toHaveValue('alpha');
+    expect(screen.getByPlaceholderText('Search by artist, title, or album…')).toHaveValue('alpha');
   });
 });
 

@@ -56,7 +56,7 @@ test('the active filters show as chips inside the Search card, one per value, in
   saved({ songsGenreFilters: JSON.stringify(['Rock', 'Jazz']), songsGenreMatchMode: 'any', songsBpmMinFilter: '90', songsKeyFilter: '' });
   renderSongs();
   await screen.findByText('Alpha');
-  const searchCard = screen.getByPlaceholderText('Search by title, artist, or album…').closest('.card-base')!;
+  const searchCard = screen.getByPlaceholderText('Search by artist, title, or album…').closest('.card-base')!;
   expect(within(searchCard as HTMLElement).getByRole('group', { name: 'Active filters' })).toBeInTheDocument();
   expect(chipLabels()).toEqual(['Remove Rock', 'Remove Jazz', 'Remove ≥ 90 BPM']);
   expect(screen.queryByText('Beta')).not.toBeInTheDocument();
@@ -145,5 +145,5 @@ test('after a removal, focus goes to the next chip, else the previous one, else 
   expect(screen.getByRole('button', { name: 'Remove Jazz' })).toHaveFocus();
 
   fireEvent.click(screen.getByRole('button', { name: 'Remove Jazz' }));
-  expect(screen.getByPlaceholderText('Search by title, artist, or album…')).toHaveFocus();
+  expect(screen.getByPlaceholderText('Search by artist, title, or album…')).toHaveFocus();
 });
