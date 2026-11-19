@@ -22,6 +22,7 @@ import { Tabs } from '../components/Tabs';
 import { Panel } from '../components/Panel';
 import { EmptyState } from '../components/EmptyState';
 import { CountBadge, Tag } from '../components/Chip';
+import { songLabel } from '../utils/songLabel';
 
 // Curator hub to MANAGE the shared Catalog (story 19.5). Songlist-style table:
 // per-row checkboxes + a "Delete selected" bar on top (bulk delete), and a row click
@@ -650,7 +651,7 @@ export default function CatalogManage() {
                               <RowSelectionCheckbox
                                 checked={isSel}
                                 onChange={() => selection.toggle(entry.uid)}
-                                label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
+                                label={songLabel(entry)}
                                 disabled={adding || deleting}
                               />
                             </td>

@@ -24,6 +24,7 @@ import { BulkRecap } from '../components/BulkRecap';
 import { Page, PageTitle } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 import { Tag } from '../components/Chip';
+import { songLabel } from '../utils/songLabel';
 
 // Curator Collection composer (story 20.2). Lives at /catalog/manage/collections/:uid:
 // rename / delete the Collection, see its member entries (Remove each), and Add entries
@@ -45,11 +46,6 @@ const REMOVE_CONCURRENCY = 4;
 interface RemoveRecap {
   removed: number;
   failed: number;
-}
-
-// A short "Artist · Title" label for a catalog entry.
-function entryLabel(e: CatalogSong): string {
-  return e.artist ? `${e.artist} · ${e.title}` : e.title;
 }
 
 function DraftBadge() {
@@ -186,7 +182,7 @@ export default function CatalogCollectionCompose() {
     setCollection(prev => (prev && !prev.songs.some(s => s.uid === entry.uid)) ? { ...prev, songs: [...prev.songs, entry] } : prev);
     try {
       await catalogService.addSongToCollection(collection.uid, entry.uid);
-      showToast(`Added "${entryLabel(entry)}"`);
+      showToast(`Added "${songLabel(entry)}"`);
     } catch {
       // revert on failure
       setCollection(prev => prev ? { ...prev, songs: prev.songs.filter(s => s.uid !== entry.uid) } : prev);
@@ -388,7 +384,7 @@ export default function CatalogCollectionCompose() {
                     onMouseDown={e => e.preventDefault() /* keep input focus so blur-close doesn't cancel the click */}
                     onClick={() => addEntry(entry)}
                   >
-                    {entryLabel(entry)}
+                    {songLabel(entry)}
                     {entry.publishedAt == null && <DraftBadge />}
                   </button>
                 ))}
@@ -465,7 +461,7 @@ export default function CatalogCollectionCompose() {
                         <RowSelectionCheckbox
                           checked={selection.isSelected(entry.uid)}
                           onChange={() => userToggle(entry.uid)}
-                          label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
+                          label={songLabel(entry)}
                           disabled={removing}
                         />
                       </td>

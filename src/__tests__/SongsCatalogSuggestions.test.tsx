@@ -133,7 +133,7 @@ test('adding an entry puts the song in the list, in place of the suggestions', a
   await search('wonder');
   const block = await screen.findByRole('region', { name: 'From the Catalog' });
   fireEvent.change(await within(block).findByLabelText('Add as'), { target: { value: 'Guitar' } });
-  fireEvent.click(within(block).getByRole('button', { name: 'Add "Wonderwall" to my songlist' }));
+  fireEvent.click(within(block).getByRole('button', { name: 'Add "Oasis — Wonderwall" to my songlist' }));
   await waitFor(() => expect(screen.queryByRole('region', { name: 'From the Catalog' })).not.toBeInTheDocument());
   expect(cat.addToSonglist).toHaveBeenCalledWith('c1', 'Guitar');
   expect(screen.getByText('Wonderwall')).toBeInTheDocument();
@@ -210,4 +210,14 @@ describe('Add "<text>" as a new song', () => {
     expect(songs.createSong.mock.calls[0][0]).toEqual(expect.objectContaining({ title: 'My own tune', artist: 'Me' }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
+});
+
+// #232: a Catalog suggestion shows its artist before its title.
+test('a Catalog suggestion shows the artist before the title', async () => {
+  renderSongs();
+  await screen.findByText('Yesterday');
+  await search('wonder');
+  const block = await screen.findByRole('region', { name: 'From the Catalog' });
+  const item = (await within(block).findByText('Wonderwall')).closest('li')!;
+  expect(item.textContent).toMatch(/^Oasis\s*Wonderwall/);
 });

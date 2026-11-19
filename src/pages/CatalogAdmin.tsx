@@ -16,6 +16,7 @@ import { StreamingLinksEditor } from '../components/StreamingLinksEditor';
 import { listOf } from '../utils/listOf';
 import { Page, PageTitle } from '../components/Page';
 import { RemovableChip } from '../components/Chip';
+import { songLabel } from '../utils/songLabel';
 
 // Curator-only admin screen to create a Catalog entry (story 19.2). Utilitarian
 // (DL-14): reuses the design-system utilities, restricted to the INTRINSIC fields
@@ -228,7 +229,7 @@ export default function CatalogAdmin() {
           if (ctrl.signal.aborted) return; // a newer check decides
           if (res.exists) {
             dupRef.current = true;
-            setDupMessage(artist ? `A "${title}" by ${artist} already exists in the Catalog.` : `A "${title}" already exists in the Catalog.`);
+            setDupMessage(`"${songLabel({ title, artist })}" already exists in the Catalog.`);
           } else {
             clearDuplicate();
           }
@@ -540,7 +541,7 @@ export default function CatalogAdmin() {
         <ConfirmDialog
           isOpen={deleteOpen}
           title="Delete catalog entry"
-          message={`Delete "${(form.title || '').trim() || 'this entry'}"${(form.artist || '').trim() ? ` by ${(form.artist || '').trim()}` : ''} from the Catalog? Users who already added this song keep their own copy.`}
+          message={`Delete ${(form.title || '').trim() ? `"${songLabel({ title: form.title, artist: form.artist })}"` : 'this entry'} from the Catalog? Users who already added this song keep their own copy.`}
           confirmText={deleting ? 'Deleting…' : 'Delete'}
           cancelText="Cancel"
           isDangerous

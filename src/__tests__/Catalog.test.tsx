@@ -30,7 +30,7 @@ test('#34: the row Add button sends the instrument chosen at the top of the page
   await screen.findByText('Zombie');
 
   fireEvent.change(screen.getByLabelText('Add as'), { target: { value: 'Bass' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add "The Cranberries — Zombie" to my songlist' }));
 
   await waitFor(() => expect(svc.addToSonglist).toHaveBeenCalledWith('a', 'Bass'));
   expect(localStorage.getItem('catalogAddAsInstrument')).toBe('Bass');
@@ -42,7 +42,7 @@ test('#34: the row Add button with nothing chosen sends nothing, and does not op
   render(<MemoryRouter future={ROUTER_FUTURE} initialEntries={['/catalog']}><Catalog /></MemoryRouter>);
   await screen.findByText('Zombie');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Add "Zombie" to my songlist' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add "The Cranberries — Zombie" to my songlist' }));
 
   expect(svc.addToSonglist).not.toHaveBeenCalled();
   expect(screen.getByRole('alert', { name: '' })).toHaveTextContent('Choose an instrument first.');
@@ -178,7 +178,7 @@ test.each([
   renderCatalog();
   const already = await screen.findByText(/Already in your songlist/);
   expect(already.closest('a')).toHaveAttribute('href', '/songs/s1');
-  expect(screen.queryByRole('button', { name: `Add "${entryTitle}" to my songlist` })).toBeNull();
+  expect(screen.queryByRole('button', { name: `Add "${entryArtist} — ${entryTitle}" to my songlist` })).toBeNull();
 });
 
 describe('#34: bulk add with the chosen instrument', () => {
@@ -274,7 +274,7 @@ test('22.4: the rows gain a checkbox WITHOUT losing the row link or the per-row 
   renderCatalog();
   await screen.findByText('Zombie');
 
-  expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeInTheDocument();
+  expect(screen.getByLabelText('Select The Cranberries — Zombie')).toBeInTheDocument();
   expect(screen.getByLabelText('Select all')).toBeInTheDocument();
   // The per-row Add stays (decision D) and the title stays a real link.
   expect(screen.getAllByRole('button', { name: /^Add ".+" to my songlist$/ })).toHaveLength(2);
@@ -320,8 +320,8 @@ test('22.4: a permanent 404 leaves the selection, a retryable error stays in it'
   await screen.findByRole('alert', { name: 'Bulk action result' });
 
   // Retrying a deleted catalog entry can never work → it must not stay armed.
-  expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
-  expect(screen.getByLabelText('Select Boom by Crash')).toBeChecked();
+  expect(screen.getByLabelText('Select Ghost — Gone')).not.toBeChecked();
+  expect(screen.getByLabelText('Select Crash — Boom')).toBeChecked();
   expect(screen.getByText('1 song selected')).toBeInTheDocument();
 });
 
@@ -455,8 +455,8 @@ describe('#49: entries found to be gone are marked on their row', () => {
     await addBoth();
 
     await screen.findByText(GONE_MESSAGE);
-    await waitFor(() => expect(screen.getByLabelText('Select Zombie by The Cranberries')).not.toBeDisabled());
-    expect(screen.getByLabelText('Select Gone by Ghost')).toBeDisabled();
+    await waitFor(() => expect(screen.getByLabelText('Select The Cranberries — Zombie')).not.toBeDisabled());
+    expect(screen.getByLabelText('Select Ghost — Gone')).toBeDisabled();
   });
 
   test('select-all skips marked rows and reads as fully selected without them', async () => {
@@ -467,8 +467,8 @@ describe('#49: entries found to be gone are marked on their row', () => {
 
     fireEvent.click(screen.getByLabelText('Select all'));
 
-    expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeChecked();
-    expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
+    expect(screen.getByLabelText('Select The Cranberries — Zombie')).toBeChecked();
+    expect(screen.getByLabelText('Select Ghost — Gone')).not.toBeChecked();
     expect(screen.getByText('1 song selected')).toBeInTheDocument();
     expect(screen.getByLabelText('Select all')).toBeChecked();
   });
@@ -476,13 +476,13 @@ describe('#49: entries found to be gone are marked on their row', () => {
   test('a row whose own button finds the entry gone is marked the same way', async () => {
     renderCatalog();
     await screen.findByText('Zombie');
-    fireEvent.click(screen.getByLabelText('Select Gone by Ghost'));
+    fireEvent.click(screen.getByLabelText('Select Ghost — Gone'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add "Gone" to my songlist' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add "Ghost — Gone" to my songlist' }));
 
     expect(await within(rowOf('Gone')).findByText(GONE_MESSAGE)).toBeInTheDocument();
-    expect(screen.getByLabelText('Select Gone by Ghost')).toBeDisabled();
-    expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
+    expect(screen.getByLabelText('Select Ghost — Gone')).toBeDisabled();
+    expect(screen.getByLabelText('Select Ghost — Gone')).not.toBeChecked();
   });
 
   test('a gone entry whose song is in the songlist keeps the link', async () => {
@@ -493,7 +493,7 @@ describe('#49: entries found to be gone are marked on their row', () => {
     await addBoth();
 
     await screen.findByRole('status', { name: 'Bulk action result' });
-    expect(screen.getByLabelText('Select Gone by Ghost')).toBeDisabled();
+    expect(screen.getByLabelText('Select Ghost — Gone')).toBeDisabled();
     expect(within(rowOf('Gone')).getByRole('link', { name: '✓ Already in your songlist' })).toBeInTheDocument();
     expect(within(rowOf('Gone')).queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
   });
@@ -507,7 +507,7 @@ describe('#49: entries found to be gone are marked on their row', () => {
 
     await screen.findByRole('alert', { name: 'Bulk action result' });
     expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Select Gone by Ghost')).toBeChecked();
+    expect(screen.getByLabelText('Select Ghost — Gone')).toBeChecked();
   });
 
   test('loading the list again removes the marks', async () => {
@@ -527,15 +527,15 @@ describe('#49: entries found to be gone are marked on their row', () => {
     svc.listCatalog.mockResolvedValue(resp(rows, 48));
     renderCatalog();
     await screen.findByText('Zombie');
-    fireEvent.click(screen.getByRole('button', { name: 'Add "Gone" to my songlist' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add "Ghost — Gone" to my songlist' }));
     await screen.findByText(GONE_MESSAGE);
 
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => expect(svc.listCatalog).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }), expect.anything()));
-    expect(await screen.findByRole('button', { name: 'Add "Gone" to my songlist' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Add "Ghost — Gone" to my songlist' })).toBeInTheDocument();
     expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeDisabled();
+    expect(screen.getByLabelText('Select Ghost — Gone')).not.toBeDisabled();
   });
 
   test('changing the search loads the list without the marks', async () => {
@@ -559,12 +559,12 @@ describe('#49: entries found to be gone are marked on their row', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     await waitFor(() => expect(svc.listCatalog).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }), expect.anything()));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add "Gone" to my songlist' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add "Ghost — Gone" to my songlist' }));
     await screen.findByText(GONE_MESSAGE);
     await act(async () => { finishLoad(resp(rows, 48)); });
 
     expect(screen.getByText(GONE_MESSAGE)).toBeInTheDocument();
-    expect(screen.getByLabelText('Select Gone by Ghost')).toBeDisabled();
+    expect(screen.getByLabelText('Select Ghost — Gone')).toBeDisabled();
   });
 });
 
@@ -572,7 +572,7 @@ test('#132: a click on a mixed select-all clears this page only; another page ke
   svc.listCatalog.mockResolvedValue({ items: twoRows as never, total: 30, page: 1, limit: 24 });
   renderCatalog();
   await screen.findByText('Zombie');
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
 
   svc.listCatalog.mockResolvedValue({
     items: [{ uid: 'c', title: 'Gone', artist: 'Ghost' }, { uid: 'd', title: 'Boom', artist: 'Crash' }] as never,
@@ -580,7 +580,7 @@ test('#132: a click on a mixed select-all clears this page only; another page ke
   });
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
   await screen.findByText('Boom');
-  fireEvent.click(screen.getByLabelText('Select Boom by Crash'));
+  fireEvent.click(screen.getByLabelText('Select Crash — Boom'));
 
   const selectAll = screen.getByRole('checkbox', { name: 'Select all' });
   expect(selectAll).toBePartiallyChecked();
@@ -588,8 +588,8 @@ test('#132: a click on a mixed select-all clears this page only; another page ke
 
   fireEvent.click(selectAll);
 
-  expect(screen.getByLabelText('Select Boom by Crash')).not.toBeChecked();
-  expect(screen.getByLabelText('Select Gone by Ghost')).not.toBeChecked();
+  expect(screen.getByLabelText('Select Crash — Boom')).not.toBeChecked();
+  expect(screen.getByLabelText('Select Ghost — Gone')).not.toBeChecked();
   expect(screen.getByText('1 song selected')).toBeInTheDocument(); // Zombie, on page 1
   expect(selectAll).not.toBeChecked();
   expect(selectAll).not.toBePartiallyChecked();

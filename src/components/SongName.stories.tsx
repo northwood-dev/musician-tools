@@ -18,6 +18,7 @@ export const LongValues: Story = {
   args: { song: { artist: 'Nick Cave & The Bad Seeds featuring Kylie Minogue', title: 'Where the Wild Roses Grow (Radio Edit, 2011 Remaster)' } },
   decorators: [(Story) => <div style={{ maxWidth: 240 }}><Story /></div>],
 };
+export const Truncated: Story = { ...LongValues, args: { ...LongValues.args, truncate: true } };
 export const InASentence: Story = {
   render: (args) => <p>Reject "{songLabel(args.song)}"? It leaves the queue.</p>,
 };
