@@ -572,6 +572,38 @@ const markSongPlayed = async (req, res, next) => {
 };
 
 // GET song plays history
+// GET /api/songs/last-plays (#244): the Songlist's plays in ONE request instead of one per song.
+// Only what the list shows and sorts by: each song's latest play per instrument type (NULL — a
+// play without instrument — is a group of its own), grouped by song, most recent first. A song
+// never played is absent. A song's page keeps getSongPlays for its whole history.
+const LAST_PLAYS_SQL = `
+  SELECT uid, "songUid", "instrumentType", "instrumentUid", "playedAt"
+    FROM (
+      SELECT DISTINCT ON (p."songUid", p."instrumentType")
+             p.uid, p."songUid", p."instrumentType", p."instrumentUid", p."playedAt"
+        FROM "SongPlays" p
+        JOIN "Songs" s ON s.uid = p."songUid"
+       WHERE s.user_uid = :userUid
+       ORDER BY p."songUid", p."instrumentType", p."playedAt" DESC, p.uid
+    ) latest
+   ORDER BY "songUid", "playedAt" DESC
+`;
+const getLastPlays = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+    const rows = await sequelize.query(LAST_PLAYS_SQL, { type: 'SELECT', replacements: { userUid: userId } });
+    const bySong = {};
+    for (const play of rows) (bySong[play.songUid] ||= []).push(play);
+    res.json(bySong);
+  } catch (error) {
+    logger.error('Error fetching last plays:', error);
+    next(createError(500, 'Error fetching last plays'));
+  }
+};
+
 const getSongPlays = async (req, res, next) => {
   try {
     const userId = req.session.user;
@@ -632,5 +664,6 @@ module.exports = {
   addInstrumentToSongs,
   markSongPlayed,
   getSongPlays,
+  getLastPlays,
   lookupSongMetadata,
 };

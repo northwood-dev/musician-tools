@@ -28,7 +28,8 @@ jest.mock('../models', () => {
     },
     sequelize: {
       // (options?, callback): a nested call (savepoint) reuses the same mock tx
-    transaction: jest.fn(async (...args) => args[args.length - 1]({ id: 'tx' }))
+    transaction: jest.fn(async (...args) => args[args.length - 1]({ id: 'tx' })),
+      query: jest.fn(),
     }
   };
 });
@@ -1293,5 +1294,52 @@ describe('instrument links are checked (#113)', () => {
     await controller.updateSong({ session: { user: 'user-1' }, params: { uid: song.uid }, body: { instrumentLinks } }, mockRes(), next);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ status: 400 }));
     expect(song.update).not.toHaveBeenCalled();
+  });
+});
+
+// #244: the Songlist's plays in ONE request — each song's latest play per instrument (the list
+// only shows and sorts by the last play), grouped by song. A song's page keeps its own request
+// for the whole history.
+describe('getLastPlays (#244)', () => {
+  const call = async (session = { user: 'user-1' }) => {
+    const res = mockRes();
+    const next = mockNext();
+    await controller.getLastPlays({ session }, res, next);
+    return { res, next };
+  };
+  beforeEach(() => { sequelize.query.mockReset(); });
+
+  test('needs a session (401), without reading anything', async () => {
+    const { next } = await call({});
+    expect(next.mock.calls[0][0].status).toBe(401);
+    expect(sequelize.query).not.toHaveBeenCalled();
+  });
+
+  test("reads only the user's own songs", async () => {
+    sequelize.query.mockResolvedValue([]);
+    await call();
+    expect(sequelize.query.mock.calls[0][1].replacements).toEqual({ userUid: 'user-1' });
+  });
+
+  test('groups the plays by song, most recent first; a song never played is absent', async () => {
+    sequelize.query.mockResolvedValue([
+      { uid: 'p2', songUid: 's1', instrumentType: 'Guitar', instrumentUid: null, playedAt: '2026-03-02T10:00:00.000Z' },
+      { uid: 'p1', songUid: 's1', instrumentType: 'Bass', instrumentUid: 'i9', playedAt: '2026-03-01T10:00:00.000Z' },
+      { uid: 'p3', songUid: 's2', instrumentType: null, instrumentUid: null, playedAt: '2026-02-01T10:00:00.000Z' },
+    ]);
+    const { res } = await call();
+    expect(res.json).toHaveBeenCalledWith({
+      s1: [
+        { uid: 'p2', songUid: 's1', instrumentType: 'Guitar', instrumentUid: null, playedAt: '2026-03-02T10:00:00.000Z' },
+        { uid: 'p1', songUid: 's1', instrumentType: 'Bass', instrumentUid: 'i9', playedAt: '2026-03-01T10:00:00.000Z' },
+      ],
+      s2: [{ uid: 'p3', songUid: 's2', instrumentType: null, instrumentUid: null, playedAt: '2026-02-01T10:00:00.000Z' }],
+    });
+  });
+
+  test('a database failure is a 500', async () => {
+    sequelize.query.mockRejectedValue(new Error('down'));
+    const { next } = await call();
+    expect(next.mock.calls[0][0].status).toBe(500);
   });
 });
