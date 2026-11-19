@@ -20,3 +20,22 @@ export function SongName({
     </span>
   );
 }
+
+// #233: a compact one-line row in a mixed list (session entry, day play): "Artist — Title" on
+// one line, the title emphasized (CLAUDE.md). Same trimming as songLabel(): an artist of only
+// spaces never leaves a stray " — ". `titleClassName` restyles the title (a deleted entry).
+export function SongInline({
+  song,
+  titleClassName = 'font-medium',
+}: {
+  song: { title: string; artist?: string | null };
+  titleClassName?: string;
+}) {
+  const artist = (song.artist || '').trim();
+  return (
+    <>
+      {artist && <span>{artist} — </span>}
+      <strong className={titleClassName}>{song.title}</strong>
+    </>
+  );
+}

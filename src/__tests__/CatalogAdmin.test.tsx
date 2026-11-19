@@ -216,7 +216,7 @@ test('edit mode can delete the entry (confirm → back to manage)', async () => 
 
 describe('#52: a failed duplicate check', () => {
   const BANNER = /already exists in the Catalog/i;
-  const CONFLICT_BANNER = 'This title and artist already exist in the Catalog.';
+  const CONFLICT_BANNER = 'This artist and title already exist in the Catalog.';
   const DUPLICATE = { exists: true, entry: { uid: 'other', title: 'Zombie', artist: 'B' } };
   const PAST_CHECK_DEBOUNCE = 600; // the check fires 500ms after the last edit
   const PAST_AUTOSAVE = 1300; // the autosave fires 1200ms after the last edit

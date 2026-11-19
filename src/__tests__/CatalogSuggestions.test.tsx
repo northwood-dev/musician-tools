@@ -241,6 +241,15 @@ describe('Review and drafts (#215, #230)', () => {
     expect(within(row).queryByRole('link', { name: /^Review / })).toBeNull();
   });
 
+  test("a failure says so with the button's own word, and keeps the line", async () => {
+    cat.acceptSuggestion.mockRejectedValue(new Error('down'));
+    renderPage();
+    const button = await reviewButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('Could not review "Oasis — Wonderwall".')).toBeInTheDocument();
+    expect(screen.getByText('Wonderwall')).toBeInTheDocument();
+  });
+
   test('a song that reached the Catalog meanwhile says so and reloads', async () => {
     const { SuggestionInCatalogError } = jest.requireActual('../services/catalogService');
     cat.acceptSuggestion.mockImplementation(async () => {

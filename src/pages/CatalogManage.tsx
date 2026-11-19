@@ -461,7 +461,7 @@ export default function CatalogManage() {
           type="search"
           aria-label="Search the catalog"
           className="input-base"
-          placeholder="Search by title or artist…"
+          placeholder="Search by artist or title…"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
         />

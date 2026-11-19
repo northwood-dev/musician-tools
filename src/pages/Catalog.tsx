@@ -195,7 +195,7 @@ export default function Catalog() {
         aria-label="Search the catalog"
         aria-keyshortcuts="/"
         className="input-base"
-        placeholder="Search by title or artist…"
+        placeholder="Search by artist or title…"
         value={searchInput}
         onChange={e => setSearchInput(e.target.value)}
       />

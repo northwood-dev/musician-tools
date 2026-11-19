@@ -6,13 +6,19 @@ import { join, relative } from 'path';
 // come back one page at a time:
 //   - title first, then "by" and the artist: `"${song.title}" by ${song.artist}`, or the same
 //     in JSX ({song.title} … by … {song.artist});
-//   - the old "Artist · Title" separator of the collection composer.
+//   - the old "Artist · Title" separator of the collection composer, and the old
+//     "Artist - Title" hyphen of the playlists and sessions;
+//   - field names listed title first in a sentence ("Search by title or artist").
 // Read line by line: a wording split across lines, or names that don't say title/artist
 // (`${t} by ${a}`), slip through.
 const SRC = join(__dirname, '..');
 const WORDINGS: [string, RegExp][] = [
   ['the title before "by" and the artist', /title\b[^\n]{0,60}?\bby\b[^\n]{0,40}?\bartist/i],
   ['the old "Artist · Title" separator', /artist\b[^\n]{0,30}?·[^\n]{0,30}?\btitle/i],
+  // #233 review: the hyphen form the playlists and sessions used ("Artist - Title").
+  ['the old "Artist - Title" hyphen', /artist\b[^\n]{0,30}?\} - [$]?\{[^\n]{0,30}?\btitle/i],
+  // #232 review: field names listed title first in user-facing text ("Search by title or artist").
+  ['"title or/and/+ artist" in user-facing text', /\btitle (or|and|\+) artist\b/i],
 ];
 
 function sourceFiles(dir: string): string[] {

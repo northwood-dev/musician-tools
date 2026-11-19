@@ -535,3 +535,9 @@ test('#149: Add to collection is a disclosure, not a menu, and points to its pan
   expect(panel).not.toBeNull();
   expect(within(panel!).getByRole('button', { name: /Beginner classics/ })).toBeInTheDocument();
 });
+
+// #232 review: the search names the artist first, as everywhere else.
+test('the search asks for the artist, then the title', async () => {
+  renderManage();
+  expect(await screen.findByPlaceholderText('Search by artist or title…')).toBeInTheDocument();
+});

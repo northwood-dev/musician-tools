@@ -330,3 +330,10 @@ test('un retrait groupé abandonné annonce quand même ce qui a été retiré',
     screen.getByText(/You left while songs were being removed from the collection/)
   ).toBeInTheDocument());
 });
+
+// #232 review: the search names the artist first, as everywhere else.
+test('the entry search asks for the artist, then the title', async () => {
+  renderCompose();
+  await screen.findByText('Rock 90s');
+  expect(screen.getByPlaceholderText('Search by artist or title…')).toBeInTheDocument();
+});

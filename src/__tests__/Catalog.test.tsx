@@ -605,3 +605,9 @@ test('/ puts the cursor in the Catalog search, which announces the shortcut', as
   fireEvent.keyDown(document.body, { key: '/' });
   expect(search).toHaveFocus();
 });
+
+// #232 review: the search names the artist first, as everywhere else.
+test('the search asks for the artist, then the title', async () => {
+  renderCatalog();
+  expect(await screen.findByPlaceholderText('Search by artist or title…')).toBeInTheDocument();
+});

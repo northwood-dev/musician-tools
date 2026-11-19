@@ -82,7 +82,7 @@ export default function CatalogSuggestions() {
 
   // #215 / #230 (Review): a pre-filled Catalog draft, opened in the entry form with this line:
   // publishing it there links the suggesters' songs. Nothing is published before that.
-  const handleAccept = (line: CatalogSuggestionLine) => runAction('accept', line, async () => {
+  const handleReview = (line: CatalogSuggestionLine) => runAction('review', line, async () => {
     const { catalogUid } = await catalogService.acceptSuggestion(line.id);
     navigate(draftPath(line, catalogUid));
     return null;
@@ -147,7 +147,7 @@ export default function CatalogSuggestions() {
                         type="button"
                         className={`text-left ${SONG_LINK}`}
                         aria-label={`Open ${songLabel(line.song)}`}
-                        onClick={() => handleAccept(line)}
+                        onClick={() => handleReview(line)}
                         disabled={busy}
                       >
                         <SongName song={line.song} />
@@ -169,7 +169,7 @@ export default function CatalogSuggestions() {
                         type="button"
                         className="btn-primary btn-sm min-h-[44px]"
                         aria-label={`Review ${songLabel(line.song)}`}
-                        onClick={() => handleAccept(line)}
+                        onClick={() => handleReview(line)}
                         disabled={busy}
                       >
                         Review

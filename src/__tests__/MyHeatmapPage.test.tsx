@@ -540,8 +540,9 @@ test('a day play shows the artist before the title', async () => {
   fireEvent.click(await screen.findByLabelText(`${YEAR}-02-15 — played (2 plays)`));
   const plays = await screen.findByRole('list', { name: 'Day plays' });
   const [first, second] = within(plays).getAllByRole('listitem');
-  expect(first.textContent).toMatch(/^Guns N' Roses — Sweet Child/);
-  expect(second.textContent).toMatch(/^Money/);
+  // The instrument takes · so artist, title and instrument stay apart (#233 review).
+  expect(first.textContent).toBe("Guns N' Roses — Sweet Child · Guitar · Played");
+  expect(second.textContent).toBe('Money · Played');
 });
 
 test('a mixed day shows sessions AND plays, with both in the cell label (FR22/AC2)', async () => {

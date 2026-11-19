@@ -186,7 +186,7 @@ export default function CatalogAdmin() {
         // Backstop: the client dup-check missed a race → the GLOBAL unique index rejected
         // it. Block + surface (don't hammer the server on every keystroke).
         dupRef.current = true;
-        setDupMessage('This title and artist already exist in the Catalog.');
+        setDupMessage('This artist and title already exist in the Catalog.');
         return 'idle';
       }
       return 'error';

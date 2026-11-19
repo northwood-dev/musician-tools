@@ -9,6 +9,7 @@ import { topicService, type Topic } from '../services/topicService';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { buildYearGrid, computeLevels, formatLocalDate } from '../utils/heatmap';
 import { Page } from '../components/Page';
+import { SongInline } from '../components/SongName';
 
 // Non-punitive palette (FR18): empty days stay neutral, activity ramps green.
 // No red, no streak counters, no guilt-tripping copy anywhere on this page.
@@ -488,9 +489,8 @@ function MyHeatmapPage() {
               <ul aria-label="Day plays" className="space-y-1">
                 {visiblePlays.map(play => (
                   <li key={play.uid} className="text-sm text-gray-700 dark:text-gray-300 pl-3 border-l-2 border-gray-200 dark:border-gray-700 break-words">
-                    {play.artist ? <span>{play.artist} — </span> : null}
-                    <span className="font-medium">{play.title}</span>
-                    {play.instrumentType ? <span className="text-gray-500 dark:text-gray-400"> — {play.instrumentType}</span> : null}
+                    <SongInline song={play} />
+                    {play.instrumentType ? <span className="text-gray-500 dark:text-gray-400"> · {play.instrumentType}</span> : null}
                     <span className="text-gray-500 dark:text-gray-400 italic"> · Played</span>
                   </li>
                 ))}

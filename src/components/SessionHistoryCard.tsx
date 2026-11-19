@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { sumSessionMinutes, type PracticeSession, type SessionItem } from '../services/practiceSessionService';
 import type { SessionDay } from '../utils/sessionDays';
 import { resolveEntry, type LiveNames } from '../utils/liveNames';
+import { SongInline } from './SongName';
 
-// One entry line of a session ("Artist - Title · played during N minutes · note").
+// One entry line of a session ("Artist — Title · played during N minutes · note").
 // Shared so the Sessions page and the Heatmap day-detail render entries identically.
-// A song entry links (the whole "Artist - Title") to its edit form, a topic entry to
+// A song entry links (the whole "Artist — Title") to its edit form, a topic entry to
 // its row in My topics, opened for editing (#16); navigation is by uid, so two songs
 // sharing a title still resolve to the right one. While the song or topic still
 // exists the entry shows its live names, so a rename shows everywhere (#13, #16);
@@ -18,10 +19,10 @@ import { resolveEntry, type LiveNames } from '../utils/liveNames';
 export function SessionEntryLine({ item, liveNames }: { item: SessionItem; liveNames: LiveNames }) {
   const { to, artist, name, isOrphan } = resolveEntry(item, liveNames);
   const label = (
-    <>
-      {artist ? <span>{artist} — </span> : null}
-      <span className={isOrphan ? 'font-medium text-gray-400 dark:text-gray-500' : 'font-medium'}>{name}</span>
-    </>
+    <SongInline
+      song={{ artist, title: name }}
+      titleClassName={isOrphan ? 'font-medium text-gray-400 dark:text-gray-500' : 'font-medium'}
+    />
   );
   return (
     <li className="text-sm text-gray-700 dark:text-gray-300 pl-3 border-l-2 border-gray-200 dark:border-gray-700 break-words">

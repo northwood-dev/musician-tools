@@ -358,7 +358,7 @@ export default function CatalogCollectionCompose() {
               id="collection-search"
               type="text"
               className="input-base"
-              placeholder="Search by title or artist…"
+              placeholder="Search by artist or title…"
               value={searchInput}
               disabled={removing}
               onChange={e => setSearchInput(e.target.value)}
