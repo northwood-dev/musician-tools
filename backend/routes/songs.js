@@ -9,6 +9,8 @@ router.use(bodyParser.json());
 // All song routes require authentication
 router.get('/', authsess, songController.getAllSongs);
 router.get('/lookup', authsess, songController.lookupSongMetadata);
+// #244 — each song's latest play per instrument, in one request (static path: before /:uid).
+router.get('/last-plays', authsess, songController.getLastPlays);
 // #71: one instrument on several of the user's songs, all or none.
 router.post('/bulk/instrument', authsess, songController.addInstrumentToSongs);
 router.get('/:uid', authsess, songController.getSong);

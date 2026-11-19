@@ -44,6 +44,18 @@ export const songPlayService = {
     return response.json();
   },
 
+  // #244: the Songlist's plays in one request — each song's latest play per instrument, by song
+  // (a song never played is absent). A song's page keeps getPlays for its whole history.
+  async getLastPlays(): Promise<Record<string, SongPlay[]>> {
+    const response = await apiFetch(`${API_BASE}/last-plays`, {
+      credentials: 'include'
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch last plays');
+    }
+    return response.json();
+  },
+
   getLastPlayForInstrument(plays: SongPlay[], instrumentUid?: string): SongPlay | undefined {
     const filtered = plays.filter(p => p.instrumentUid === (instrumentUid || null));
     return filtered.length > 0 ? filtered[0] : undefined;

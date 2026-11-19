@@ -22,7 +22,7 @@ jest.mock('../services/songService', () => ({
 }));
 jest.mock('../services/instrumentService', () => ({ instrumentService: { getAll: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/songPlayService', () => ({
-  songPlayService: { getPlays: jest.fn().mockResolvedValue([]), markPlayed: jest.fn().mockResolvedValue({}), getLastPlayForInstrument: jest.fn() },
+  songPlayService: { getPlays: jest.fn().mockResolvedValue([]), getLastPlays: jest.fn().mockResolvedValue({}), markPlayed: jest.fn().mockResolvedValue({}), getLastPlayForInstrument: jest.fn() },
 }));
 jest.mock('../services/playlistService', () => ({
   playlistService: { getAllPlaylists: jest.fn().mockResolvedValue([]), addSongToPlaylist: jest.fn(), removeSongFromPlaylist: jest.fn(), updatePlaylist: jest.fn() },
@@ -414,7 +414,7 @@ describe('Songs — a failed load (#224)', () => {
     fireEvent.click(retry);
     expect(await screen.findByText('Zombie')).toBeInTheDocument();
     expect(screen.queryByText("Couldn't load your songlist.")).toBeNull();
-    await waitFor(() => expect(songPlayService.getPlays).toHaveBeenCalledWith('s1'));
+    await waitFor(() => expect(songPlayService.getLastPlays).toHaveBeenCalled()); // #244: one request for all
   });
 
   test('a failure that answers late never hides songs that arrived', async () => {

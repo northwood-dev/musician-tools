@@ -67,3 +67,23 @@ describe('songPlayService.markPlayed', () => {
     expect(threw).toBe(false);
   });
 });
+
+// #244: the Songlist's plays in one request — each song's latest play per instrument, by song.
+describe('songPlayService.getLastPlays', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => { global.fetch = originalFetch; });
+
+  test('asks once for every song, and returns the plays by song', async () => {
+    const bySong = { s1: [{ uid: 'p1', songUid: 's1', instrumentType: 'Guitar', instrumentUid: null, playedAt: '2026-03-01T10:00:00.000Z' }] };
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => bySong });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    await expect(songPlayService.getLastPlays()).resolves.toEqual(bySong);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/songs/last-plays');
+  });
+
+  test('a failed request throws (the page then shows the plays as unknown)', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 }) as unknown as typeof fetch;
+    await expect(songPlayService.getLastPlays()).rejects.toThrow();
+  });
+});

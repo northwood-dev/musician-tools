@@ -65,6 +65,10 @@ const withoutValue = (values: Set<string>, value: string) => {
   return next;
 };
 
+// #242 / #244: what one round of plays requests learned — each asked song's plays, and the
+// songs whose request failed (their plays are unknown).
+type PlaysRound = { plays: Map<string, SongPlay[]>; failed: Set<string> };
+
 function Songs() {
   const normalizeCapoValue = (value: unknown): number | null => {
     if (value === null || value === undefined || value === '') return null;
@@ -552,26 +556,24 @@ function Songs() {
 
   const artistAliases = useArtistAliases();
 
-  // Each song's plays, one request per song (#244 would make it one): the ones that fail are
-  // returned in `failed` — their plays are unknown, never taken for "never played" (#242).
-  const fetchPlays = async (uids: string[]) => {
+  // #244: the list's plays in ONE request — each song's latest play per instrument, which is
+  // all the list shows and sorts by. It succeeds or fails as a whole: on failure every asked
+  // song's plays are unknown ("?"), never taken for "never played" (#242).
+  const fetchLastPlays = async (uids: string[]): Promise<PlaysRound> => {
     const plays = new Map<string, SongPlay[]>();
-    const failed = new Set<string>();
-    await Promise.all(uids.map(async (uid) => {
-      try {
-        plays.set(uid, await songPlayService.getPlays(uid));
-      } catch (err) {
-        console.error(`Failed to load plays for ${uid}:`, err);
-        plays.set(uid, []);
-        failed.add(uid);
-      }
-    }));
-    return { plays, failed };
+    try {
+      const bySong = await songPlayService.getLastPlays();
+      uids.forEach(uid => plays.set(uid, bySong[uid] ?? []));
+      return { plays, failed: new Set<string>() };
+    } catch (err) {
+      console.error('Failed to load the last plays:', err);
+      return { plays, failed: new Set(uids) };
+    }
   };
 
   // #242: what one round of plays requests learned, merged into the page: the songs that
-  // answered are known (and the open song's history follows), the ones that failed are unknown.
-  const applyPlays = (asked: string[], { plays, failed }: { plays: Map<string, SongPlay[]>; failed: Set<string> }) => {
+  // answered are known, the ones that failed are unknown.
+  const applyPlays = (asked: string[], { plays, failed }: PlaysRound) => {
     const answered = asked.filter(uid => !failed.has(uid));
     setSongPlays(prev => {
       const next = new Map(prev);
@@ -584,22 +586,44 @@ function Songs() {
       failed.forEach(uid => next.add(uid));
       return next;
     });
-    if (editingUidRef.current && answered.includes(editingUidRef.current)) {
-      setEditingSongPlays(plays.get(editingUidRef.current) ?? []);
+  };
+
+  // A song's page: its own request, for its whole history — the truth for that song (#242).
+  const loadEditingSongPlays = async (uid: string, isCurrent: () => boolean = () => true) => {
+    try {
+      const plays = await songPlayService.getPlays(uid);
+      if (!isCurrent()) return;
+      setEditingSongPlays(plays);
+      applyPlays([uid], { plays: new Map([[uid, plays]]), failed: new Set() });
+    } catch (err) {
+      console.error('Error loading editing data:', err);
+      if (isCurrent()) applyPlays([uid], { plays: new Map(), failed: new Set([uid]) });
     }
   };
 
-  // #242: Retry asks again only for the plays that didn't load — once at a time, and dropped
-  // if the songs reloaded meanwhile (that load's answer is the newer one).
+  // The list's unknown plays, asked again in the one request — the answer dropped if the songs
+  // reloaded meanwhile (that load's answer is the newer one). Retry and bulk marking use it.
+  const refetchUnknownPlays = async () => {
+    const songsRequest = songsRequestRef.current;
+    const asked = [...unknownPlays];
+    if (asked.length === 0) return;
+    const result = await fetchLastPlays(asked);
+    if (songsRequest === songsRequestRef.current) applyPlays(asked, result);
+  };
+
+  // #242: Retry asks again only for the plays that didn't load — once at a time. On a song's
+  // page, its own whole history; on the list, the one request.
   const retryingPlaysRef = useRef(false);
   const retryPlays = async () => {
     if (retryingPlaysRef.current) return;
     retryingPlaysRef.current = true;
-    const songsRequest = songsRequestRef.current;
+    const openSong = editingUidRef.current;
     try {
-      const asked = [...unknownPlays];
-      const result = await fetchPlays(asked);
-      if (songsRequest === songsRequestRef.current) applyPlays(asked, result);
+      if (openSong) {
+        await loadEditingSongPlays(openSong, () => editingUidRef.current === openSong);
+      } else {
+        await refetchUnknownPlays();
+      }
     } finally {
       retryingPlaysRef.current = false;
     }
@@ -622,10 +646,18 @@ function Songs() {
       setSongs(data);
       setSongsLoaded(true);
       setLoadFailed(false);
-      const { plays: playsMap, failed } = await fetchPlays(data.map(song => song.uid));
+      // The open song is left out: its page's own request is the truth for it (#242).
+      const openSong = editingUidRef.current;
+      const { plays: playsMap, failed } = await fetchLastPlays(data.map(song => song.uid).filter(uid => uid !== openSong));
       if (latest()) {
-        setSongPlays(playsMap);
-        setUnknownPlays(failed);
+        setSongPlays(prev => {
+          if (openSong && prev.has(openSong)) playsMap.set(openSong, prev.get(openSong)!);
+          return playsMap;
+        });
+        setUnknownPlays(prev => {
+          if (openSong && prev.has(openSong)) failed.add(openSong);
+          return failed;
+        });
       }
     } catch (err) {
       if (!latest()) return;
@@ -1004,16 +1036,9 @@ function Songs() {
   useEffect(() => {
     if (!editingUid) return;
     let current = true;
-    (async () => {
-      try {
-        const plays = await songPlayService.getPlays(editingUid);
-        if (current) applyPlays([editingUid], { plays: new Map([[editingUid, plays]]), failed: new Set() });
-      } catch (err) {
-        console.error('Error loading editing data:', err);
-        if (current) applyPlays([editingUid], { plays: new Map(), failed: new Set([editingUid]) });
-      }
-    })();
+    void loadEditingSongPlays(editingUid, () => current);
     return () => { current = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadEditingSongPlays only sets state; the effect follows the open song
   }, [editingUid]);
 
   // The server's answer replaces what the page holds, so membership never drifts from it.
@@ -1483,9 +1508,8 @@ function Songs() {
         });
         return next;
       });
-      // #242: a marked song whose history was unknown gets it now (the new play alone isn't it).
-      const unknownMarked = newPlays.map(p => p.songUid).filter(uid => unknownPlays.has(uid));
-      if (unknownMarked.length > 0) applyPlays(unknownMarked, await fetchPlays(unknownMarked));
+      // #242 / #244: plays were unknown — ask again now (the new play alone isn't the history).
+      await refetchUnknownPlays();
       songSelection.clear();
     } catch (err) {
       setError('Error while updating songs');
@@ -1932,6 +1956,8 @@ function Songs() {
       if (sortColumn === 'lastPlayed') {
         // #242: with an instrument chosen (the column shows dates), unknown plays go last,
         // whichever the direction. Without one the column shows no dates: order unchanged.
+        // (#244: a list keeps a mix when the plays request failed, a song's page then loaded
+        // its own, and the songs' reload on the way back failed.)
         const aUnknown = !!instrumentFilter && unknownPlays.has(a.uid);
         if (aUnknown !== (!!instrumentFilter && unknownPlays.has(b.uid))) return aUnknown ? 1 : -1;
         const aLastPlayed = getLastPlayedForSong(a.uid);

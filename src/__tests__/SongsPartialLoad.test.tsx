@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderSongs } from '../test/renderSongs';
 import { songPlayService } from '../services/songPlayService';
 import { instrumentService } from '../services/instrumentService';
+import { songService } from '../services/songService';
 
 // #242: what the Songlist loads besides the songs — each song's plays, the user's instruments.
 // When some of it doesn't load, one notice says what is missing, with a Retry that asks again
@@ -11,7 +12,9 @@ const PLAYS: Record<string, unknown[]> = {
   'song-a': [{ uid: 'pa', songUid: 'song-a', instrumentType: 'Guitar', instrumentUid: null, playedAt: '2026-03-01T10:00:00.000Z' }],
   'song-b': [{ uid: 'pb', songUid: 'song-b', instrumentType: 'Guitar', instrumentUid: null, playedAt: '2026-03-02T10:00:00.000Z' }],
 };
-// The songs whose plays requests fail, and whether the instruments request fails.
+// Whether the list's plays request fails (#244: one request for all songs), the songs whose own
+// plays request fails (a song's page), and whether the instruments request fails.
+let lastPlaysFail = false;
 const failingPlays = new Set<string>();
 let instrumentsFail = false;
 const STRAT = { uid: 'i1', type: 'Guitar', name: 'My Strat' };
@@ -30,14 +33,20 @@ jest.mock('../services/songService', () => ({
 }));
 jest.mock('../services/instrumentService', () => ({ instrumentService: { getAll: jest.fn() } }));
 jest.mock('../services/songPlayService', () => ({
-  songPlayService: { getPlays: jest.fn(), markPlayed: jest.fn().mockResolvedValue({}), getLastPlayForInstrument: jest.fn() },
+  songPlayService: { getPlays: jest.fn(), getLastPlays: jest.fn(), markPlayed: jest.fn().mockResolvedValue({}), getLastPlayForInstrument: jest.fn() },
 }));
 jest.mock('../services/playlistService', () => ({
   playlistService: { getAllPlaylists: jest.fn().mockResolvedValue([]) },
 }));
 
 const getPlays = songPlayService.getPlays as jest.Mock;
+const getLastPlays = songPlayService.getLastPlays as jest.Mock;
 const getInstruments = instrumentService.getAll as jest.Mock;
+const getAllSongs = songService.getAllSongs as jest.Mock;
+const TWO_SONGS = [
+  { uid: 'song-a', title: 'Alpha', artist: 'A', instrument: ['Guitar'], lastPlayed: '2026-03-01T10:00:00.000Z' },
+  { uid: 'song-b', title: 'Bravo', artist: 'B', instrument: ['Guitar'], lastPlayed: '2026-03-02T10:00:00.000Z' },
+];
 
 const PLAYS_FAILED = "Couldn't load when your songs were last played.";
 const INSTRUMENTS_FAILED = "Couldn't load your instruments.";
@@ -56,58 +65,94 @@ beforeEach(() => {
   localStorage.clear();
   jest.clearAllMocks();
   localStorage.setItem('songsInstrumentFilter', 'Guitar');
+  lastPlaysFail = false;
+  getAllSongs.mockResolvedValue(TWO_SONGS);
   failingPlays.clear();
   instrumentsFail = false;
+  getLastPlays.mockImplementation(() => (lastPlaysFail ? Promise.reject(new Error('network')) : Promise.resolve(PLAYS)));
   getPlays.mockImplementation((uid: string) => (failingPlays.has(uid) ? Promise.reject(new Error('network')) : Promise.resolve(PLAYS[uid] ?? [])));
   getInstruments.mockImplementation(() => (instrumentsFail ? Promise.reject(new Error('network')) : Promise.resolve([STRAT])));
 });
 
-describe('plays that did not load', () => {
-  beforeEach(() => { failingPlays.add('song-a'); });
-
-  test('says so once, with Retry, and the song shows "?" instead of "-"', async () => {
-    renderSongs();
-    expect(await screen.findByText(PLAYS_FAILED)).toBeInTheDocument();
-    expect(lastPlayedCell('Alpha')).toHaveTextContent('?');
-    expect(lastPlayedCell('Bravo')).toHaveTextContent('Mar 2, 2026');
+describe('the list', () => {
+  test('asks for the plays in one request, whatever the number of songs (#244)', async () => {
+    const callsFor = async (songs: typeof TWO_SONGS) => {
+      getAllSongs.mockResolvedValue(songs);
+      getLastPlays.mockClear();
+      const { unmount } = renderSongs();
+      await screen.findByText(songs[songs.length - 1].title);
+      await waitFor(() => expect(lastPlayedCell('Alpha')).toHaveTextContent('Mar 1, 2026'));
+      const calls = getLastPlays.mock.calls.length;
+      unmount();
+      return calls;
+    };
+    const twelve = [...TWO_SONGS, ...Array.from({ length: 10 }, (_, i) => ({ uid: `song-${i}`, title: `Song ${i}`, artist: 'C', instrument: ['Guitar'], lastPlayed: '2025-01-01T10:00:00.000Z' }))];
+    const withTwo = await callsFor(TWO_SONGS);
+    expect(withTwo).toBeGreaterThan(0);
+    expect(await callsFor(twelve)).toBe(withTwo);
+    expect(getPlays).not.toHaveBeenCalled();
   });
+});
 
-  test('Retry asks again: the date comes back and the notice goes', async () => {
-    renderSongs();
-    await screen.findByText(PLAYS_FAILED);
-    failingPlays.clear();
-    fireEvent.click(retryButton('Retry loading when your songs were last played'));
-    await waitFor(() => expect(lastPlayedCell('Alpha')).toHaveTextContent('Mar 1, 2026'));
-    expect(screen.queryByText(PLAYS_FAILED)).toBeNull();
-  });
-
-  test('sorted by Last played with an instrument chosen, unknown plays go last, whichever the direction', async () => {
-    // By date, Alpha (Mar 1) would come first in asc.
+// A list that keeps known and unknown songs together: the plays request failed, a song's own
+// page then loaded its plays, and reloading the songs on the way back failed (the list stays).
+describe('known and unknown songs in the same list', () => {
+  const mixedList = async () => {
+    lastPlaysFail = true;
     localStorage.setItem('songsSortColumn', 'lastPlayed');
     localStorage.setItem('songsSortDirection', 'asc');
-    renderSongs();
+    const { router } = renderSongs();
     await screen.findByText(PLAYS_FAILED);
-    expect(rowTitlesInOrder()).toEqual(['Bravo', 'Alpha']);
+    await goTo(router, '/songs/song-a');
+    await waitFor(() => expect(formLastPlayed()).toHaveTextContent('Last played: Mar 1, 2026'));
+    getAllSongs.mockRejectedValue(new Error('network'));
+    await goTo(router, '/songs');
+    await screen.findByText('Bravo');
+  };
+
+  test('with an instrument chosen, unknown plays go last, whichever the direction', async () => {
+    await mixedList();
+    await waitFor(() => expect(lastPlayedCell('Bravo')).toHaveTextContent('?'));
+    expect(rowTitlesInOrder()).toEqual(['Alpha', 'Bravo']); // by date, Bravo (none held) would come first
     fireEvent.click(screen.getByText('Last played'));
-    await waitFor(() => expect(rowTitlesInOrder()).toEqual(['Bravo', 'Alpha']));
+    await waitFor(() => expect(rowTitlesInOrder()).toEqual(['Alpha', 'Bravo']));
   });
 
   test('without an instrument chosen (no dates shown), the sort is left as it was', async () => {
     localStorage.removeItem('songsInstrumentFilter');
-    localStorage.setItem('songsSortColumn', 'lastPlayed');
-    localStorage.setItem('songsSortDirection', 'asc');
+    await mixedList();
+    expect(rowTitlesInOrder()).toEqual(['Bravo', 'Alpha']);
+  });
+});
+
+describe('plays that did not load', () => {
+  beforeEach(() => { lastPlaysFail = true; });
+
+  test('says so once, with Retry, and the songs show "?" instead of "-"', async () => {
     renderSongs();
-    await screen.findByText(PLAYS_FAILED);
-    expect(rowTitlesInOrder()).toEqual(['Alpha', 'Bravo']); // Alpha has no plays held: oldest
+    expect(await screen.findByText(PLAYS_FAILED)).toBeInTheDocument();
+    expect(lastPlayedCell('Alpha')).toHaveTextContent('?');
+    expect(lastPlayedCell('Bravo')).toHaveTextContent('?');
   });
 
-  test('marking it as played in bulk loads its history: no more "?"', async () => {
+  test('Retry asks again: the dates come back and the notice goes', async () => {
     renderSongs();
     await screen.findByText(PLAYS_FAILED);
-    failingPlays.clear();
+    lastPlaysFail = false;
+    fireEvent.click(retryButton('Retry loading when your songs were last played'));
+    await waitFor(() => expect(lastPlayedCell('Alpha')).toHaveTextContent('Mar 1, 2026'));
+    expect(lastPlayedCell('Bravo')).toHaveTextContent('Mar 2, 2026');
+    expect(screen.queryByText(PLAYS_FAILED)).toBeNull();
+  });
+
+  test('marking a song as played in bulk loads the plays again: no more "?"', async () => {
+    renderSongs();
+    await screen.findByText(PLAYS_FAILED);
+    lastPlaysFail = false;
     fireEvent.click(screen.getByRole('checkbox', { name: /Alpha/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Mark as played on Guitar' }));
     await waitFor(() => expect(lastPlayedCell('Alpha')).toHaveTextContent('Mar 1, 2026'));
+    expect(lastPlayedCell('Bravo')).toHaveTextContent('Mar 2, 2026');
     expect(screen.queryByText(PLAYS_FAILED)).toBeNull();
   });
 });
@@ -122,10 +167,9 @@ describe("a song's page", () => {
   });
 
   test("its own plays loaded: their date, even if the list's request had failed", async () => {
-    failingPlays.add('song-a');
+    lastPlaysFail = true;
     const { router } = renderSongs();
     await screen.findByText(PLAYS_FAILED);
-    failingPlays.clear();
     await goTo(router, '/songs/song-a');
     await screen.findByDisplayValue('Alpha');
     await waitFor(() => expect(formLastPlayed()).toHaveTextContent('Last played: Mar 1, 2026'));
@@ -162,7 +206,7 @@ describe("a song's page", () => {
   });
 
   test('a new song says nothing about plays (it has none yet)', async () => {
-    failingPlays.add('song-a');
+    lastPlaysFail = true;
     instrumentsFail = true;
     renderSongs('/songs/new');
     expect(await screen.findByText(INSTRUMENTS_FAILED)).toBeInTheDocument();
@@ -202,7 +246,7 @@ describe('instruments that did not load', () => {
 });
 
 test('plays and instruments both missing: one notice says both, with one Retry', async () => {
-  failingPlays.add('song-a');
+  lastPlaysFail = true;
   instrumentsFail = true;
   renderSongs();
   expect(await screen.findByText(BOTH_FAILED)).toBeInTheDocument();
