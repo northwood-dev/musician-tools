@@ -62,6 +62,15 @@ function groupDifferences(members, entry) {
   return differences;
 }
 
+// #237: the value a curator accepts for a differing field, as compared — or undefined when no
+// suggester proposed it (a crafted request can't write an arbitrary value into the entry).
+function proposedValue(difference, value) {
+  const { kind } = COMPARED_FIELDS.find(f => f.field === difference.field);
+  const wanted = canonical(kind, value);
+  if (wanted == null) return undefined;
+  return difference.suggested.some(s => sameValue(s.value, wanted)) ? wanted : undefined;
+}
+
 // The same rule in SQL, for one song `s` against the entry `c`: are all its compared values
 // equal to the entry's? Used when tying songs to an entry: only an equal song is stamped up to
 // date (#236), any other shows its owner the "different values" banner. Here an empty value is
@@ -77,4 +86,4 @@ function sameValuesSql(s, c) {
   }).join('\n       AND ');
 }
 
-module.exports = { COMPARED_FIELDS, groupDifferences, sameValuesSql };
+module.exports = { COMPARED_FIELDS, groupDifferences, proposedValue, sameValuesSql };

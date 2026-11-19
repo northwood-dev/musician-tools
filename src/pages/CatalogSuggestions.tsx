@@ -10,6 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LiveNotice } from '../components/LiveNotice';
 import { Tag } from '../components/Chip';
+import { MergeSuggestionDialog, type MergeDecisions } from '../components/MergeSuggestionDialog';
 import { SongName } from '../components/SongName';
 import { songLabel } from '../utils/songLabel';
 
@@ -36,6 +37,7 @@ export default function CatalogSuggestions() {
   const [suggestions, setSuggestions] = useState<CatalogSuggestionLine[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [toReject, setToReject] = useState<CatalogSuggestionLine | null>(null);
+  const [toMerge, setToMerge] = useState<CatalogSuggestionLine | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneMessage, setDoneMessage] = useState<string | null>(null);
@@ -90,11 +92,22 @@ export default function CatalogSuggestions() {
   });
 
   // #214 / #236: the song is already published in the Catalog — Merge ties the line's songs to
-  // that entry. Values that differ are reviewed first (#237), so Merge waits for them.
-  const handleMerge = (line: CatalogSuggestionLine) => runAction('merge', line, async () => {
-    const { linked } = await catalogService.mergeSuggestion(line.id);
+  // that entry. Values that differ are decided first, in the Merge dialog (#237).
+  const merge = (line: CatalogSuggestionLine, decisions?: MergeDecisions) => runAction('merge', line, async () => {
+    const { linked } = decisions
+      ? await catalogService.mergeSuggestion(line.id, decisions)
+      : await catalogService.mergeSuggestion(line.id);
     return `"${songLabel(line.song)}" merged into the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`;
   });
+  const handleMerge = (line: CatalogSuggestionLine) => {
+    if (line.catalog?.differences?.length) setToMerge(line);
+    else merge(line);
+  };
+  const handleMergeDecided = async (decisions: MergeDecisions) => {
+    if (!toMerge) return;
+    await merge(toMerge, decisions);
+    setToMerge(null);
+  };
 
   // #213: the line's songs leave the queue for good; their owners aren't told.
   const handleReject = async () => {
@@ -193,7 +206,7 @@ export default function CatalogSuggestions() {
                         className="btn-primary btn-sm min-h-[44px]"
                         aria-label={`Merge ${songLabel(line.song)} into the Catalog entry`}
                         onClick={() => handleMerge(line)}
-                        disabled={busy || !!line.catalog.differences?.length}
+                        disabled={busy}
                       >
                         Merge
                       </button>
@@ -214,6 +227,12 @@ export default function CatalogSuggestions() {
           </table>
         </div>
       )}
+      <MergeSuggestionDialog
+        line={toMerge}
+        busy={busy}
+        onCancel={() => setToMerge(null)}
+        onMerge={handleMergeDecided}
+      />
       <ConfirmDialog
         isOpen={toReject !== null}
         title="Reject this suggestion"

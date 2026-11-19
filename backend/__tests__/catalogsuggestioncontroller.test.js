@@ -1,8 +1,9 @@
 // #212: the curators' queue of songs suggested to the Catalog (read-only).
 jest.mock('../models', () => ({
-  sequelize: { query: jest.fn() },
+  // A transaction runs its callback with a handle the queries must carry (#237).
+  sequelize: { query: jest.fn(), transaction: jest.fn(async (work) => work('tx')) },
   Song: { findOne: jest.fn() },
-  CatalogSong: { create: jest.fn() },
+  CatalogSong: { create: jest.fn(), update: jest.fn() },
 }));
 
 const { sequelize, Song, CatalogSong } = require('../models');
@@ -285,6 +286,65 @@ describe('mergeSuggestion (#214, #236)', () => {
     expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
+  // #237: with differences, the curator's decisions come in the body, one per differing field:
+  // 'reject' (the entry keeps its value) or { accept: <one of the suggested values> }.
+  const decide = async (decisions) => {
+    const res = mockRes();
+    const next = jest.fn();
+    await controller.mergeSuggestion({ params: { id: ID }, session: { user: 'curator' }, body: { decisions } }, res, next);
+    return { res, next };
+  };
+
+  test('a differing field left undecided is a 400, nothing written', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120, key: 'A' })]);
+    const { next } = await decide({ bpm: 'reject' });
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(CatalogSong.update).not.toHaveBeenCalled();
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
+  test('an accepted value no suggester proposed is a 400, nothing written', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120 })]);
+    const { next } = await decide({ bpm: { accept: 999 } });
+    expect(next.mock.calls[0][0].status).toBe(400);
+    expect(CatalogSong.update).not.toHaveBeenCalled();
+  });
+
+  test('accepted values correct the entry, then the songs are tied — in one transaction', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120, genre: ['Rock', 'Grunge'], key: 'A' })])
+      .mockResolvedValueOnce([[{ uid: 'a' }, { uid: 'b' }], {}]);
+    CatalogSong.update.mockResolvedValue([1]);
+    const { res, next } = await decide({ bpm: { accept: 120 }, genre: { accept: ['Grunge', 'Rock'] }, key: 'reject' });
+    expect(next).not.toHaveBeenCalled();
+    expect(sequelize.transaction).toHaveBeenCalledTimes(1);
+    expect(CatalogSong.update).toHaveBeenCalledWith(
+      { bpm: 120, genre: ['Grunge', 'Rock'] },
+      expect.objectContaining({ where: { uid: 'cat-1' }, transaction: 'tx' }),
+    );
+    const [sql, options] = sequelize.query.mock.calls[1];
+    expect(sql).toMatch(/SET source_catalog_uid = c\.uid/);
+    expect(options.transaction).toBe('tx');
+    expect(res.json).toHaveBeenCalledWith({ linked: 2, catalogUid: 'cat-1' });
+  });
+
+  test('everything rejected: the entry is left as it is, the songs are tied', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120 })])
+      .mockResolvedValueOnce([[{ uid: 'a' }, { uid: 'b' }], {}]);
+    const { res } = await decide({ bpm: 'reject' });
+    expect(CatalogSong.update).not.toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ linked: 2, catalogUid: 'cat-1' });
+  });
+
+  test('if correcting the entry fails, nothing is tied (a 500)', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120 })]);
+    CatalogSong.update.mockRejectedValue(new Error('down'));
+    const { next } = await decide({ bpm: { accept: 120 } });
+    expect(next.mock.calls[0][0].status).toBe(500);
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
+  });
+
   test('a malformed id is a 404 without touching the database', async () => {
     const next = jest.fn();
     await controller.mergeSuggestion({ params: { id: 'nope' }, session: { user: 'curator' } }, mockRes(), next);
@@ -366,6 +426,15 @@ describe('linkSuggestionsToPublished (#215, called by publish)', () => {
     expect(sql).toMatch(/WHERE a\.uid = :suggestionId\s*\)/);
     expect(options.replacements).toEqual({ catalogUid: CAT, suggestionId: SUG, syncedAt });
     expect(linked).toBe(1);
+  });
+
+  test('each linked song is up to date only if its values equal the published entry (#237)', async () => {
+    sequelize.query.mockResolvedValue([[{ uid: 'a' }], {}]);
+    await linkSuggestionsToPublished({ uid: CAT, updatedAt: syncedAt }, SUG);
+    const [sql] = sequelize.query.mock.calls[0];
+    // Typed: inside a CASE, Postgres reads the bound date as text and refuses it (seen on the
+    // dev Postgres, invisible to these mocks).
+    expect(sql).toMatch(/source_catalog_synced_at = CASE WHEN[\s\S]+THEN CAST\(:syncedAt AS timestamptz\) ELSE NULL END/);
   });
 
   test('without a (valid) accepted suggestion, only the entry\'s identity counts', async () => {

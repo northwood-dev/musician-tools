@@ -5,7 +5,7 @@ const { sequelize, Song, CatalogSong } = require('../models');
 const { normalizeText } = require('../utils/normalize');
 const { pickIntrinsic } = require('../utils/catalogFields');
 const { titleKey, artistKey, sameSongAs, waitingInQueue, officialLinks } = require('../utils/catalogSuggestion');
-const { COMPARED_FIELDS, groupDifferences, sameValuesSql } = require('../utils/catalogDifferences');
+const { COMPARED_FIELDS, groupDifferences, proposedValue, sameValuesSql } = require('../utils/catalogDifferences');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
 
@@ -172,11 +172,32 @@ const mergeSuggestion = async (req, res, next) => {
       return next(createError(409, 'No published Catalog entry to merge into'));
     }
     const differences = groupDifferences(group.map(memberValues), entryValues(first));
-    if (differences.length > 0) {
+    const decisions = req.body && req.body.decisions;
+    if (differences.length > 0 && !decisions) {
       return res.status(409).json({ error: 'differences', message: 'Some values differ from the Catalog entry', differences });
     }
-    const [rows] = await sequelize.query(MERGE_SQL, { replacements });
-    res.json({ linked: rows.length, catalogUid: first.catalog_uid });
+    // #237: one decision per field that differs NOW — 'reject', or a value a suggester proposed.
+    const accepted = {};
+    for (const difference of differences) {
+      const decision = decisions[difference.field];
+      if (decision === 'reject') continue;
+      const value = decision ? proposedValue(difference, decision.accept) : undefined;
+      if (value === undefined) {
+        return next(createError(400, `Decide ${difference.field}: reject it, or accept a suggested value`));
+      }
+      accepted[difference.field] = value;
+    }
+    // Both or neither: the entry is never corrected without the songs tied, nor the reverse.
+    // Correcting it moves its version, so earlier holders see the banner — it did change. The
+    // songs are then stamped against the entry's FINAL values.
+    const linked = await sequelize.transaction(async (transaction) => {
+      if (Object.keys(accepted).length > 0) {
+        await CatalogSong.update(pickIntrinsic(accepted), { where: { uid: first.catalog_uid }, transaction });
+      }
+      const [rows] = await sequelize.query(MERGE_SQL, { replacements, transaction });
+      return rows.length;
+    });
+    res.json({ linked, catalogUid: first.catalog_uid });
   } catch (error) {
     logger.error('Error merging a Catalog suggestion:', error);
     next(createError(500, 'Error merging the suggestion'));

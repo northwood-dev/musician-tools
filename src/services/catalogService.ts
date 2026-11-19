@@ -487,8 +487,16 @@ export const catalogService = {
   // #214 / #236: tie the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
   // waiting; 409 "differences" → values differ from the entry and must be reviewed first; any
   // other 409 → no published entry (none, or a draft) — "no longer waiting" for the curator.
-  async mergeSuggestion(id: string): Promise<{ linked: number; catalogUid: string }> {
-    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/merge`, { method: 'POST', credentials: 'include' });
+  // #237: `decisions` — one per differing field: 'reject', or { accept: <a suggested value> }.
+  async mergeSuggestion(
+    id: string,
+    decisions?: Partial<Record<SuggestionDifference['field'], 'reject' | { accept: SuggestionDifference['suggested'][number]['value'] }>>,
+  ): Promise<{ linked: number; catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/merge`, {
+      method: 'POST',
+      credentials: 'include',
+      ...(decisions ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisions }) } : {}),
+    });
     if (response.status === 409) {
       const body = await response.json().catch(() => ({} as { error?: string }));
       if (body.error === 'differences') throw new SuggestionDifferencesError();

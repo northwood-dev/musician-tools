@@ -181,14 +181,12 @@ describe('Merge (#214, #236)', () => {
     await dialogFree();
   });
 
-  test('values that differ show a tag, and Merge waits for the review of the differences', async () => {
+  test('values that differ show a tag', async () => {
     waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
       { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
     ] } })];
     renderPage();
-    const r = await row();
-    expect(within(r).getByText('Differs from the Catalog')).toBeInTheDocument();
-    expect(within(r).getByRole('button', { name: 'Merge Oasis — Wonderwall into the Catalog entry' })).toBeDisabled();
+    expect(within(await row()).getByText('Differs from the Catalog')).toBeInTheDocument();
   });
 
   test('no difference, no tag', async () => {
@@ -201,6 +199,64 @@ describe('Merge (#214, #236)', () => {
     renderPage();
     await screen.findByText('Wonderwall');
     expect(screen.queryByRole('button', { name: /^Merge / })).not.toBeInTheDocument();
+  });
+
+  // #237: with differences, Merge opens a dialog where each differing field is decided.
+  describe('the Merge into the Catalog entry dialog (#237)', () => {
+    const differing = () => line({ suggestedBy: 4, catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 2 }, { value: 94, users: 1 }, { value: 118, users: 1 }] },
+      { field: 'genre', catalog: ['Rock'], suggested: [{ value: ['Grunge', 'Rock'], users: 1 }] },
+    ] } });
+    const openDialog = async () => {
+      fireEvent.click(await mergeButton());
+      return screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    };
+    beforeEach(() => { waiting = [differing()]; });
+
+    test('one group per differing field: the Catalog value, each other suggested value with its users, and Reject', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      const bpm = within(dialog).getByRole('group', { name: 'BPM' });
+      expect(within(bpm).getByText('Catalog: 94')).toBeInTheDocument();
+      expect(within(bpm).getAllByRole('radio')).toHaveLength(3);
+      for (const name of ['Accept 120 (2 users)', 'Accept 118 (1 user)', 'Reject — keep 94 (1 user)']) {
+        expect(within(bpm).getByRole('radio', { name })).not.toBeChecked();
+      }
+      const genre = within(dialog).getByRole('group', { name: 'Genres' });
+      expect(within(genre).getByText('Catalog: Rock')).toBeInTheDocument();
+      expect(within(genre).getByRole('radio', { name: 'Accept Grunge, Rock (1 user)' })).toBeInTheDocument();
+      expect(within(genre).getByRole('radio', { name: 'Reject — keep Rock' })).toBeInTheDocument();
+    });
+
+    test('Merge stays disabled until every field is decided, then sends the decisions', async () => {
+      cat.mergeSuggestion.mockImplementation(async () => { waiting = []; return { linked: 4, catalogUid: 'cat-1' }; });
+      renderPage();
+      const dialog = await openDialog();
+      const merge = within(dialog).getByRole('button', { name: 'Merge' });
+      expect(merge).toBeDisabled();
+      fireEvent.click(within(dialog).getByRole('radio', { name: 'Accept 120 (2 users)' }));
+      expect(merge).toBeDisabled();
+      fireEvent.click(within(dialog).getByRole('radio', { name: 'Reject — keep Rock' }));
+      expect(merge).toBeEnabled();
+      await act(async () => { fireEvent.click(merge); });
+      expect(cat.mergeSuggestion).toHaveBeenCalledWith('id-Wonderwall', { bpm: { accept: 120 }, genre: 'reject' });
+      expect(await screen.findByText('"Oasis — Wonderwall" merged into the Catalog entry (4 songs).')).toBeInTheDocument();
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    });
+
+    test('Edit the Catalog entry opens the entry form', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      expect(within(dialog).getByRole('link', { name: 'Edit the Catalog entry' })).toHaveAttribute('href', '/catalog/admin/cat-1');
+    });
+
+    test('Cancel closes the dialog and merges nothing', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(cat.mergeSuggestion).not.toHaveBeenCalled();
+    });
   });
 
   test('values that came to differ meanwhile say so and reload', async () => {
