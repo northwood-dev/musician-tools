@@ -32,14 +32,14 @@ test('a song entry links to its edit form; a topic entry links to its row in My 
   expect(screen.getByRole('link', { name: 'Pentatonic scale' })).toHaveAttribute('href', '/my-topics?edit=t1');
 });
 
-test('the whole "Artist - Title" is a single link to the song edit form', () => {
+test('the whole "Artist — Title" is a single link to the song edit form', () => {
   renderCard(
     makeSession([{ uid: 'i1', sessionUid: 's1', songUid: 'song-1', label: 'Sweet Child' }]),
     { songs: new Map([['song-1', { title: 'Sweet Child', artist: "Guns N' Roses" }]]) },
   );
 
   // Artist and title are both inside one link (navigation is by songUid, not the title).
-  const link = screen.getByRole('link', { name: "Guns N' Roses - Sweet Child" });
+  const link = screen.getByRole('link', { name: "Guns N' Roses — Sweet Child" });
   expect(link).toHaveAttribute('href', '/songs/song-1'); // story 18.2: deep-link to the song route
 });
 
@@ -73,7 +73,7 @@ test('#13: an entry whose song still exists shows the live artist and title, not
   );
 
   // Renamed song: current names everywhere, no mixed "new artist - old title".
-  expect(screen.getByRole('link', { name: "Guns N' Roses - Sweet Child O' Mine" })).toHaveAttribute('href', '/songs/song-1');
+  expect(screen.getByRole('link', { name: "Guns N' Roses — Sweet Child O' Mine" })).toHaveAttribute('href', '/songs/song-1');
   expect(screen.queryByText('Sweet Child')).not.toBeInTheDocument();
   // Orphan: no live song left, the snapshot label stays, greyed, badged.
   expect(screen.getByText('Autumn Leaves')).toHaveClass('text-gray-400');

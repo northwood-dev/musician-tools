@@ -6,6 +6,7 @@ import { SongConflictError } from '../services/songService';
 import type { Song } from '../services/songService';
 import { CATALOG_ENTRY_GONE_MESSAGE } from '../constants/catalogMessages';
 import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
+import { songLabel } from '../utils/songLabel';
 
 // "Add to my songlist" — 3 states (DL-8/DL-11), story 19.4:
 //   default  → btn-primary "Add to my songlist"
@@ -127,7 +128,7 @@ export default function CatalogAddButton({
         className={`btn-primary ${HIT}`}
         onClick={handleAdd}
         disabled={saving}
-        aria-label={`Add "${entry.title}" to my songlist`}
+        aria-label={`Add "${songLabel(entry)}" to my songlist`}
       >
         {saving ? 'Adding…' : 'Add to my songlist'}
       </button>

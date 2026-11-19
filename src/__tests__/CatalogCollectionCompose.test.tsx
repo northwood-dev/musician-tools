@@ -89,9 +89,10 @@ test('searching then clicking a result adds it to the collection', async () => {
   await screen.findByText('Rock 90s');
   fireEvent.change(screen.getByLabelText('Add an entry'), { target: { value: 'creep' } });
   // debounced search → result option appears
-  const option = await screen.findByText('Radiohead · Creep');
+  const option = await screen.findByText('Radiohead — Creep');
   fireEvent.click(option);
   await waitFor(() => expect(cat.addSongToCollection).toHaveBeenCalledWith('col1', 's2'));
+  expect(await screen.findByText('Added "Radiohead — Creep"')).toBeInTheDocument(); // #232
   // Adding a member must NOT refetch the search nor reopen the dropdown (patch 20.2).
   expect(cat.listCatalog).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole('option')).toBeNull();
@@ -102,7 +103,7 @@ test('no row offers its own Remove button, whatever it would be called', async (
   renderCompose();
   // Anchor on the MEMBER, not the page heading: the assertion must fail if the table
   // does not render at all.
-  await screen.findByLabelText('Select Zombie by The Cranberries');
+  await screen.findByLabelText('Select The Cranberries — Zombie');
   // Any button whose name starts with "Remove" is a removal affordance; with nothing
   // selected there must be none — not even the bulk one.
   expect(screen.queryAllByRole('button', { name: /^Remove/ })).toHaveLength(0);
@@ -149,7 +150,7 @@ test('members are a table with the catalog columns, and a draft is badged', asyn
   expect(screen.getByText('The Cranberries')).toBeInTheDocument();
   expect(screen.getByText('84')).toBeInTheDocument();
   expect(screen.getByText('Draft')).toBeInTheDocument(); // Creep is unpublished
-  expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeInTheDocument();
+  expect(screen.getByLabelText('Select The Cranberries — Zombie')).toBeInTheDocument();
 });
 
 test('the bulk bar shows up on selection and removes the selected members', async () => {
@@ -184,7 +185,7 @@ test('a partial failure keeps the failed member in the table AND ticked', async 
   expect(recap).toHaveTextContent(/1 failed/);
   await waitFor(() => expect(screen.queryByText('Zombie')).toBeNull());
   expect(screen.getByText('Creep')).toBeInTheDocument();
-  expect(screen.getByLabelText('Select Creep by Radiohead')).toBeChecked();
+  expect(screen.getByLabelText('Select Radiohead — Creep')).toBeChecked();
   expect(screen.getByText('1 entry selected')).toBeInTheDocument();
 });
 
@@ -222,9 +223,9 @@ test('a removed member becomes searchable again in the typeahead', async () => {
   // While it is a member, the typeahead filters it out at render time.
   fireEvent.change(screen.getByLabelText('Add an entry'), { target: { value: 'zombie' } });
   expect(await screen.findByRole('option', { name: /Zombie Nation/ })).toBeInTheDocument();
-  expect(screen.queryByRole('option', { name: /^The Cranberries · Zombie$/ })).toBeNull();
+  expect(screen.queryByRole('option', { name: /^The Cranberries — Zombie$/ })).toBeNull();
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Remove selected' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
   await waitFor(() => expect(cat.removeSongFromCollection).toHaveBeenCalledWith('col1', 's1'));
@@ -232,7 +233,7 @@ test('a removed member becomes searchable again in the typeahead', async () => {
   // No refetch needed: the exclusion is computed at render from memberIds.
   fireEvent.focus(screen.getByLabelText('Add an entry'));
   // Exact name: "Zombie Nation" is also in the result set.
-  expect(await screen.findByRole('option', { name: /^The Cranberries · Zombie$/ })).toBeInTheDocument();
+  expect(await screen.findByRole('option', { name: /^The Cranberries — Zombie$/ })).toBeInTheDocument();
 });
 
 test('the recap survives its own batch and closes at the next selection gesture', async () => {
@@ -240,7 +241,7 @@ test('the recap survives its own batch and closes at the next selection gesture'
   renderCompose();
   await screen.findByText('Rock 90s');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Remove selected' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Remove' }));
 
@@ -249,7 +250,7 @@ test('the recap survives its own batch and closes at the next selection gesture'
   expect(recap).toHaveTextContent(/1 removed/);
 
   // ...but the next deliberate tick means it no longer describes what is on screen.
-  fireEvent.click(screen.getByLabelText('Select Creep by Radiohead'));
+  fireEvent.click(screen.getByLabelText('Select Radiohead — Creep'));
   await waitFor(() => expect(screen.queryByRole('status', { name: 'Bulk action result' })).toBeNull());
 });
 
@@ -271,11 +272,11 @@ test('emptying the selection while the dialog is open closes it instead of no-op
   renderCompose();
   await screen.findByText('Rock 90s');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Remove selected' }));
   await screen.findByRole('dialog');
   // The boxes are only frozen once the batch starts — untick before confirming.
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
 
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -328,4 +329,11 @@ test('un retrait groupé abandonné annonce quand même ce qui a été retiré',
   await waitFor(() => expect(
     screen.getByText(/You left while songs were being removed from the collection/)
   ).toBeInTheDocument());
+});
+
+// #232 review: the search names the artist first, as everywhere else.
+test('the entry search asks for the artist, then the title', async () => {
+  renderCompose();
+  await screen.findByText('Rock 90s');
+  expect(screen.getByPlaceholderText('Search by artist or title…')).toBeInTheDocument();
 });

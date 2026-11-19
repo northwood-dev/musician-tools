@@ -5,6 +5,7 @@ import CatalogAddButton from './CatalogAddButton';
 import type { AddAsInstrument } from '../hooks/useAddAsInstrument';
 import { RowSelectionCheckbox, SelectAllCheckbox } from './SelectionCheckbox';
 import { selectionCell } from '../utils/selectionCell';
+import { songLabel } from '../utils/songLabel';
 
 // Filterable list of Catalog entries (story 19.3 + Add cell in 19.4). Columns Artist ·
 // Title · Key · BPM (artist first, DL-18) + a trailing action cell (Add). The Title
@@ -80,7 +81,7 @@ export default function CatalogList({
                   <RowSelectionCheckbox
                     checked={!!selectedUids?.has(entry.uid)}
                     onChange={() => onToggle?.(entry.uid)}
-                    label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
+                    label={songLabel(entry)}
                     disabled={selectionDisabled || goneUids?.has(entry.uid)}
                   />
                 </td>

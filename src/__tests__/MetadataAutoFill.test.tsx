@@ -170,7 +170,7 @@ describe('Metadata Auto-fill Feature', () => {
         />
       );
 
-      expect(screen.getByText(/Title \+ artist required/i)).toBeInTheDocument();
+      expect(screen.getByText(/Artist \+ title required/i)).toBeInTheDocument();
     });
 
     test('calls onAutoFillMetadata when button is clicked', () => {

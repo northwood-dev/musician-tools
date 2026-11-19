@@ -35,7 +35,7 @@ beforeEach(() => { jest.clearAllMocks(); });
 test('default → Add; clicking it adds and lands on "Already in your songlist"', async () => {
   cat.addToSonglist.mockResolvedValue(SONG);
   renderBtn();
-  fireEvent.click(screen.getByRole('button', { name: /Add "Zombie" to my songlist/i }));
+  fireEvent.click(screen.getByRole('button', { name: /Add "The Cranberries — Zombie" to my songlist/i }));
   expect(cat.addToSonglist).toHaveBeenCalledWith('cat-1', 'Bass');
   const already = await screen.findByText(/Already in your songlist/i);
   expect(already.closest('a')).toHaveAttribute('href', '/songs/song-1');

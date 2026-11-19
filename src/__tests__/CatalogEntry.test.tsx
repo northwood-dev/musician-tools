@@ -29,7 +29,7 @@ beforeEach(() => { jest.clearAllMocks(); localStorage.clear(); });
 const ZOMBIE = { uid: 'a', title: 'Zombie', artist: 'The Cranberries' };
 const SONG = { uid: 'song-1', title: 'Zombie' } as Song;
 
-const addButton = () => screen.findByRole('button', { name: 'Add "Zombie" to my songlist' });
+const addButton = () => screen.findByRole('button', { name: 'Add "The Cranberries — Zombie" to my songlist' });
 const choose = (value: string) => fireEvent.change(screen.getByLabelText('Add as'), { target: { value } });
 
 describe('Add as instrument', () => {

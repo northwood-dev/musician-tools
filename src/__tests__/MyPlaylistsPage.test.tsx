@@ -39,7 +39,7 @@ beforeEach(() => {
   mockedAlias.list.mockResolvedValue([]);
 });
 
-test('a playlist song renders as "Artist - Title"', async () => {
+test('a playlist song renders as "Artist — Title"', async () => {
   mockedSong.getAllSongs.mockResolvedValue([
     { uid: 'known-uid', title: 'Sweet Child', artist: "Guns N' Roses" } as never,
   ]);
@@ -49,7 +49,7 @@ test('a playlist song renders as "Artist - Title"', async () => {
 
   render(<MyPlaylistsPage />);
 
-  expect(await screen.findByText("Guns N' Roses - Sweet Child")).toBeInTheDocument();
+  expect(await screen.findByText("Guns N' Roses — Sweet Child")).toBeInTheDocument();
 });
 
 test('a playlist song with an empty artist renders as just the title, with no leading dash', async () => {
@@ -79,7 +79,7 @@ test('Story 5.6: an orphan song UID (deleted song) is hidden, never shown as a r
   render(<MyPlaylistsPage />);
 
   // The known song appears once the catalog loads...
-  expect(await screen.findByText("Guns N' Roses - Sweet Child")).toBeInTheDocument();
+  expect(await screen.findByText("Guns N' Roses — Sweet Child")).toBeInTheDocument();
   // ...but the orphan UID is never rendered as a raw hash
   expect(screen.queryByText('orphan-uid-1234')).not.toBeInTheDocument();
 });
@@ -113,8 +113,8 @@ describe('#84: the song search of the playlist form finds a song as the Songlist
 
     await openFormAndSearch('acdc');
 
-    expect(await screen.findByText('AC/DC - Back in Black')).toBeInTheDocument();
-    expect(screen.queryByText('Oasis - Wonderwall')).not.toBeInTheDocument();
+    expect(await screen.findByText('AC/DC — Back in Black')).toBeInTheDocument();
+    expect(screen.queryByText('Oasis — Wonderwall')).not.toBeInTheDocument();
   });
 
   test('an artist alias typed in full ("rhcp") finds its artist', async () => {
@@ -126,8 +126,8 @@ describe('#84: the song search of the playlist form finds a song as the Songlist
 
     await openFormAndSearch('rhcp');
 
-    expect(await screen.findByText('Red Hot Chili Peppers - Otherside')).toBeInTheDocument();
-    expect(screen.queryByText('Oasis - Wonderwall')).not.toBeInTheDocument();
+    expect(await screen.findByText('Red Hot Chili Peppers — Otherside')).toBeInTheDocument();
+    expect(screen.queryByText('Oasis — Wonderwall')).not.toBeInTheDocument();
   });
 
   test('when the aliases fail to load, search still works and no error shows', async () => {
@@ -139,8 +139,8 @@ describe('#84: the song search of the playlist form finds a song as the Songlist
 
     await openFormAndSearch('acdc');
 
-    expect(await screen.findByText('AC/DC - Back in Black')).toBeInTheDocument();
-    expect(screen.queryByText('Oasis - Wonderwall')).not.toBeInTheDocument();
+    expect(await screen.findByText('AC/DC — Back in Black')).toBeInTheDocument();
+    expect(screen.queryByText('Oasis — Wonderwall')).not.toBeInTheDocument();
     expect(screen.queryByText(/error/i)).not.toBeInTheDocument();
   });
 });

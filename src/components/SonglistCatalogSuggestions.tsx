@@ -5,6 +5,7 @@ import type { Song } from '../services/songService';
 import { useAddAsInstrument } from '../hooks/useAddAsInstrument';
 import AddAsInstrumentSelect from './AddAsInstrumentSelect';
 import CatalogAddButton from './CatalogAddButton';
+import { SongName } from './SongName';
 
 // #184 / #191: when a Songlist search finds nothing, the Catalog is searched with the same
 // text (never the Songlist's filters) and up to 5 entries can be added in place. The page
@@ -61,10 +62,7 @@ export default function SonglistCatalogSuggestions({
           <ul className="divide-y divide-gray-100 dark:divide-gray-700">
             {state.items.map(entry => (
               <li key={entry.uid} className="flex flex-col sm:flex-row sm:items-center gap-2 py-2">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{entry.title}</div>
-                  {entry.artist && <div className="text-sm text-gray-600 dark:text-gray-400 truncate">{entry.artist}</div>}
-                </div>
+                <SongName song={entry} truncate className="flex-1" />
                 <CatalogAddButton entry={entry} existingSong={findExisting(entry)} addAs={addAs} onAdded={onAdded} />
               </li>
             ))}

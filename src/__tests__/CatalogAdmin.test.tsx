@@ -133,7 +133,7 @@ test('a duplicate (title, artist) blocks autosave and hides Publish (19.6 revise
     await act(async () => { await jest.advanceTimersByTimeAsync(1300); });
 
     // Blocking message shown, NO save attempted, Publish removed.
-    expect(screen.getByText(/already exists in the Catalog/i)).toBeInTheDocument();
+    expect(screen.getByText('"B — Zombie" already exists in the Catalog.')).toBeInTheDocument(); // #232: artist first
     expect(cat.updateCatalogEntry).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Publish' })).toBeNull();
   } finally {
@@ -216,7 +216,7 @@ test('edit mode can delete the entry (confirm → back to manage)', async () => 
 
 describe('#52: a failed duplicate check', () => {
   const BANNER = /already exists in the Catalog/i;
-  const CONFLICT_BANNER = 'This title and artist already exist in the Catalog.';
+  const CONFLICT_BANNER = 'This artist and title already exist in the Catalog.';
   const DUPLICATE = { exists: true, entry: { uid: 'other', title: 'Zombie', artist: 'B' } };
   const PAST_CHECK_DEBOUNCE = 600; // the check fires 500ms after the last edit
   const PAST_AUTOSAVE = 1300; // the autosave fires 1200ms after the last edit
@@ -389,4 +389,17 @@ describe('the three official links of a Catalog entry (#109)', () => {
     fireEvent.change(screen.getByLabelText('YouTube link'), { target: { value: '' } });
     expect(await savedLinks()).toEqual([{ label: 'Deezer', url: 'https://www.deezer.com/track/138547415' }]);
   });
+});
+
+// #232: the confirmation names the entry artist first.
+test('the delete confirmation names the entry artist first', async () => {
+  mockedUseAuth.mockReturnValue({ user: { isCurator: true } });
+  cat.getCatalogEntry.mockResolvedValue({ uid: 'c1', title: 'Zombie', artist: 'The Cranberries', publishedAt: null });
+  renderAt('/catalog/admin/c1');
+
+  await waitFor(() => expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Zombie'));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText(/^Delete "The Cranberries — Zombie" from the Catalog\?/)).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 });

@@ -483,15 +483,15 @@ describe('practicesessioncontroller', () => {
   });
 
   describe('getDayPlays', () => {
-    test('returns the day plays joined with the song title, oldest first (FR22/AC4)', async () => {
+    test('returns the day plays joined with the song title and artist, oldest first (FR22/AC4, #233)', async () => {
       SongPlay.findAll.mockResolvedValueOnce([
         {
           uid: 'play-1', songUid: 'song-1', instrumentType: 'Guitar',
-          playedAt: '2026-03-10T09:00:00.000Z', 'Song.title': 'Sweet Child',
+          playedAt: '2026-03-10T09:00:00.000Z', 'Song.title': 'Sweet Child', 'Song.artist': "Guns N' Roses",
         },
         {
           uid: 'play-2', songUid: 'song-2', instrumentType: null,
-          playedAt: '2026-03-10T21:30:00.000Z', 'Song.title': 'Money',
+          playedAt: '2026-03-10T21:30:00.000Z', 'Song.title': 'Money', 'Song.artist': null,
         },
       ]);
 
@@ -501,14 +501,14 @@ describe('practicesessioncontroller', () => {
 
       // Plays are presence, not sessions: no duration anywhere in the payload
       expect(res.json).toHaveBeenCalledWith([
-        { uid: 'play-1', songUid: 'song-1', title: 'Sweet Child', instrumentType: 'Guitar', playedAt: '2026-03-10T09:00:00.000Z' },
-        { uid: 'play-2', songUid: 'song-2', title: 'Money', instrumentType: null, playedAt: '2026-03-10T21:30:00.000Z' },
+        { uid: 'play-1', songUid: 'song-1', title: 'Sweet Child', artist: "Guns N' Roses", instrumentType: 'Guitar', playedAt: '2026-03-10T09:00:00.000Z' },
+        { uid: 'play-2', songUid: 'song-2', title: 'Money', artist: null, instrumentType: null, playedAt: '2026-03-10T21:30:00.000Z' },
       ]);
       expect(next).not.toHaveBeenCalled();
 
       const arg = SongPlay.findAll.mock.calls[0][0];
       expect(arg.include).toEqual([
-        expect.objectContaining({ attributes: ['title'], where: { userUid: 'user-1' }, required: true }),
+        expect.objectContaining({ attributes: ['title', 'artist'], where: { userUid: 'user-1' }, required: true }),
       ]);
       // Same UTC day as the heatmap aggregation, as a sargable range;
       // uid tiebreak keeps same-timestamp plays stable across requests

@@ -19,6 +19,7 @@ import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
 import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
 import { findExistingIn } from '../hooks/useSonglistMatcher';
+import { songLabel } from '../utils/songLabel';
 
 export interface SongsListProps {
   // State
@@ -285,7 +286,7 @@ export default function SongsList(props: SongsListProps) {
                 aria-keyshortcuts="/"
                 id="songs-search"
                 type="text"
-                placeholder="Search by title, artist, or album…"
+                placeholder="Search by artist, title, or album…"
                 value={props.searchQuery}
                 onChange={e => props.setSearchQuery(e.target.value)}
                 className="input-base pr-10"
@@ -442,7 +443,7 @@ export default function SongsList(props: SongsListProps) {
                           <RowSelectionCheckbox
                             checked={props.selectedSongs.has(song.uid)}
                             onChange={() => props.toggleSelectSong(song.uid)}
-                            label={song.artist ? `${song.title} by ${song.artist}` : song.title}
+                            label={songLabel(song)}
                             disabled={props.loading}
                           />
                         </td>

@@ -101,7 +101,7 @@ test('the bulk bar appears only when entries are selected', async () => {
   await screen.findByText('Zombie');
   expect(screen.queryByRole('button', { name: 'Delete selected' })).toBeNull();
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   expect(screen.getByText('1 entry selected')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Delete selected' })).toBeInTheDocument();
 });
@@ -110,7 +110,7 @@ test('bulk delete asks confirmation, then removes the selected rows', async () =
   renderManage();
   await screen.findByText('Zombie');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
 
   const dialog = await screen.findByRole('dialog');
@@ -168,7 +168,7 @@ test('Cancel in the confirm dialog deletes nothing', async () => {
   renderManage();
   await screen.findByText('Zombie');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
@@ -183,7 +183,7 @@ test('a delete race (404 already gone) still removes the row', async () => {
   renderManage();
   await screen.findByText('Zombie');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Delete selected' }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
@@ -232,7 +232,7 @@ test('the menu is fetched lazily, and REFETCHED on every open (the Collections t
   await screen.findByText('Zombie');
 
   expect(cat.listCollections).not.toHaveBeenCalled(); // not fetched with the page
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
 
   expect(await screen.findByRole('button', { name: /Beginner classics/ })).toBeInTheDocument();
@@ -250,7 +250,7 @@ test('a menu that fails to load offers a Retry that reloads it', async () => {
   renderManage();
   await screen.findByText('Zombie');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
 
   fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
@@ -262,7 +262,7 @@ test('no collections yet: the menu says so and points to the Collections tab', a
   renderManage();
   await screen.findByText('Zombie');
 
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
 
   expect(await screen.findByText(/No collections yet/i)).toBeInTheDocument();
@@ -332,8 +332,8 @@ test('a partial failure keeps ONLY the failed entries selected, and shouts', asy
   expect(recap).toHaveTextContent(/1 added/);
   expect(recap).toHaveTextContent(/1 failed/);
   // The batch is replayable: the failed row stays ticked, the successful one does not.
-  expect(screen.getByLabelText('Select Creep by Radiohead')).toBeChecked();
-  expect(screen.getByLabelText('Select Zombie by The Cranberries')).not.toBeChecked();
+  expect(screen.getByLabelText('Select Radiohead — Creep')).toBeChecked();
+  expect(screen.getByLabelText('Select The Cranberries — Zombie')).not.toBeChecked();
   expect(screen.getByText('1 entry selected')).toBeInTheDocument();
 });
 
@@ -381,7 +381,7 @@ test('Delete selected is frozen while an add batch is in flight', async () => {
 
   // Both bulk paths write the same selection — they must not interleave.
   expect(screen.getByRole('button', { name: 'Delete selected' })).toBeDisabled();
-  expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeDisabled();
+  expect(screen.getByLabelText('Select The Cranberries — Zombie')).toBeDisabled();
   releases.forEach(r => r());
   await waitFor(() => expect(screen.getByRole('status', { name: 'Bulk action result' })).toBeInTheDocument());
 });
@@ -399,7 +399,7 @@ test('the recap closes as soon as the user makes the next selection', async () =
   await screen.findByRole('alert', { name: 'Bulk action result' });
 
   // Touching the selection again means the recap no longer describes what is on screen.
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   await waitFor(() => expect(screen.queryByRole('alert', { name: 'Bulk action result' })).toBeNull());
 });
 
@@ -491,7 +491,7 @@ describe('#135: the Add to collection menu closes like its ✕ on an outside cli
     cat.listCollections.mockResolvedValue(twoCollections);
     renderManage();
     await screen.findByText('Zombie');
-    fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+    fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
     fireEvent.click(screen.getByRole('button', { name: 'Add to collection' }));
     await screen.findByRole('button', { name: /Beginner classics/ });
   };
@@ -523,7 +523,7 @@ test('#149: Add to collection is a disclosure, not a menu, and points to its pan
   cat.listCollections.mockResolvedValue(twoCollections);
   renderManage();
   await screen.findByText('Zombie');
-  fireEvent.click(screen.getByLabelText('Select Zombie by The Cranberries'));
+  fireEvent.click(screen.getByLabelText('Select The Cranberries — Zombie'));
   const button = screen.getByRole('button', { name: 'Add to collection' });
   fireEvent.click(button);
   await screen.findByRole('button', { name: /Beginner classics/ });
@@ -534,4 +534,10 @@ test('#149: Add to collection is a disclosure, not a menu, and points to its pan
   const panel = document.getElementById(button.getAttribute('aria-controls') ?? '');
   expect(panel).not.toBeNull();
   expect(within(panel!).getByRole('button', { name: /Beginner classics/ })).toBeInTheDocument();
+});
+
+// #232 review: the search names the artist first, as everywhere else.
+test('the search asks for the artist, then the title', async () => {
+  renderManage();
+  expect(await screen.findByPlaceholderText('Search by artist or title…')).toBeInTheDocument();
 });

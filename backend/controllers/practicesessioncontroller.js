@@ -270,7 +270,7 @@ const getDayPlays = async (req, res, next) => {
 
     const rows = await SongPlay.findAll({
       attributes: ['uid', 'songUid', 'instrumentType', 'playedAt'],
-      include: [{ model: Song, attributes: ['title'], where: { userUid: userId }, required: true }],
+      include: [{ model: Song, attributes: ['title', 'artist'], where: { userUid: userId }, required: true }],
       // Sargable equivalent of PLAY_DAY_EXPR = date (same UTC day as the grid)
       where: { playedAt: utcDayBounds(date) },
       // uid tiebreak: same-timestamp plays (rapid double-marks) need a stable order
@@ -278,11 +278,12 @@ const getDayPlays = async (req, res, next) => {
       raw: true
     });
 
-    // raw mode flattens the join as 'Song.title'
+    // raw mode flattens the join as 'Song.title' / 'Song.artist' (#233: artist shown first)
     res.json(rows.map(row => ({
       uid: row.uid,
       songUid: row.songUid,
       title: row['Song.title'],
+      artist: row['Song.artist'],
       instrumentType: row.instrumentType,
       playedAt: row.playedAt
     })));

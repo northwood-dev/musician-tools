@@ -16,6 +16,7 @@ import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { RemovableChip } from './Chip';
 import { Disclosure } from './Disclosure';
+import { songLabel } from '../utils/songLabel';
 
 type Mode = 'add' | 'edit';
 
@@ -200,15 +201,14 @@ export function SongForm(props: SongFormProps) {
             Suggest this song for the Catalog
           </label>
           <p id="song-catalog-suggestion-help" className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Shares only the title, artist, musical details (key, BPM…) and official links, never your notes or instruments. Uncheck it for your own compositions.
+            Shares only the artist, title, musical details (key, BPM…) and official links, never your notes or instruments. Uncheck it for your own compositions.
           </p>
         </div>
       )}
       {duplicate && (
         <DuplicateBanner>
           <p>
-            <span className="font-medium">"{duplicate.title}"</span>
-            {duplicate.artist ? <> by <span className="font-medium">{duplicate.artist}</span></> : null}
+            <span className="font-medium">"{songLabel(duplicate)}"</span>
             {' '}already exists in your songlist.
           </p>
           {onEditDuplicate && (
@@ -233,7 +233,7 @@ export function SongForm(props: SongFormProps) {
           {metadataLoading ? 'Auto-filling…' : 'Auto-fill metadata'}
         </button>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {metadataSource ? `Metadata found: ${metadataSource}` : 'Title + artist required'}
+          {metadataSource ? `Metadata found: ${metadataSource}` : 'Artist + title required'}
         </p>
       </div>
       <Disclosure

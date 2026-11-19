@@ -241,8 +241,8 @@ describe('#50: entries found to be gone are marked on their row', () => {
     await addAll();
 
     await screen.findByText(GONE_MESSAGE);
-    await waitFor(() => expect(screen.getByLabelText('Select Zombie by The Cranberries')).not.toBeDisabled());
-    expect(screen.getByLabelText('Select Creep by Radiohead')).toBeDisabled();
+    await waitFor(() => expect(screen.getByLabelText('Select The Cranberries — Zombie')).not.toBeDisabled());
+    expect(screen.getByLabelText('Select Radiohead — Creep')).toBeDisabled();
   });
 
   test('select-all skips marked rows and reads as fully selected without them', async () => {
@@ -253,8 +253,8 @@ describe('#50: entries found to be gone are marked on their row', () => {
 
     fireEvent.click(screen.getByLabelText('Select all'));
 
-    expect(screen.getByLabelText('Select Zombie by The Cranberries')).toBeChecked();
-    expect(screen.getByLabelText('Select Creep by Radiohead')).not.toBeChecked();
+    expect(screen.getByLabelText('Select The Cranberries — Zombie')).toBeChecked();
+    expect(screen.getByLabelText('Select Radiohead — Creep')).not.toBeChecked();
     expect(screen.getByLabelText('Select all')).toBeChecked();
   });
 
@@ -266,7 +266,7 @@ describe('#50: entries found to be gone are marked on their row', () => {
 
     await screen.findByRole('alert', { name: 'Bulk action result' });
     expect(screen.queryByText(GONE_MESSAGE)).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Select Creep by Radiohead')).toBeChecked();
+    expect(screen.getByLabelText('Select Radiohead — Creep')).toBeChecked();
   });
 
   test('opening the page again shows no leftover mark', async () => {

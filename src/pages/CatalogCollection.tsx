@@ -16,6 +16,7 @@ import { useAddAsInstrument, describeAddAsChoice } from '../hooks/useAddAsInstru
 import { Notice } from '../components/Notice';
 import { Page, PageTitle } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
+import { songLabel } from '../utils/songLabel';
 
 // Story 20.4: user-facing detail of a curated Collection. Shows its members and lets
 // the user import the WHOLE collection into their Songlist in one action (a mirror
@@ -237,7 +238,7 @@ export default function CatalogCollection() {
                     <RowSelectionCheckbox
                       checked={selection.isSelected(entry.uid)}
                       onChange={() => userToggle(entry.uid)}
-                      label={entry.artist ? `${entry.title} by ${entry.artist}` : entry.title}
+                      label={songLabel(entry)}
                       disabled={bulkAdd.running || goneUids.has(entry.uid)}
                     />
                   </td>
