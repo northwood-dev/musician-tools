@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { catalogService, SuggestionGoneError, SuggestionInCatalogError } from '../services/catalogService';
+import { catalogService, SuggestionDifferencesError, SuggestionGoneError, SuggestionInCatalogError } from '../services/catalogService';
 import type { CatalogSuggestionLine } from '../services/catalogService';
 import { ListSkeleton } from '../components/ListSkeleton';
 import { LoadFailed } from '../components/LoadFailed';
@@ -22,7 +22,7 @@ const details = (song: CatalogSuggestionLine['song']) =>
     .join(' · ');
 
 // #230: the song name opens what Review opens (a draft, created if needed), or the published
-// entry once the song is in the Catalog — to check it before Link to it.
+// entry once the song is in the Catalog — to check it before Merge.
 const SONG_LINK = 'block hover:underline disabled:cursor-not-allowed';
 
 // The entry form for a line's draft; the suggestion id links the songs when it is published.
@@ -73,6 +73,7 @@ export default function CatalogSuggestions() {
       setError(
         err instanceof SuggestionInCatalogError ? 'This song is already in the Catalog.'
           : err instanceof SuggestionGoneError ? 'This suggestion is no longer waiting.'
+            : err instanceof SuggestionDifferencesError ? 'Some values now differ from the Catalog entry: review them first.'
             : `Could not ${verb} "${songLabel(line.song)}".`
       );
     }
@@ -88,10 +89,11 @@ export default function CatalogSuggestions() {
     return null;
   });
 
-  // #214: the song is already published in the Catalog — link the line's songs to that entry.
-  const handleLink = (line: CatalogSuggestionLine) => runAction('link', line, async () => {
-    const { linked } = await catalogService.linkSuggestion(line.id);
-    return `"${songLabel(line.song)}" linked to the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`;
+  // #214 / #236: the song is already published in the Catalog — Merge ties the line's songs to
+  // that entry. Values that differ are reviewed first (#237), so Merge waits for them.
+  const handleMerge = (line: CatalogSuggestionLine) => runAction('merge', line, async () => {
+    const { linked } = await catalogService.mergeSuggestion(line.id);
+    return `"${songLabel(line.song)}" merged into the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`;
   });
 
   // #213: the line's songs leave the queue for good; their owners aren't told.
@@ -109,7 +111,7 @@ export default function CatalogSuggestions() {
     <Page
       width="wide"
       title="Suggestions"
-      description="Songs typed into a Songlist and suggested to the Catalog by their owners. Identical songs are grouped; who suggested them is never shown. Review opens a draft you can correct: nothing is published until you click Publish."
+      description="Songs typed into a Songlist and suggested to the Catalog by their owners. Identical songs are grouped; who suggested them is never shown. Review opens a draft you can correct: nothing is published until you click Publish. Merge combines a suggestion with the Catalog entry that already exists: you accept or reject each different value, then the suggesters' songs are tied to that entry."
     >
       <LiveNotice tone="error" className="mb-4">{error}</LiveNotice>
       <LiveNotice tone="success" className="mb-4">{doneMessage}</LiveNotice>
@@ -161,6 +163,7 @@ export default function CatalogSuggestions() {
                   <td className="px-3 py-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
                     {!line.catalog && <Tag>New</Tag>}
                     {line.catalog?.published && <Tag>Already in the Catalog</Tag>}
+                    {!!line.catalog?.differences?.length && <> <Tag>Differs from the Catalog</Tag></>}
                     {line.catalog && !line.catalog.published && <Tag>Draft in progress</Tag>}
                   </td>
                   <td className="px-3 py-2 text-right whitespace-nowrap space-x-2">
@@ -188,11 +191,11 @@ export default function CatalogSuggestions() {
                       <button
                         type="button"
                         className="btn-primary btn-sm min-h-[44px]"
-                        aria-label={`Link ${songLabel(line.song)} to the Catalog entry`}
-                        onClick={() => handleLink(line)}
-                        disabled={busy}
+                        aria-label={`Merge ${songLabel(line.song)} into the Catalog entry`}
+                        onClick={() => handleMerge(line)}
+                        disabled={busy || !!line.catalog.differences?.length}
                       >
-                        Link to it
+                        Merge
                       </button>
                     )}
                     <button

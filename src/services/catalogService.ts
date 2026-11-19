@@ -125,7 +125,14 @@ export type CatalogSuggestionLine = {
   id: string;
   suggestedBy: number;
   song: Pick<CatalogSong, 'title' | 'artist' | 'album' | 'key' | 'mode' | 'bpm' | 'timeSignature' | 'durationSeconds' | 'language' | 'genre' | 'streamingLinks' | 'pitchStandard'>;
-  catalog: { uid: string; published: boolean } | null;
+  // A published entry also says where the group differs from it (#236): the entry's value and
+  // each value suggested, with how many users suggested it.
+  catalog: { uid: string; published: boolean; differences?: SuggestionDifference[] } | null;
+};
+export type SuggestionDifference = {
+  field: 'key' | 'mode' | 'bpm' | 'timeSignature' | 'durationSeconds' | 'language' | 'genre' | 'pitchStandard';
+  catalog: string | number | string[] | null;
+  suggested: { value: string | number | string[]; users: number }[];
 };
 export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
 
@@ -136,6 +143,14 @@ export class SuggestionInCatalogError extends Error {
     super('This song is already in the Catalog');
     this.name = 'SuggestionInCatalogError';
     this.catalogUid = catalogUid;
+  }
+}
+
+// #236: Merge found values that differ from the entry: they must be reviewed first.
+export class SuggestionDifferencesError extends Error {
+  constructor() {
+    super('Some values differ from the Catalog entry');
+    this.name = 'SuggestionDifferencesError';
   }
 }
 
@@ -469,16 +484,21 @@ export const catalogService = {
     return response.json();
   },
 
-  // #214: link the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
-  // waiting; 409 → no published entry to link to (none, or a draft) — also "no longer waiting"
-  // from the curator's point of view: the queue just needs reloading.
-  async linkSuggestion(id: string): Promise<{ linked: number; catalogUid: string }> {
-    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/link`, { method: 'POST', credentials: 'include' });
-    if (response.status === 404 || response.status === 409) {
+  // #214 / #236: tie the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
+  // waiting; 409 "differences" → values differ from the entry and must be reviewed first; any
+  // other 409 → no published entry (none, or a draft) — "no longer waiting" for the curator.
+  async mergeSuggestion(id: string): Promise<{ linked: number; catalogUid: string }> {
+    const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/merge`, { method: 'POST', credentials: 'include' });
+    if (response.status === 409) {
+      const body = await response.json().catch(() => ({} as { error?: string }));
+      if (body.error === 'differences') throw new SuggestionDifferencesError();
+      throw new SuggestionGoneError();
+    }
+    if (response.status === 404) {
       throw new SuggestionGoneError();
     }
     if (!response.ok) {
-      throw new Error('Failed to link the suggestion');
+      throw new Error('Failed to merge the suggestion');
     }
     return response.json();
   },

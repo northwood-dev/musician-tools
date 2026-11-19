@@ -153,49 +153,85 @@ describe('Reject (#213)', () => {
   });
 });
 
-describe('Link to it (#214)', () => {
+describe('Merge (#214, #236)', () => {
   const dialogFree = () => waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   let waiting: CatalogSuggestionLine[] = [];
   beforeEach(() => {
-    waiting = [line({ suggestedBy: 2, catalog: { uid: 'cat-1', published: true } })];
+    waiting = [line({ suggestedBy: 2, catalog: { uid: 'cat-1', published: true, differences: [] } })];
     cat.getSuggestions.mockImplementation(async () => ({ pending: waiting.length, suggestions: waiting }));
   });
-  const linkButton = async () => within((await screen.findByText('Wonderwall')).closest('tr')!).getByRole('button', { name: 'Link Oasis — Wonderwall to the Catalog entry' });
+  const row = async () => (await screen.findByText('Wonderwall')).closest('tr')!;
+  const mergeButton = async () => within(await row()).getByRole('button', { name: 'Merge Oasis — Wonderwall into the Catalog entry' });
 
-  test('a song already published in the Catalog is linked to it, and leaves the queue', async () => {
-    cat.linkSuggestion.mockImplementation(async () => { waiting = []; return { linked: 2, catalogUid: 'cat-1' }; });
+  test('the page says what Merge does', async () => {
     renderPage();
-    const button = await linkButton();
+    await row();
+    expect(screen.getByText(/Merge combines a suggestion with the Catalog entry that already exists/)).toBeInTheDocument();
+  });
+
+  test('with no difference, Merge ties the songs to the entry, and the line leaves the queue', async () => {
+    cat.mergeSuggestion.mockImplementation(async () => { waiting = []; return { linked: 2, catalogUid: 'cat-1' }; });
+    renderPage();
+    const button = await mergeButton();
+    expect(button).toHaveTextContent('Merge');
     await act(async () => { fireEvent.click(button); });
-    expect(cat.linkSuggestion).toHaveBeenCalledWith('id-Wonderwall');
-    expect(await screen.findByText('"Oasis — Wonderwall" linked to the Catalog entry (2 songs).')).toBeInTheDocument();
+    expect(cat.mergeSuggestion).toHaveBeenCalledWith('id-Wonderwall');
+    expect(await screen.findByText('"Oasis — Wonderwall" merged into the Catalog entry (2 songs).')).toBeInTheDocument();
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
     await dialogFree();
   });
 
-  test('only a published entry offers Link to it', async () => {
+  test('values that differ show a tag, and Merge waits for the review of the differences', async () => {
+    waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ] } })];
+    renderPage();
+    const r = await row();
+    expect(within(r).getByText('Differs from the Catalog')).toBeInTheDocument();
+    expect(within(r).getByRole('button', { name: 'Merge Oasis — Wonderwall into the Catalog entry' })).toBeDisabled();
+  });
+
+  test('no difference, no tag', async () => {
+    renderPage();
+    expect(within(await row()).queryByText('Differs from the Catalog')).toBeNull();
+  });
+
+  test('only a published entry offers Merge', async () => {
     waiting = [line({ catalog: { uid: 'draft-1', published: false } }), line({ title: 'Zombie', catalog: null })];
     renderPage();
     await screen.findByText('Wonderwall');
-    expect(screen.queryByRole('button', { name: /^Link / })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Merge / })).not.toBeInTheDocument();
+  });
+
+  test('values that came to differ meanwhile say so and reload', async () => {
+    const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
+    cat.mergeSuggestion.mockImplementation(async () => {
+      waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [{ field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] }] } })];
+      throw new SuggestionDifferencesError();
+    });
+    renderPage();
+    const button = await mergeButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('Some values now differ from the Catalog entry: review them first.')).toBeInTheDocument();
+    expect(await screen.findByText('Differs from the Catalog')).toBeInTheDocument();
   });
 
   test('a suggestion no longer waiting says so and reloads', async () => {
     const { SuggestionGoneError } = jest.requireActual('../services/catalogService');
-    cat.linkSuggestion.mockImplementation(async () => { waiting = []; throw new SuggestionGoneError(); });
+    cat.mergeSuggestion.mockImplementation(async () => { waiting = []; throw new SuggestionGoneError(); });
     renderPage();
-    const button = await linkButton();
+    const button = await mergeButton();
     await act(async () => { fireEvent.click(button); });
     expect(await screen.findByText('This suggestion is no longer waiting.')).toBeInTheDocument();
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
   });
 
   test('a failure says so and keeps the line', async () => {
-    cat.linkSuggestion.mockRejectedValue(new Error('down'));
+    cat.mergeSuggestion.mockRejectedValue(new Error('down'));
     renderPage();
-    const button = await linkButton();
+    const button = await mergeButton();
     await act(async () => { fireEvent.click(button); });
-    expect(await screen.findByText('Could not link "Oasis — Wonderwall".')).toBeInTheDocument();
+    expect(await screen.findByText('Could not merge "Oasis — Wonderwall".')).toBeInTheDocument();
     expect(screen.getByText('Wonderwall')).toBeInTheDocument();
   });
 });
@@ -223,20 +259,20 @@ describe('Review and drafts (#215, #230)', () => {
     expect(screen.getByText(/nothing is published until you click Publish/i)).toBeInTheDocument();
   });
 
-  test('a draft in progress offers Review, which opens that draft, and not Link to it', async () => {
+  test('a draft in progress offers Review, which opens that draft, and not Merge', async () => {
     waiting = [line({ catalog: { uid: 'draft-1', published: false } })];
     renderPage();
     const row = (await screen.findByText('Wonderwall')).closest('tr')!;
     expect(within(row).getByRole('link', { name: 'Review Oasis — Wonderwall' })).toHaveAttribute('href', '/catalog/admin/draft-1?suggestion=id-Wonderwall');
     expect(within(row).queryByRole('link', { name: /^Open the draft/ })).toBeNull();
-    expect(within(row).queryByRole('button', { name: /^Link / })).toBeNull();
+    expect(within(row).queryByRole('button', { name: /^Merge / })).toBeNull();
   });
 
-  test('a song already published offers Link to it, not Review', async () => {
+  test('a song already published offers Merge, not Review', async () => {
     waiting = [line({ catalog: { uid: 'cat-1', published: true } })];
     renderPage();
     const row = (await screen.findByText('Wonderwall')).closest('tr')!;
-    expect(within(row).getByRole('button', { name: /^Link / })).toBeInTheDocument();
+    expect(within(row).getByRole('button', { name: /^Merge / })).toBeInTheDocument();
     expect(within(row).queryByRole('button', { name: /^Review / })).toBeNull();
     expect(within(row).queryByRole('link', { name: /^Review / })).toBeNull();
   });

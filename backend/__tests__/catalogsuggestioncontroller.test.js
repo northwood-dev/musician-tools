@@ -83,7 +83,7 @@ test('flags a group already in the Catalog (published or draft)', async () => {
   const res = mockRes();
   await controller.getSuggestions({ session: { user: 'curator' } }, res, jest.fn());
   const [published, draft] = res.json.mock.calls[0][0].suggestions;
-  expect(published.catalog).toEqual({ uid: 'cat-1', published: true });
+  expect(published.catalog).toEqual({ uid: 'cat-1', published: true, differences: [] });
   expect(draft.catalog).toEqual({ uid: 'cat-2', published: false });
 });
 
@@ -109,6 +109,81 @@ test('a database failure is a 500, not a crash', async () => {
 });
 
 // #213: Reject — every song of the group still suggested becomes rejected.
+// #236: a line whose song is already published in the Catalog says, field by field, where the
+// whole group differs from the entry: the entry's value, then each value suggested with how many
+// users suggested it (most first). A suggester's empty field doesn't count.
+describe('differences with the published entry (#236)', () => {
+  const member = (values = {}) => ({
+    key: 'F#', mode: 'Minor', bpm: 87, timeSignature: '4/4', durationSeconds: 258,
+    language: ['English'], genre: ['Rock'], pitchStandard: 440, ...values,
+  });
+  const entry = (values = {}) => ({
+    catalog_uid: 'cat-1', catalog_published_at: '2026-01-01T00:00:00.000Z',
+    catalog_key: 'F#', catalog_mode: 'Minor', catalog_bpm: 87, catalog_time_signature: '4/4',
+    catalog_duration_seconds: 258, catalog_language: ['English'], catalog_genre: ['Rock'],
+    catalog_pitch_standard: 440, ...values,
+  });
+  const list = async (r) => {
+    sequelize.query.mockResolvedValue([r]);
+    const res = mockRes();
+    await controller.getSuggestions({ session: { user: 'curator' } }, res, jest.fn());
+    return res.json.mock.calls[0][0].suggestions[0].catalog;
+  };
+
+  test('lists each differing field with the entry value and the suggested values, most users first', async () => {
+    const catalog = await list(row({
+      ...entry({ catalog_bpm: 94 }),
+      members: [member({ bpm: 120 }), member({ bpm: 120 }), member({ bpm: 118 }), member()],
+    }));
+    expect(catalog).toEqual({
+      uid: 'cat-1',
+      published: true,
+      differences: [{
+        field: 'bpm',
+        catalog: 94,
+        suggested: [{ value: 120, users: 2 }, { value: 118, users: 1 }, { value: 87, users: 1 }],
+      }],
+    });
+  });
+
+  test('a group identical to the entry has no difference', async () => {
+    const catalog = await list(row({ ...entry(), members: [member(), member()] }));
+    expect(catalog.differences).toEqual([]);
+  });
+
+  test("a suggester's empty field is not a proposal", async () => {
+    const catalog = await list(row({
+      ...entry(),
+      members: [member({ bpm: null, key: '  ', genre: [], language: null })],
+    }));
+    expect(catalog.differences).toEqual([]);
+  });
+
+  test('lists compare as sets: order and repeats do not count', async () => {
+    const catalog = await list(row({
+      ...entry({ catalog_genre: ['Rock', 'Metal'] }),
+      members: [member({ genre: ['Metal', 'Rock'] }), member({ genre: ['Metal', 'Rock', 'Rock'] })],
+    }));
+    expect(catalog.differences).toEqual([]);
+  });
+
+  test('a field empty in the entry but filled in a suggestion is a difference', async () => {
+    const catalog = await list(row({
+      ...entry({ catalog_key: null, catalog_genre: null }),
+      members: [member({ genre: ['Rock', 'Grunge'] })],
+    }));
+    expect(catalog.differences).toEqual([
+      { field: 'key', catalog: null, suggested: [{ value: 'F#', users: 1 }] },
+      { field: 'genre', catalog: null, suggested: [{ value: ['Grunge', 'Rock'], users: 1 }] },
+    ]);
+  });
+
+  test('a draft line says nothing about differences', async () => {
+    const catalog = await list(row({ ...entry({ catalog_published_at: null, catalog_bpm: 1 }), members: [member()] }));
+    expect(catalog).toEqual({ uid: 'cat-1', published: false });
+  });
+});
+
 describe('rejectSuggestion (#213)', () => {
   const ID = '11111111-1111-4111-8111-111111111111';
 
@@ -142,27 +217,54 @@ describe('rejectSuggestion (#213)', () => {
 });
 
 // #214: Link to it — the group's songs are tied to the published Catalog entry they match.
-describe('linkSuggestion (#214)', () => {
+describe('mergeSuggestion (#214, #236)', () => {
   const ID = '11111111-1111-4111-8111-111111111111';
   const call = async () => {
     const res = mockRes();
     const next = jest.fn();
-    await controller.linkSuggestion({ params: { id: ID }, session: { user: 'curator' } }, res, next);
+    await controller.mergeSuggestion({ params: { id: ID }, session: { user: 'curator' } }, res, next);
     return { res, next };
   };
+  // One row per song of the group, with the entry it matches (re-read at merge time).
+  const groupRow = (values = {}) => ({
+    catalog_uid: 'cat-1', published: true,
+    catalog_key: 'F#', catalog_mode: 'Minor', catalog_bpm: 87, catalog_time_signature: '4/4',
+    catalog_duration_seconds: 258, catalog_language: ['English'], catalog_genre: ['Rock'],
+    catalog_pitch_standard: 440,
+    key: 'F#', mode: 'Minor', bpm: 87, time_signature: '4/4', duration_seconds: 258,
+    language: ['English'], genre: ['Rock'], pitch_standard: 440,
+    ...values,
+  });
 
-  test('links the still-suggested, unlinked songs to the published entry, stamped as synced', async () => {
+  test('with no difference, ties the waiting songs to the published entry and says how many', async () => {
     sequelize.query
-      .mockResolvedValueOnce([{ catalog_uid: 'cat-1', published: true }]) // the line's match
+      .mockResolvedValueOnce([groupRow(), groupRow({ bpm: null })]) // the group, re-read
       .mockResolvedValueOnce([[{ uid: 'a' }, { uid: 'b' }], {}]); // the UPDATE
     const { res } = await call();
     const [sql, options] = sequelize.query.mock.calls[1];
     expect(sql).toMatch(/SET source_catalog_uid = c\.uid/);
-    expect(sql).toMatch(/source_catalog_synced_at = c\."updatedAt"/);
     expect(sql).toMatch(/c\.published_at IS NOT NULL/);
     expect(sql).not.toMatch(/"updatedAt" =/); // the owners' songs are not "edited"
     expect(options.replacements).toEqual({ id: ID });
     expect(res.json).toHaveBeenCalledWith({ linked: 2, catalogUid: 'cat-1' });
+  });
+
+  test('each tied song is up to date only if its values equal the entry (else its owner sees the banner)', async () => {
+    sequelize.query
+      .mockResolvedValueOnce([groupRow()])
+      .mockResolvedValueOnce([[{ uid: 'a' }], {}]);
+    await call();
+    const [sql] = sequelize.query.mock.calls[1];
+    expect(sql).toMatch(/source_catalog_synced_at = CASE WHEN[\s\S]+THEN c\."updatedAt" ELSE NULL END/);
+  });
+
+  test('values to review first: a 409 "differences", nothing tied (the dialog decides, #237)', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120 })]);
+    const { res, next } = await call();
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].error).toBe('differences');
+    expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
   test('a suggestion no longer waiting is a 404', async () => {
@@ -172,12 +274,12 @@ describe('linkSuggestion (#214)', () => {
     expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
-  test('no published entry to link to (none, or only a draft) is a 409', async () => {
-    sequelize.query.mockResolvedValueOnce([{ catalog_uid: null, published: false }]);
+  test('no published entry to merge into (none, or only a draft) is a 409', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow({ catalog_uid: null, published: false })]);
     let { next } = await call();
     expect(next.mock.calls[0][0].status).toBe(409);
     sequelize.query.mockReset();
-    sequelize.query.mockResolvedValueOnce([{ catalog_uid: 'draft-1', published: false }]);
+    sequelize.query.mockResolvedValueOnce([groupRow({ catalog_uid: 'draft-1', published: false })]);
     ({ next } = await call());
     expect(next.mock.calls[0][0].status).toBe(409);
     expect(sequelize.query).toHaveBeenCalledTimes(1);
@@ -185,7 +287,7 @@ describe('linkSuggestion (#214)', () => {
 
   test('a malformed id is a 404 without touching the database', async () => {
     const next = jest.fn();
-    await controller.linkSuggestion({ params: { id: 'nope' }, session: { user: 'curator' } }, mockRes(), next);
+    await controller.mergeSuggestion({ params: { id: 'nope' }, session: { user: 'curator' } }, mockRes(), next);
     expect(next.mock.calls[0][0].status).toBe(404);
     expect(sequelize.query).not.toHaveBeenCalled();
   });

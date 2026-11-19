@@ -5,6 +5,7 @@ const { sequelize, Song, CatalogSong } = require('../models');
 const { normalizeText } = require('../utils/normalize');
 const { pickIntrinsic } = require('../utils/catalogFields');
 const { titleKey, artistKey, sameSongAs, waitingInQueue, officialLinks } = require('../utils/catalogSuggestion');
+const { COMPARED_FIELDS, groupDifferences, sameValuesSql } = require('../utils/catalogDifferences');
 const logger = require('../logger');
 const { isUuid } = require('../utils/uuid');
 
@@ -14,6 +15,11 @@ const { isUuid } = require('../utils/uuid');
 // One line per song: identical songs from several users are grouped (same identity as the
 // unique indexes), shown with the most recently updated one. Only the Catalog's own fields
 // leave this query: no user, nothing personal (#190 privacy).
+// #236: a group's compared fields, as JSON by field name, and the entry's, as catalog_<column>.
+const MEMBER_JSON = `json_build_object(${COMPARED_FIELDS.map(f => `'${f.field}', ${f.column}`).join(', ')})`;
+const CATALOG_COLUMNS = COMPARED_FIELDS.map(f => `c.${f.column} AS catalog_${f.column}`).join(', ');
+const entryValues = (r) => Object.fromEntries(COMPARED_FIELDS.map(f => [f.field, r[`catalog_${f.column}`]]));
+
 const SUGGESTIONS_SQL = `
   WITH suggested AS (
     SELECT s.uid, s.title, s.artist, s.album, s.key, s.mode, s.bpm, s.time_signature,
@@ -24,17 +30,26 @@ const SUGGESTIONS_SQL = `
   ), ranked AS (
     SELECT *,
            count(*) OVER (PARTITION BY title_key, artist_key) AS suggested_by,
+           -- #236: every song of the group, to compare with a published entry.
+           json_agg(${MEMBER_JSON}) OVER (PARTITION BY title_key, artist_key) AS members,
            row_number() OVER (PARTITION BY title_key, artist_key ORDER BY "updatedAt" DESC, uid) AS rank
       FROM suggested
   )
   SELECT r.uid, r.title, r.artist, r.album, r.key, r.mode, r.bpm, r.time_signature,
          r.duration_seconds, r.language, r.genre, r.streaming_links, r.pitch_standard,
-         r.suggested_by, c.uid AS catalog_uid, c.published_at AS catalog_published_at
+         r.suggested_by, r.members, c.uid AS catalog_uid, c.published_at AS catalog_published_at,
+         ${CATALOG_COLUMNS}
     FROM ranked r
     LEFT JOIN "CatalogSongs" c ON ${sameSongAs('c', 'r')}
    WHERE r.rank = 1
    ORDER BY r.suggested_by DESC, r."updatedAt" DESC
 `;
+
+// The entry a line matches. A published one also says where the group differs from it (#236).
+function catalogOf(r) {
+  if (r.catalog_published_at == null) return { uid: r.catalog_uid, published: false };
+  return { uid: r.catalog_uid, published: true, differences: groupDifferences(r.members, entryValues(r)) };
+}
 
 // A whitelist, not a spread: a column added to the query by mistake still can't leak.
 const toSuggestion = (r) => ({
@@ -54,7 +69,7 @@ const toSuggestion = (r) => ({
     streamingLinks: officialLinks(r.streaming_links), // never a personal link
     pitchStandard: r.pitch_standard,
   },
-  catalog: r.catalog_uid ? { uid: r.catalog_uid, published: r.catalog_published_at != null } : null,
+  catalog: r.catalog_uid ? catalogOf(r) : null,
 });
 
 // GET /api/catalog/suggestions (curator only).
@@ -99,12 +114,26 @@ const MATCH_SQL = `
     FROM target LEFT JOIN "CatalogSongs" c ON ${sameSongAs('c', 'target')}
 `;
 
-// #214: tie the group's songs to the PUBLISHED entry they match, stamped as synced so they show
-// no false "newer version" banner. Same link as a song added from the Catalog: Refresh works.
-const LINK_SQL = `
+// #236: the group's songs as they are NOW, each with the entry its identity matches (if any):
+// [] when the line no longer waits. What Merge compares before tying anything.
+const GROUP_SQL = `
+  WITH ${TARGET_CTE}
+  SELECT ${COMPARED_FIELDS.map(f => `s.${f.column}`).join(', ')},
+         c.uid AS catalog_uid, (c.published_at IS NOT NULL) AS published, ${CATALOG_COLUMNS}
+    FROM target
+    JOIN "Songs" s ON ${waitingInQueue('s')} AND ${sameSongAs('s', 'target')}
+    LEFT JOIN "CatalogSongs" c ON ${sameSongAs('c', 'target')}
+`;
+
+// #214 / #236: tie the group's songs to the PUBLISHED entry they match — the same link as a song
+// added from the Catalog, so Refresh works. A song whose values equal the entry's is stamped up
+// to date; any other is left not up to date, so its owner sees the "different values" banner.
+const MERGE_SQL = `
   WITH ${TARGET_CTE}
   UPDATE "Songs" s
-     SET source_catalog_uid = c.uid, source_catalog_synced_at = c."updatedAt"
+     SET source_catalog_uid = c.uid,
+         source_catalog_synced_at = CASE WHEN ${sameValuesSql('s', 'c')}
+                                         THEN c."updatedAt" ELSE NULL END
     FROM target
     JOIN "CatalogSongs" c ON ${sameSongAs('c', 'target')} AND c.published_at IS NOT NULL
    WHERE ${waitingInQueue('s')} AND ${sameSongAs('s', 'target')}
@@ -128,23 +157,29 @@ const rejectSuggestion = async (req, res, next) => {
   }
 };
 
-// POST /api/catalog/suggestions/:id/link (curator only). #214: the song is already in the
-// Catalog — link the group's songs to that entry instead of creating a duplicate. Only a
-// PUBLISHED entry: a draft's songs are linked when it is published (#215).
-const linkSuggestion = async (req, res, next) => {
+// POST /api/catalog/suggestions/:id/merge (curator only). #214 / #236: the song is already
+// published in the Catalog — tie the group's songs to that entry instead of creating a
+// duplicate. Values to review first (#237's dialog decides them): a 409 "differences".
+const memberValues = (r) => Object.fromEntries(COMPARED_FIELDS.map(f => [f.field, r[f.column]]));
+const mergeSuggestion = async (req, res, next) => {
   if (!isUuid(req.params.id)) return next(createError(404, NOT_WAITING));
   try {
     const replacements = { id: req.params.id };
-    const [match] = await sequelize.query(MATCH_SQL, { type: 'SELECT', replacements });
-    if (!match) return next(createError(404, NOT_WAITING));
-    if (!match.catalog_uid || !match.published) {
-      return next(createError(409, 'No published Catalog entry to link to'));
+    const group = await sequelize.query(GROUP_SQL, { type: 'SELECT', replacements });
+    if (group.length === 0) return next(createError(404, NOT_WAITING));
+    const [first] = group;
+    if (!first.catalog_uid || !first.published) {
+      return next(createError(409, 'No published Catalog entry to merge into'));
     }
-    const [rows] = await sequelize.query(LINK_SQL, { replacements });
-    res.json({ linked: rows.length, catalogUid: match.catalog_uid });
+    const differences = groupDifferences(group.map(memberValues), entryValues(first));
+    if (differences.length > 0) {
+      return res.status(409).json({ error: 'differences', message: 'Some values differ from the Catalog entry', differences });
+    }
+    const [rows] = await sequelize.query(MERGE_SQL, { replacements });
+    res.json({ linked: rows.length, catalogUid: first.catalog_uid });
   } catch (error) {
-    logger.error('Error linking a Catalog suggestion:', error);
-    next(createError(500, 'Error linking the suggestion'));
+    logger.error('Error merging a Catalog suggestion:', error);
+    next(createError(500, 'Error merging the suggestion'));
   }
 };
 
@@ -180,4 +215,4 @@ const acceptSuggestion = async (req, res, next) => {
   }
 };
 
-module.exports = { getSuggestions, rejectSuggestion, linkSuggestion, acceptSuggestion };
+module.exports = { getSuggestions, rejectSuggestion, mergeSuggestion, acceptSuggestion };
