@@ -178,6 +178,9 @@ export class SuggestionGoneError extends Error {
   }
 }
 
+// An entry's uid, as the server checks it (backend utils/uuid).
+const UID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const catalogService = {
   // Browse the shared Catalog (any logged-in user). Returns the {items,total,page,limit}
   // envelope. `signal` lets the caller abort a superseded request (debounced search).
@@ -240,6 +243,9 @@ export const catalogService = {
   // Fetch one entry (detail). 404 -> CatalogNotFoundError so the page shows a calm
   // not-found (deep-link to a removed entry).
   async getCatalogEntry(uid: string, signal?: AbortSignal): Promise<CatalogSong> {
+    // #240: what is not an entry's uid is "not found", as the server says — without asking
+    // it: /catalog/suggestions would reach the curators' suggestions API, not an entry.
+    if (!UID.test(uid)) throw new CatalogNotFoundError();
     const response = await apiFetch(`${API_BASE}/catalog/${uid}`, {
       credentials: 'include',
       signal,

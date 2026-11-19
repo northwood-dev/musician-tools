@@ -403,3 +403,22 @@ test('the delete confirmation names the entry artist first', async () => {
   expect(within(dialog).getByText(/^Delete "The Cranberries — Zombie" from the Catalog\?/)).toBeInTheDocument();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 });
+
+// #240: an address that is not an entry's uid (/catalog/admin/facets — an API path of its own)
+// shows the not-found, through the real service: no entry is asked, nothing fills the form.
+test('a mistyped edit address shows the not-found, without asking for an entry', async () => {
+  mockedUseAuth.mockReturnValue({ user: { uid: 'u1', isCurator: true } });
+  const real = jest.requireActual('../services/catalogService').catalogService;
+  cat.getCatalogEntry.mockImplementation(real.getCatalogEntry);
+  const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify({ genre: [], key: [], mode: [], timeSignature: [], artist: [], album: [] }), { status: 200 }),
+  );
+  try {
+    renderAt('/catalog/admin/facets');
+    expect(await screen.findByRole('heading', { name: 'Catalog entry not found' })).toBeInTheDocument();
+    expect(screen.getByText('It may have been removed from the Catalog.')).toBeInTheDocument();
+    expect(fetchSpy.mock.calls.map(([url]) => String(url)).filter(url => url.includes('/catalog'))).toEqual([]);
+  } finally {
+    fetchSpy.mockRestore();
+  }
+});

@@ -144,3 +144,22 @@ test('a 404 shows a calm not-found + Browse link (deep-link to a removed entry)'
   await screen.findByText('This song is no longer in the Catalog.');
   expect(screen.getByRole('link', { name: /Browse the Catalog/i })).toBeInTheDocument();
 });
+
+// #240: an address that is not an entry's uid (/catalog/suggestions — an API path of its own)
+// shows the calm not-found, through the real service, without asking the server.
+test('a mistyped address shows the not-found, without asking the server', async () => {
+  const real = jest.requireActual('../services/catalogService').catalogService;
+  svc.getCatalogEntry.mockImplementation(real.getCatalogEntry);
+  const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(
+    new Response(JSON.stringify({ pending: 0, suggestions: [] }), { status: 200 }),
+  );
+  try {
+    renderAt('suggestions');
+    expect(await screen.findByRole('heading', { name: 'Catalog entry not found' })).toBeInTheDocument();
+    expect(screen.getByText('This song is no longer in the Catalog.')).toBeInTheDocument();
+    const asked = fetchSpy.mock.calls.map(([url]) => String(url));
+    expect(asked.filter(url => url.includes('/catalog'))).toEqual([]); // the Songlist may load; no entry is asked
+  } finally {
+    fetchSpy.mockRestore();
+  }
+});
