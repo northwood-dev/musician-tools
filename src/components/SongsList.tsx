@@ -390,7 +390,7 @@ export default function SongsList(props: SongsListProps) {
               Delete selected
             </button>
           </BulkActionBar>
-          <LoadFailed failed={props.loadFailed} onRetry={props.onRetryLoad}>Couldn&apos;t load your songlist.</LoadFailed>
+          <LoadFailed failed={props.loadFailed} onRetry={props.onRetryLoad}>Couldn't load your songlist.</LoadFailed>
           {props.loading ? (
             <ListSkeleton rows={6} label="Loading…" />
           ) : props.loadFailed ? null : props.filteredSongs.length === 0 ? (

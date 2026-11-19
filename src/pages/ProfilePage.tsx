@@ -150,12 +150,11 @@ function ProfilePage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Display name</h2>
         {/* #224: no name form without the profile — a name typed into an empty field would be
-            saved blind. Password and email don't need it. */}
-        <LoadFailed failed={loadFailed} onRetry={loadProfile}>Couldn&apos;t load your profile.</LoadFailed>
-        {profile && (
+            saved blind. The Email section waits for it too; Password doesn't need it. */}
+        <LoadFailed failed={loadFailed} onRetry={loadProfile}>Couldn't load your profile.</LoadFailed>
+        {profile && (<>
           <p className="text-sm text-gray-500 dark:text-gray-400">Your handle: <span className="font-mono">{profile.handle}</span></p>
-        )}
-        {profile && <form onSubmit={handleSaveName} className="space-y-3">
+          <form onSubmit={handleSaveName} className="space-y-3">
           <FormError message={nameError} attempt={nameAttempt} />
           <input
             className="input-base"
@@ -168,11 +167,13 @@ function ProfilePage() {
           <button type="submit" className="btn-primary" disabled={savingName}>
             {savingName ? 'Saving…' : 'Save name'}
           </button>
-        </form>}
+          </form>
+        </>)}
       </section>
 
-      {/* Email — verify-before-switch (story 7.11) */}
-      <section className="space-y-3">
+      {/* Email — verify-before-switch (story 7.11). Only with the profile (#224): without it the
+          page can't tell a current address that must be verified first. */}
+      {profile && <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Email</h2>
         <p className="text-sm text-gray-700 dark:text-gray-300">{profile?.email ?? '—'}</p>
         {profile?.pendingEmail && (
@@ -204,7 +205,7 @@ function ProfilePage() {
             </button>
           </form>
         )}
-      </section>
+      </section>}
 
       {/* Password */}
       <section className="space-y-3">

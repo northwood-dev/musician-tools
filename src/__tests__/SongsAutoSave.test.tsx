@@ -1,4 +1,5 @@
 import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act } from '@testing-library/react';
 import { renderSongs } from '../test/renderSongs';
 import { makeSong } from '../test/makeSong';
 
@@ -29,6 +30,7 @@ jest.mock('../services/playlistService', () => ({
 
 import { songService, SongConflictError } from '../services/songService';
 import { playlistService } from '../services/playlistService';
+import { songPlayService } from '../services/songPlayService';
 const updateSong = songService.updateSong as jest.Mock;
 const createSong = songService.createSong as jest.Mock;
 const deleteSong = songService.deleteSong as jest.Mock;
@@ -359,7 +361,7 @@ describe('Songs — routes & deep-links (story 18.2)', () => {
 });
 
 describe('Songs — errors are announced (#128)', () => {
-  test('a failed load shows the page banner as an alert', async () => {
+  test('a failed load is announced as an alert (the loading-error region, #224)', async () => {
     getAllSongs.mockRejectedValue(new Error('network'));
     renderSongs();
     await screen.findByText("Couldn't load your songlist.");
@@ -375,5 +377,58 @@ describe('Songs — errors are announced (#128)', () => {
       () => expect(screen.getAllByRole('status').some(el => /not saved/i.test(el.textContent ?? ''))).toBe(true),
       { timeout: 2500 },
     );
+  });
+});
+
+// #224: a Songlist that didn't load says so where the list goes, with Retry — never as an empty
+// Songlist (the "Browse the Catalog" welcome), and not in the banner, which is for failed saves.
+// A reload never takes back a list already loaded (same rule as the page's playlists).
+describe('Songs — a failed load (#224)', () => {
+  const ZOMBIE = [{ uid: 's1', title: 'Zombie', artist: 'The Cranberries' }];
+
+  test('says what did not load, with Retry — never the empty-Songlist welcome nor the banner', async () => {
+    getAllSongs.mockRejectedValue(new Error('network'));
+    renderSongs();
+    expect(await screen.findByText("Couldn't load your songlist.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByText('Your songlist is empty')).toBeNull();
+    expect(screen.queryByText('Error while loading songs')).toBeNull();
+  });
+
+  test('Retry loads the songs and their plays', async () => {
+    getAllSongs.mockRejectedValue(new Error('network'));
+    renderSongs();
+    const retry = await screen.findByRole('button', { name: 'Retry' });
+    getAllSongs.mockResolvedValue(ZOMBIE);
+    fireEvent.click(retry);
+    expect(await screen.findByText('Zombie')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load your songlist.")).toBeNull();
+    await waitFor(() => expect(songPlayService.getPlays).toHaveBeenCalledWith('s1'));
+  });
+
+  test('a failure that answers late never hides songs that arrived', async () => {
+    let failLate!: (error: Error) => void;
+    getAllSongs
+      .mockImplementationOnce(() => new Promise((_, reject) => { failLate = reject; }))
+      .mockResolvedValue(ZOMBIE);
+    renderSongs();
+    expect(await screen.findByText('Zombie')).toBeInTheDocument();
+    await act(async () => { failLate(new Error('network')); });
+    expect(screen.getByText('Zombie')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load your songlist.")).toBeNull();
+  });
+
+  test('a list already loaded stays when the reload on coming back fails', async () => {
+    getAllSongs.mockResolvedValue(ZOMBIE);
+    getSong.mockResolvedValue({ ...ZOMBIE[0] });
+    const { router } = renderSongs();
+    expect(await screen.findByText('Zombie')).toBeInTheDocument();
+    await act(async () => { await router.navigate('/songs/s1'); });
+    await screen.findByDisplayValue('Zombie');
+    getAllSongs.mockRejectedValue(new Error('network'));
+    await act(async () => { await router.navigate('/songs'); });
+    await waitFor(() => expect(getAllSongs.mock.results.at(-1)?.value).rejects.toThrow('network'));
+    expect(await screen.findByText('Zombie')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load your songlist.")).toBeNull();
   });
 });

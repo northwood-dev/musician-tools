@@ -152,13 +152,16 @@ describe('Profile errors are announced at once (#127)', () => {
 });
 
 // #224: a profile that didn't load says so with Retry, in place of the name form (saving a name
-// typed into an empty field would be a blind write). Password doesn't need the profile.
+// typed into an empty field would be a blind write), and without the email section. Password
+// doesn't need the profile.
 describe('a failed profile load (#224)', () => {
-  test('offers Retry instead of the name form; the password form stays', async () => {
+  test('offers Retry instead of the name and email forms; the password form stays', async () => {
     svc.getProfile.mockRejectedValueOnce(new Error('boom'));
     render(<ProfilePage />);
     expect(await screen.findByText("Couldn't load your profile.")).toBeInTheDocument();
     expect(screen.queryByPlaceholderText('Display name')).toBeNull();
+    // Email too: without the profile, the page can't tell a current address to verify first.
+    expect(screen.queryByPlaceholderText('New email address')).toBeNull();
     expect(screen.getByPlaceholderText('Confirm new password')).toBeInTheDocument();
   });
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useArtistAliases } from '../hooks/useArtistAliases';
 // ...existing code...
 import { songSearchMatcher } from '../utils/songSearch';
@@ -42,7 +42,7 @@ function MyPlaylistsPage() {
 
   const artistAliases = useArtistAliases();
 
-  const loadPlaylists = async () => {
+  const loadPlaylists = useCallback(async () => {
     try {
       setLoading(true);
       setLoadFailed(false);
@@ -54,7 +54,7 @@ function MyPlaylistsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const loadSongs = async () => {
@@ -70,7 +70,7 @@ function MyPlaylistsPage() {
     };
     loadPlaylists();
     loadSongs();
-  }, []);
+  }, [loadPlaylists]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -200,7 +200,7 @@ function MyPlaylistsPage() {
         >
 
           <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
-            <LoadFailed failed={loadFailed} onRetry={loadPlaylists}>Couldn&apos;t load your playlists.</LoadFailed>
+            <LoadFailed failed={loadFailed} onRetry={loadPlaylists}>Couldn't load your playlists.</LoadFailed>
             {loading ? (
               <ListSkeleton rows={4} label="Loading…" />
             ) : loadFailed ? null : playlists.length === 0 ? (
