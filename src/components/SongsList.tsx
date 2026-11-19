@@ -18,6 +18,7 @@ import { Panel } from './Panel';
 import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
 import { LoadFailed } from './LoadFailed';
+import { LastPlayedValue } from './LastPlayedValue';
 import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
 import { findExistingIn } from '../hooks/useSonglistMatcher';
 import { songLabel } from '../utils/songLabel';
@@ -154,6 +155,10 @@ export interface SongsListProps {
   
   // Additional handlers
   getLastPlayedForSong: (uid: string) => string | undefined;
+  /** #242: songs whose plays didn't load — "?" in Last played, not "-" (never played). */
+  unknownPlays: Set<string>;
+  /** #242: what didn't load besides the songs, with its Retry (always mounted: a live region). */
+  partialLoadNotice: ReactNode;
   formatLastPlayed: (date: string | undefined) => string;
   SortHeader: (props: { column: string; label: string; align?: 'left' | 'right' }) => ReactNode;
 }
@@ -302,6 +307,7 @@ export default function SongsList(props: SongsListProps) {
             </div>
             <ActiveFilterChips chips={props.activeFilterChips} onRemove={props.onRemoveFilterChip} onClearAll={props.clearAllFilters} onEmptied={focusSearch} />
           </div>
+          {props.partialLoadNotice}
           {/* Bulk actions: the shared bar (22.1) hides itself when nothing is selected. */}
           {/* #224: no bulk action on songs that didn't load (a selection kept from a visit). */}
           <BulkActionBar count={props.loadFailed ? 0 : props.selectedSongs.size} noun="song(s)">
@@ -456,7 +462,8 @@ export default function SongsList(props: SongsListProps) {
                         <td className="p-2 align-middle max-w-xs truncate" title={song.artist}>{song.artist}</td>
                         <td className="p-2 align-middle max-w-sm truncate" title={song.title}>{song.title}</td>
                         <td className="p-2 pr-4 align-middle text-right whitespace-nowrap w-px">
-                          {props.instrumentFilter ? props.formatLastPlayed(props.getLastPlayedForSong(song.uid)) : 'Select instrument'}
+                          {!props.instrumentFilter ? 'Select instrument'
+                            : <LastPlayedValue unknown={props.unknownPlays.has(song.uid)} value={props.formatLastPlayed(props.getLastPlayedForSong(song.uid))} />}
                         </td>
                       </tr>
                     ))}
