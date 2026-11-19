@@ -16,6 +16,7 @@ import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { RemovableChip } from './Chip';
 import { Disclosure } from './Disclosure';
+import { songLabel } from '../utils/songLabel';
 
 type Mode = 'add' | 'edit';
 
@@ -207,8 +208,7 @@ export function SongForm(props: SongFormProps) {
       {duplicate && (
         <DuplicateBanner>
           <p>
-            <span className="font-medium">"{duplicate.title}"</span>
-            {duplicate.artist ? <> by <span className="font-medium">{duplicate.artist}</span></> : null}
+            <span className="font-medium">"{songLabel(duplicate)}"</span>
             {' '}already exists in your songlist.
           </p>
           {onEditDuplicate && (
@@ -233,7 +233,7 @@ export function SongForm(props: SongFormProps) {
           {metadataLoading ? 'Auto-filling…' : 'Auto-fill metadata'}
         </button>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {metadataSource ? `Metadata found: ${metadataSource}` : 'Title + artist required'}
+          {metadataSource ? `Metadata found: ${metadataSource}` : 'Artist + title required'}
         </p>
       </div>
       <Disclosure

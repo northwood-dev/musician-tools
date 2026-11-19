@@ -19,6 +19,7 @@ import { EmptyState } from './EmptyState';
 import { ListSkeleton } from './ListSkeleton';
 import SonglistCatalogSuggestions from './SonglistCatalogSuggestions';
 import { findExistingIn } from '../hooks/useSonglistMatcher';
+import { songLabel } from '../utils/songLabel';
 
 export interface SongsListProps {
   // State
@@ -442,7 +443,7 @@ export default function SongsList(props: SongsListProps) {
                           <RowSelectionCheckbox
                             checked={props.selectedSongs.has(song.uid)}
                             onChange={() => props.toggleSelectSong(song.uid)}
-                            label={song.artist ? `${song.title} by ${song.artist}` : song.title}
+                            label={songLabel(song)}
                             disabled={props.loading}
                           />
                         </td>

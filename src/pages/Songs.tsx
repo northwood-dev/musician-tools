@@ -33,6 +33,7 @@ import { Notice } from '../components/Notice';
 import { Page, PageTitle } from '../components/Page';
 import { RemovableChip } from '../components/Chip';
 import { withSongIfAbsent } from '../hooks/useSonglistMatcher';
+import { songLabel } from '../utils/songLabel';
 
 const initialSong: CreateSongDTO = {
   title: '',
@@ -1708,7 +1709,7 @@ function Songs() {
 
   const handleLookupMetadata = async () => {
     if (!form.title?.trim() || !form.artist?.trim()) {
-      showToast('Add a title and artist to auto-fill.');
+      showToast('Add an artist and a title to auto-fill.');
       return;
     }
 
@@ -1977,7 +1978,7 @@ function Songs() {
           setSearchQuery={setSearchQuery}
           // #191: the added song joins the list (it matches the search, so it replaces the
           // suggestions); the page's toast announces it, since the block unmounts with it.
-          onAddedFromCatalog={song => { setSongs(prev => withSongIfAbsent(prev, song)); showToast(`"${song.title}" added to your songlist`); }}
+          onAddedFromCatalog={song => { setSongs(prev => withSongIfAbsent(prev, song)); showToast(`"${songLabel(song)}" added to your songlist`); }}
           instrumentFilter={instrumentFilter}
           setInstrumentFilter={setInstrumentFilter}
           myInstrumentFilter={myInstrumentFilter}

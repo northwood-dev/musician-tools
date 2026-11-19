@@ -140,7 +140,7 @@ test('adding an entry puts the song in the list, in place of the suggestions', a
   expect(screen.queryByText('No songs match your search.')).not.toBeInTheDocument();
   expect(router.state.location.pathname).toBe('/songs'); // stays on the Songlist
   // The block unmounts with its own status, so the page's toast announces the add.
-  expect(screen.getByRole('status', { name: 'Notification' })).toHaveTextContent('"Wonderwall" added to your songlist');
+  expect(screen.getByRole('status', { name: 'Notification' })).toHaveTextContent('"Oasis — Wonderwall" added to your songlist');
 });
 
 test('nothing in the Catalog either is said plainly', async () => {
