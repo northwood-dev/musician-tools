@@ -15,7 +15,7 @@ jest.mock('../services/songService', () => ({
 }));
 jest.mock('../services/instrumentService', () => ({ instrumentService: { getAll: jest.fn().mockResolvedValue([]) } }));
 jest.mock('../services/songPlayService', () => ({
-  songPlayService: { getPlays: jest.fn().mockResolvedValue([]), markPlayed: jest.fn().mockResolvedValue({}), getLastPlayForInstrument: jest.fn() },
+  songPlayService: { getPlays: jest.fn().mockResolvedValue([]), getLastPlays: jest.fn().mockResolvedValue({}), markPlayed: jest.fn().mockResolvedValue({}), getLastPlayForInstrument: jest.fn() },
 }));
 jest.mock('../services/playlistService', () => ({
   playlistService: { getAllPlaylists: jest.fn().mockResolvedValue([]), addSongToPlaylist: jest.fn(), removeSongFromPlaylist: jest.fn(), updatePlaylist: jest.fn() },

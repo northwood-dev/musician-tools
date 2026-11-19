@@ -19,7 +19,7 @@ jest.mock('../services/instrumentService', () => ({
 
 jest.mock('../services/songPlayService', () => ({
   songPlayService: {
-    getPlays: jest.fn().mockResolvedValue([]),
+    getPlays: jest.fn().mockResolvedValue([]), getLastPlays: jest.fn().mockResolvedValue({}),
     markPlayed: jest.fn().mockResolvedValue({}),
     getLastPlayForInstrument: jest.fn(),
   },

@@ -31,6 +31,7 @@ jest.mock('../services/instrumentService', () => ({
 jest.mock('../services/songPlayService', () => ({
   songPlayService: {
     getPlays: jest.fn((uid: string) => Promise.resolve(PLAYS[uid] ?? [])),
+    getLastPlays: jest.fn(() => Promise.resolve(PLAYS)),
     markPlayed: jest.fn().mockResolvedValue({}),
     getLastPlayForInstrument: jest.fn(),
   },
