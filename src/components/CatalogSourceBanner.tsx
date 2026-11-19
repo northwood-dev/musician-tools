@@ -56,6 +56,24 @@ export default function CatalogSourceBanner({
   // (e.g. an error after the source vanished).
   if (!source && !feedback) return null;
 
+  // #235: keep the user's own values. Nothing in the fiche changes (no re-seed): the song is
+  // only stamped as up to date with the entry, so the banner goes until the entry changes.
+  const handleKeepMine = async () => {
+    if (refreshing || !source) return;
+    setRefreshing(true);
+    try {
+      await songService.keepSongValues(songUid);
+      if (!mountedRef.current) return;
+      setSource({ ...source, drift: false });
+      setFeedback({ message: 'Kept your values.', isError: false });
+    } catch {
+      if (!mountedRef.current) return;
+      setFeedback({ message: 'Could not keep your values. Try again.', isError: true });
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
+  };
+
   const handleRefresh = async () => {
     if (refreshing || !source) return;
     setRefreshing(true);
@@ -119,17 +137,27 @@ export default function CatalogSourceBanner({
           tone="warning"
           announce="none"
           action={(
-            <button
-              type="button"
-              className="btn-secondary btn-sm min-h-[44px]"
-              onClick={() => setConfirmOpen(true)}
-              disabled={refreshing}
-            >
-              {refreshing ? 'Refreshing…' : 'Refresh'}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-secondary btn-sm min-h-[44px]"
+                onClick={() => setConfirmOpen(true)}
+                disabled={refreshing}
+              >
+                {refreshing ? 'Refreshing…' : 'Refresh'}
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-sm min-h-[44px]"
+                onClick={handleKeepMine}
+                disabled={refreshing}
+              >
+                Keep mine
+              </button>
+            </div>
           )}
         >
-          A newer version of this song is in the Catalog.
+          The Catalog has different values for this song.
         </Notice>
       )}
 

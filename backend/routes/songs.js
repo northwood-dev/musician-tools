@@ -15,6 +15,8 @@ router.get('/:uid', authsess, songController.getSong);
 // Story 21.1 — refresh a Catalog copy to the current Catalog version (writes the user's
 // own Song → authsess only ; CSRF app-wide covers it).
 router.post('/:uid/refresh-from-catalog', authsess, songController.refreshSongFromCatalog);
+// #235 — keep the user's own values: stamps the copy with the entry's current version.
+router.post('/:uid/keep-mine', authsess, songController.keepSongValues);
 router.post('/', authsess, songController.createSong);
 router.put('/:uid', authsess, songController.updateSong);
 router.delete('/:uid', authsess, songController.deleteSong);

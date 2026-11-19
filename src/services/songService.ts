@@ -119,6 +119,20 @@ export const songService = {
     return response.json();
   },
 
+  // #235: keep the user's own values — stamps the copy with its entry's current version, so
+  // the "different values" banner goes until the entry changes again. Returns the Song.
+  async keepSongValues(uid: string): Promise<Song> {
+    const response = await apiFetch(`${API_BASE}/songs/${uid}/keep-mine`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to keep your values');
+    }
+    return response.json();
+  },
+
   // Create new song
   async createSong(song: CreateSongDTO): Promise<Song> {
     const response = await apiFetch(`${API_BASE}/songs`, {

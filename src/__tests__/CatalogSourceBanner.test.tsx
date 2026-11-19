@@ -11,7 +11,7 @@ jest.mock('../services/songService', () => {
   const actual = jest.requireActual('../services/songService');
   return {
     ...actual,
-    songService: { getSong: jest.fn(), refreshSongFromCatalog: jest.fn() },
+    songService: { getSong: jest.fn(), refreshSongFromCatalog: jest.fn(), keepSongValues: jest.fn() },
   };
 });
 const svc = songService as jest.Mocked<typeof songService>;
@@ -60,6 +60,39 @@ test('shows the provenance badge + source link, no drift banner when not drifted
   expect(screen.queryByRole('button', { name: 'Refresh' })).toBeNull();
 });
 
+// #235: one banner, one text, for a copy whose entry changed and for a song tied with other values.
+test('drift shows "The Catalog has different values for this song." with Refresh and Keep mine', async () => {
+  svc.getSong.mockResolvedValue(songWith({ uid: 'cat-1', updatedAt: '2026-06-01', drift: true }) as Song);
+  renderBanner();
+  expect(await screen.findByText('The Catalog has different values for this song.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Keep mine' })).toBeInTheDocument();
+});
+
+test('Keep mine keeps the values: the banner goes, the form is not re-seeded', async () => {
+  svc.getSong.mockResolvedValue(songWith({ uid: 'cat-1', updatedAt: '2026-06-01', drift: true }) as Song);
+  svc.keepSongValues.mockResolvedValue({ uid: 's1', title: 'Zombie', key: 'C', bpm: 70 } as Song);
+  const onRefreshed = jest.fn();
+  renderBanner(onRefreshed);
+  const keepMine = await screen.findByRole('button', { name: 'Keep mine' });
+  await act(async () => { fireEvent.click(keepMine); });
+  expect(svc.keepSongValues).toHaveBeenCalledWith('s1');
+  expect(await screen.findByText('Kept your values.')).toBeInTheDocument();
+  expect(screen.queryByText(/different values/)).toBeNull();
+  expect(screen.getByRole('link', { name: 'Catalog' })).toBeInTheDocument(); // still a Catalog copy
+  expect(onRefreshed).not.toHaveBeenCalled();
+});
+
+test('Keep mine failing says so and keeps the banner', async () => {
+  svc.getSong.mockResolvedValue(songWith({ uid: 'cat-1', updatedAt: '2026-06-01', drift: true }) as Song);
+  svc.keepSongValues.mockRejectedValue(new Error('down'));
+  renderBanner();
+  const keepMine = await screen.findByRole('button', { name: 'Keep mine' });
+  await act(async () => { fireEvent.click(keepMine); });
+  expect(await screen.findByText('Could not keep your values. Try again.')).toBeInTheDocument();
+  expect(screen.getByText('The Catalog has different values for this song.')).toBeInTheDocument();
+});
+
 test('drift → Refresh confirm → refresh succeeds → onRefreshed called, drift banner gone', async () => {
   svc.getSong.mockResolvedValue(songWith({ uid: 'cat-1', updatedAt: '2026-06-01', drift: true }) as Song);
   const refreshed = { uid: 's1', title: 'Zombie', key: 'F#', bpm: 90 } as Song;
@@ -76,7 +109,7 @@ test('drift → Refresh confirm → refresh succeeds → onRefreshed called, dri
   await waitFor(() => expect(svc.refreshSongFromCatalog).toHaveBeenCalledWith('s1'));
   await waitFor(() => expect(onRefreshed).toHaveBeenCalledWith(refreshed));
   await screen.findByText('Updated to the Catalog version.');
-  expect(screen.queryByText(/A newer version/)).toBeNull(); // drift banner gone
+  expect(screen.queryByText(/different values/)).toBeNull(); // drift banner gone
 });
 
 test('refresh fails source_unavailable → error alert, badge/banner removed', async () => {

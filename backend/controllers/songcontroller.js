@@ -151,6 +151,38 @@ const refreshSongFromCatalog = async (req, res, next) => {
   }
 };
 
+// POST /api/songs/:uid/keep-mine (#235): the owner keeps their own values. The song is
+// stamped with its entry's current version, so the "different values" banner goes away
+// until the entry changes again. No value is touched.
+const keepSongValues = async (req, res, next) => {
+  try {
+    const userId = req.session.user;
+    if (!userId) {
+      return next(createError(401, 'Unauthorized'));
+    }
+    if (!isUuid(req.params.uid)) {
+      return next(createError(404, 'Song not found'));
+    }
+    // Scoped like refresh: not-yours and unknown both 404.
+    const song = await Song.findOne({ where: { uid: req.params.uid, userUid: userId } });
+    if (!song) {
+      return next(createError(404, 'Song not found'));
+    }
+    if (!song.sourceCatalogUid) {
+      return res.status(409).json({ error: 'not_from_catalog', message: 'This song was not added from the Catalog' });
+    }
+    const catalog = await CatalogSong.findByPk(song.sourceCatalogUid);
+    if (!catalog || catalog.publishedAt == null) {
+      return res.status(409).json({ error: 'source_unavailable', message: 'The source is no longer available in the Catalog' });
+    }
+    const updated = await song.update({ sourceCatalogSyncedAt: catalog.updatedAt });
+    res.json(updated);
+  } catch (error) {
+    logger.error('Error keeping song values:', error);
+    next(createError(500, 'Error keeping your values'));
+  }
+};
+
 // POST create new song
 const createSong = async (req, res, next) => {
   // Hoisted so the catch can map a duplicate-key error to a typed 409 (story 17.1).
@@ -603,6 +635,7 @@ module.exports = {
   getAllSongs,
   getSong,
   refreshSongFromCatalog,
+  keepSongValues,
   createSong,
   updateSong,
   deleteSong,
