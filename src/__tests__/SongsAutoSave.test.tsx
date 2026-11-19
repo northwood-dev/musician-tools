@@ -362,7 +362,8 @@ describe('Songs — errors are announced (#128)', () => {
   test('a failed load shows the page banner as an alert', async () => {
     getAllSongs.mockRejectedValue(new Error('network'));
     renderSongs();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Error while loading songs');
+    await screen.findByText("Couldn't load your songlist.");
+    expect(screen.getByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load your songlist.");
   });
 
   test('"Not saved — retrying" is announced politely (role="status")', async () => {

@@ -10,6 +10,7 @@ import { ErrorBanner } from '../components/ErrorBanner';
 import { CloseButton } from '../components/CloseButton';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
+import { LoadFailed } from '../components/LoadFailed';
 import { ListSkeleton } from '../components/ListSkeleton';
 import { songLabel } from '../utils/songLabel';
 
@@ -31,6 +32,9 @@ function MyPlaylistsPage() {
   const [page, setPage] = useState<'list' | 'form'>('list');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // #224: a failed load says so in the list (LoadFailed, with Retry), never as an empty list;
+  // the banner is for failed saves and deletes.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUid, setDeleteUid] = useState<string | null>(null);
   const [songSearch, setSongSearch] = useState<string>('');
@@ -38,20 +42,21 @@ function MyPlaylistsPage() {
 
   const artistAliases = useArtistAliases();
 
+  const loadPlaylists = async () => {
+    try {
+      setLoading(true);
+      setLoadFailed(false);
+      const data = await playlistService.getAllPlaylists();
+      setPlaylists(data);
+    } catch (err) {
+      setLoadFailed(true);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadPlaylists = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await playlistService.getAllPlaylists();
-        setPlaylists(data);
-      } catch (err) {
-        setError('Error while loading playlists');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     const loadSongs = async () => {
       try {
         const data = await songService.getAllSongs();
@@ -195,9 +200,10 @@ function MyPlaylistsPage() {
         >
 
           <div className="card-base glass-effect p-4 sm:p-5 space-y-4">
+            <LoadFailed failed={loadFailed} onRetry={loadPlaylists}>Couldn&apos;t load your playlists.</LoadFailed>
             {loading ? (
               <ListSkeleton rows={4} label="Loading…" />
-            ) : playlists.length === 0 ? (
+            ) : loadFailed ? null : playlists.length === 0 ? (
               <EmptyState>No playlists yet. Create one to get started.</EmptyState>
             ) : (
               <div className="card-base overflow-hidden">

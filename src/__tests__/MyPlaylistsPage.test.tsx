@@ -148,5 +148,28 @@ describe('#84: the song search of the playlist form finds a song as the Songlist
 test('a failed load is announced at once (role="alert") (#128)', async () => {
   mockedPlaylist.getAllPlaylists.mockRejectedValue(new Error('network'));
   render(<MyPlaylistsPage />);
-  expect(await screen.findByRole('alert')).toHaveTextContent('Error while loading playlists');
+  await screen.findByText("Couldn't load your playlists.");
+  expect(screen.getByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load your playlists.");
+});
+
+// #224: playlists that didn't load are never shown as "no playlists": the list says so, with Retry.
+describe('a failed playlists load (#224)', () => {
+  test('says what did not load, with Retry, and never "No playlists yet"', async () => {
+    mockedPlaylist.getAllPlaylists.mockRejectedValueOnce(new Error('down'));
+    render(<MyPlaylistsPage />);
+    expect(await screen.findByText("Couldn't load your playlists.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByText(/No playlists yet/)).toBeNull();
+    expect(screen.queryByText('Error while loading playlists')).toBeNull();
+  });
+
+  test('Retry loads the playlists', async () => {
+    mockedPlaylist.getAllPlaylists
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValueOnce([{ uid: 'pl-1', name: 'My set', songUids: [] } as never]);
+    render(<MyPlaylistsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('My set')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't load your playlists.")).toBeNull();
+  });
 });

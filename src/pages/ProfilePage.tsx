@@ -5,11 +5,12 @@ import { RateLimitError } from '../services/rateLimit';
 import { FormError } from '../components/FormError';
 import { Notice } from '../components/Notice';
 import { Page } from '../components/Page';
+import { LoadFailed } from '../components/LoadFailed';
 
 function ProfilePage() {
   const { patchUser } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // Display name
@@ -42,7 +43,8 @@ function ProfilePage() {
     setTimeout(() => setToast(null), 2500);
   };
 
-  useEffect(() => {
+  const loadProfile = () => {
+    setLoadFailed(false);
     profileService.getProfile()
       .then((p) => {
         setProfile(p);
@@ -51,7 +53,11 @@ function ProfilePage() {
         // login sees the "Curate" entry after visiting Profile (no full re-login).
         patchUser({ isCurator: !!p.isCurator });
       })
-      .catch(() => setLoadError('Could not load your profile.'));
+      .catch(() => setLoadFailed(true));
+  };
+
+  useEffect(() => {
+    loadProfile();
     // Mount-once profile load; patchUser is a stable-intent context fn we don't want
     // in deps (it isn't memoized → would re-fetch every render).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,9 +142,6 @@ function ProfilePage() {
   return (
     <Page width="content" title="Profile" className="space-y-8">
 
-      {loadError && (
-        <Notice tone="error">{loadError}</Notice>
-      )}
       {toast && (
         <Notice tone="success">{toast}</Notice>
       )}
@@ -146,10 +149,13 @@ function ProfilePage() {
       {/* Display name */}
       <section className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Display name</h2>
+        {/* #224: no name form without the profile — a name typed into an empty field would be
+            saved blind. Password and email don't need it. */}
+        <LoadFailed failed={loadFailed} onRetry={loadProfile}>Couldn&apos;t load your profile.</LoadFailed>
         {profile && (
           <p className="text-sm text-gray-500 dark:text-gray-400">Your handle: <span className="font-mono">{profile.handle}</span></p>
         )}
-        <form onSubmit={handleSaveName} className="space-y-3">
+        {profile && <form onSubmit={handleSaveName} className="space-y-3">
           <FormError message={nameError} attempt={nameAttempt} />
           <input
             className="input-base"
@@ -162,7 +168,7 @@ function ProfilePage() {
           <button type="submit" className="btn-primary" disabled={savingName}>
             {savingName ? 'Saving…' : 'Save name'}
           </button>
-        </form>
+        </form>}
       </section>
 
       {/* Email — verify-before-switch (story 7.11) */}

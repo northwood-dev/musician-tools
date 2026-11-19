@@ -96,11 +96,15 @@ test('a valid password change calls the service and clears the fields', async ()
   await screen.findByText(/other sessions were signed out/i);
 });
 
+// The page always holds the (empty) loading-error region (#224): an action's error is the other alert.
+const actionAlert = () => screen.findByRole('alert', { name: (name: string) => name !== 'Loading error' });
+
 describe('Profile errors are announced at once (#127)', () => {
   test('a failed load', async () => {
     svc.getProfile.mockRejectedValue(new Error('boom'));
     render(<ProfilePage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load your profile.');
+    await screen.findByText("Couldn't load your profile.");
+    expect(screen.getByRole('alert', { name: 'Loading error' })).toHaveTextContent("Couldn't load your profile.");
   });
 
   test('a refused password change', async () => {
@@ -110,7 +114,7 @@ describe('Profile errors are announced at once (#127)', () => {
     fireEvent.change(screen.getByPlaceholderText('New password (at least 10 characters)'), { target: { value: 'short' } });
     fireEvent.change(screen.getByPlaceholderText('Confirm new password'), { target: { value: 'short' } });
     fireEvent.click(screen.getByRole('button', { name: /change password/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/at least 10 characters/i);
+    expect(await actionAlert()).toHaveTextContent(/at least 10 characters/i);
   });
 
   test('a refused name', async () => {
@@ -120,7 +124,7 @@ describe('Profile errors are announced at once (#127)', () => {
     const nameInput = screen.getByDisplayValue('Ada');
     fireEvent.change(nameInput, { target: { value: 'Bob' } });
     fireEvent.submit(nameInput.closest('form')!);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Name already taken');
+    expect(await actionAlert()).toHaveTextContent('Name already taken');
   });
 
   test('a refused email change', async () => {
@@ -129,7 +133,7 @@ describe('Profile errors are announced at once (#127)', () => {
     await screen.findByText('Ada#0042');
     fireEvent.change(screen.getByPlaceholderText('New email address'), { target: { value: 'new@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: /change email/i }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email');
+    expect(await actionAlert()).toHaveTextContent('Invalid email');
   });
 
   test('the same password mistake twice is announced twice (a new alert each time)', async () => {
@@ -139,10 +143,31 @@ describe('Profile errors are announced at once (#127)', () => {
     fireEvent.change(screen.getByPlaceholderText('New password (at least 10 characters)'), { target: { value: 'short' } });
     fireEvent.change(screen.getByPlaceholderText('Confirm new password'), { target: { value: 'short' } });
     fireEvent.click(screen.getByRole('button', { name: /change password/i }));
-    const first = await screen.findByRole('alert');
+    const first = await actionAlert();
     fireEvent.click(screen.getByRole('button', { name: /change password/i }));
-    const second = await screen.findByRole('alert');
+    const second = await actionAlert();
     expect(second).toHaveTextContent(/at least 10 characters/i);
     expect(second).not.toBe(first);
+  });
+});
+
+// #224: a profile that didn't load says so with Retry, in place of the name form (saving a name
+// typed into an empty field would be a blind write). Password doesn't need the profile.
+describe('a failed profile load (#224)', () => {
+  test('offers Retry instead of the name form; the password form stays', async () => {
+    svc.getProfile.mockRejectedValueOnce(new Error('boom'));
+    render(<ProfilePage />);
+    expect(await screen.findByText("Couldn't load your profile.")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Display name')).toBeNull();
+    expect(screen.getByPlaceholderText('Confirm new password')).toBeInTheDocument();
+  });
+
+  test('Retry loads the profile and brings the name form back', async () => {
+    svc.getProfile.mockRejectedValueOnce(new Error('boom'));
+    render(<ProfilePage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText('Ada#0042')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Display name')).toHaveValue('Ada');
+    expect(screen.queryByText("Couldn't load your profile.")).toBeNull();
   });
 });
