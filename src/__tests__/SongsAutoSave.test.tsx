@@ -395,6 +395,17 @@ describe('Songs — a failed load (#224)', () => {
     expect(screen.queryByText('Error while loading songs')).toBeNull();
   });
 
+  // Found in the browser: a selection kept from an earlier visit offered "Delete selected" on
+  // songs the page couldn't show.
+  test('no bulk actions on songs that did not load (a selection kept from an earlier visit)', async () => {
+    localStorage.setItem('songsSelectedUids', JSON.stringify(['s1']));
+    getAllSongs.mockRejectedValue(new Error('network'));
+    renderSongs();
+    await screen.findByText("Couldn't load your songlist.");
+    expect(screen.queryByRole('button', { name: 'Delete selected' })).toBeNull();
+    expect(screen.queryByText(/song\(s\) selected/)).toBeNull();
+  });
+
   test('Retry loads the songs and their plays', async () => {
     getAllSongs.mockRejectedValue(new Error('network'));
     renderSongs();

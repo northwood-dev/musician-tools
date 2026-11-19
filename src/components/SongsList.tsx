@@ -303,7 +303,8 @@ export default function SongsList(props: SongsListProps) {
             <ActiveFilterChips chips={props.activeFilterChips} onRemove={props.onRemoveFilterChip} onClearAll={props.clearAllFilters} onEmptied={focusSearch} />
           </div>
           {/* Bulk actions: the shared bar (22.1) hides itself when nothing is selected. */}
-          <BulkActionBar count={props.selectedSongs.size} noun="song(s)">
+          {/* #224: no bulk action on songs that didn't load (a selection kept from a visit). */}
+          <BulkActionBar count={props.loadFailed ? 0 : props.selectedSongs.size} noun="song(s)">
             {props.bulkSetInstrument}
             <div className="relative">
               <button
