@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Dialog } from './Dialog';
-import type { CatalogSuggestionLine, SuggestionDifference } from '../services/catalogService';
+import { Notice } from './Notice';
+import type { CatalogSuggestionLine, MergeDecision, MergeDecisions, SuggestionDifference } from '../services/catalogService';
 import { formatSecondsToMmss } from '../utils/duration';
 
 // #237: "Merge into the Catalog entry" — the song is already published, and some suggested values
 // differ from the entry. Each differing field is decided: accept ONE suggested value (it corrects
 // the entry) or reject (the entry keeps its value). Merge waits until every field is decided, so
 // nothing is applied unseen. A suggested value equal to the entry's is not an "Accept" (it would
-// change nothing): its users show on the Reject choice instead.
-export type MergeDecision = 'reject' | { accept: SuggestionDifference['suggested'][number]['value'] };
-export type MergeDecisions = Partial<Record<SuggestionDifference['field'], MergeDecision>>;
+// change nothing): its users show on the Reject choice instead. When the group changed while
+// the dialog was open, the page passes the line again with its current differences and a
+// `notice`: the choices start over (the form is keyed by the differences).
 
 const FIELD_LABEL: Record<SuggestionDifference['field'], string> = {
   key: 'Key',
@@ -35,25 +36,38 @@ const usersLabel = (users: number) => `${users} ${users === 1 ? 'user' : 'users'
 
 export function MergeSuggestionDialog({
   line,
+  notice = null,
   busy,
   onCancel,
   onMerge,
 }: {
   /** The line to merge; null = closed. */
   line: CatalogSuggestionLine | null;
+  /** Why the dialog is shown again (the group changed), if it is. */
+  notice?: string | null;
   busy: boolean;
   onCancel: () => void;
   onMerge: (decisions: MergeDecisions) => void;
 }) {
   return (
     <Dialog open={line !== null} onClose={() => { if (!busy) onCancel(); }} title="Merge into the Catalog entry" size="md">
-      {line && <MergeForm key={line.id} line={line} busy={busy} onCancel={onCancel} onMerge={onMerge} />}
+      {line && (
+        <MergeForm
+          key={`${line.id} ${JSON.stringify(line.catalog?.differences)}`}
+          line={line}
+          notice={notice}
+          busy={busy}
+          onCancel={onCancel}
+          onMerge={onMerge}
+        />
+      )}
     </Dialog>
   );
 }
 
-function MergeForm({ line, busy, onCancel, onMerge }: {
+function MergeForm({ line, notice, busy, onCancel, onMerge }: {
   line: CatalogSuggestionLine;
+  notice: string | null;
   busy: boolean;
   onCancel: () => void;
   onMerge: (decisions: MergeDecisions) => void;
@@ -67,8 +81,10 @@ function MergeForm({ line, busy, onCancel, onMerge }: {
       className="space-y-4"
       onSubmit={(e) => { e.preventDefault(); if (allDecided && !busy) onMerge(decisions); }}
     >
+      {notice && <Notice tone="warning">{notice}</Notice>}
       <p className="text-sm text-gray-600 dark:text-gray-300">
         Decide each value that differs. Accepting one corrects the Catalog entry; then the suggesters&apos; songs are tied to it.
+        Suggesters who left a value empty will be offered the Catalog&apos;s value.
       </p>
       {differences.map(difference => {
         const label = FIELD_LABEL[difference.field];

@@ -136,6 +136,11 @@ export type SuggestionDifference = {
 };
 export type CatalogSuggestions = { pending: number; suggestions: CatalogSuggestionLine[] };
 
+// #237: a curator's decision on one differing field — keep the entry's value, or accept ONE
+// suggested value. One per differing field.
+export type MergeDecision = 'reject' | { accept: SuggestionDifference['suggested'][number]['value'] };
+export type MergeDecisions = Partial<Record<SuggestionDifference['field'], MergeDecision>>;
+
 // #215: Accept found an entry with the same identity (published, or a draft in progress).
 export class SuggestionInCatalogError extends Error {
   catalogUid?: string;
@@ -146,11 +151,22 @@ export class SuggestionInCatalogError extends Error {
   }
 }
 
-// #236: Merge found values that differ from the entry: they must be reviewed first.
+// #236: Merge found values that differ from the entry — or, with decisions, the group changed
+// since the dialog showed it. Carries the differences as they are now, to decide again.
 export class SuggestionDifferencesError extends Error {
-  constructor() {
+  differences: SuggestionDifference[];
+  constructor(differences: SuggestionDifference[] = []) {
     super('Some values differ from the Catalog entry');
     this.name = 'SuggestionDifferencesError';
+    this.differences = differences;
+  }
+}
+
+// Merge: the Catalog entry the line matches is no longer published (spec #234 story 20).
+export class SuggestionNotPublishedError extends Error {
+  constructor() {
+    super('The Catalog entry is no longer published');
+    this.name = 'SuggestionNotPublishedError';
   }
 }
 
@@ -485,21 +501,19 @@ export const catalogService = {
   },
 
   // #214 / #236: tie the line's songs to the PUBLISHED Catalog entry they match. 404 → no longer
-  // waiting; 409 "differences" → values differ from the entry and must be reviewed first; any
-  // other 409 → no published entry (none, or a draft) — "no longer waiting" for the curator.
+  // waiting; 409 "differences" → values to decide (or decide again) first; 409 "not_published"
+  // → the entry is no longer published.
   // #237: `decisions` — one per differing field: 'reject', or { accept: <a suggested value> }.
-  async mergeSuggestion(
-    id: string,
-    decisions?: Partial<Record<SuggestionDifference['field'], 'reject' | { accept: SuggestionDifference['suggested'][number]['value'] }>>,
-  ): Promise<{ linked: number; catalogUid: string }> {
+  async mergeSuggestion(id: string, decisions?: MergeDecisions): Promise<{ linked: number; catalogUid: string }> {
     const response = await apiFetch(`${API_BASE}/catalog/suggestions/${id}/merge`, {
       method: 'POST',
       credentials: 'include',
       ...(decisions ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decisions }) } : {}),
     });
     if (response.status === 409) {
-      const body = await response.json().catch(() => ({} as { error?: string }));
-      if (body.error === 'differences') throw new SuggestionDifferencesError();
+      const body = await response.json().catch(() => ({} as { error?: string; differences?: SuggestionDifference[] }));
+      if (body.error === 'differences') throw new SuggestionDifferencesError(body.differences ?? []);
+      if (body.error === 'not_published') throw new SuggestionNotPublishedError();
       throw new SuggestionGoneError();
     }
     if (response.status === 404) {

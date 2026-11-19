@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { catalogService, SuggestionDifferencesError, SuggestionGoneError, SuggestionInCatalogError } from '../services/catalogService';
-import type { CatalogSuggestionLine } from '../services/catalogService';
+import { catalogService, SuggestionDifferencesError, SuggestionGoneError, SuggestionInCatalogError, SuggestionNotPublishedError } from '../services/catalogService';
+import type { CatalogSuggestionLine, MergeDecisions } from '../services/catalogService';
 import { ListSkeleton } from '../components/ListSkeleton';
 import { LoadFailed } from '../components/LoadFailed';
 import { Page } from '../components/Page';
@@ -10,7 +10,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { LiveNotice } from '../components/LiveNotice';
 import { Tag } from '../components/Chip';
-import { MergeSuggestionDialog, type MergeDecisions } from '../components/MergeSuggestionDialog';
+import { MergeSuggestionDialog } from '../components/MergeSuggestionDialog';
 import { SongName } from '../components/SongName';
 import { songLabel } from '../utils/songLabel';
 
@@ -26,6 +26,9 @@ const details = (song: CatalogSuggestionLine['song']) =>
 // entry once the song is in the Catalog — to check it before Merge.
 const SONG_LINK = 'block hover:underline disabled:cursor-not-allowed';
 
+// #234 review: Merge refused because the group changed under the curator.
+const GROUP_CHANGED = 'The suggestions changed: review them again.';
+
 // The entry form for a line's draft; the suggestion id links the songs when it is published.
 const draftPath = (line: CatalogSuggestionLine, catalogUid = line.catalog?.uid) =>
   `/catalog/admin/${catalogUid}?suggestion=${line.id}`;
@@ -38,6 +41,7 @@ export default function CatalogSuggestions() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [toReject, setToReject] = useState<CatalogSuggestionLine | null>(null);
   const [toMerge, setToMerge] = useState<CatalogSuggestionLine | null>(null);
+  const [mergeNotice, setMergeNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [doneMessage, setDoneMessage] = useState<string | null>(null);
@@ -72,12 +76,19 @@ export default function CatalogSuggestions() {
       if (done === null) return; // left the page
       setDoneMessage(done);
     } catch (err) {
-      setError(
-        err instanceof SuggestionInCatalogError ? 'This song is already in the Catalog.'
-          : err instanceof SuggestionGoneError ? 'This suggestion is no longer waiting.'
-            : err instanceof SuggestionDifferencesError ? 'Some values now differ from the Catalog entry: review them first.'
-            : `Could not ${verb} "${songLabel(line.song)}".`
-      );
+      if (err instanceof SuggestionDifferencesError && err.differences.length > 0 && line.catalog) {
+        // The group changed under the curator: decide again, on the values as they are now.
+        setToMerge({ ...line, catalog: { ...line.catalog, differences: err.differences } });
+        setMergeNotice(GROUP_CHANGED);
+      } else {
+        setError(
+          err instanceof SuggestionInCatalogError ? 'This song is already in the Catalog.'
+            : err instanceof SuggestionGoneError ? 'This suggestion is no longer waiting.'
+              : err instanceof SuggestionNotPublishedError ? 'The Catalog entry is no longer published.'
+                : err instanceof SuggestionDifferencesError ? GROUP_CHANGED
+                  : `Could not ${verb} "${songLabel(line.song)}".`
+        );
+      }
     }
     await load();
     setBusy(false);
@@ -94,19 +105,25 @@ export default function CatalogSuggestions() {
   // #214 / #236: the song is already published in the Catalog — Merge ties the line's songs to
   // that entry. Values that differ are decided first, in the Merge dialog (#237).
   const merge = (line: CatalogSuggestionLine, decisions?: MergeDecisions) => runAction('merge', line, async () => {
-    const { linked } = decisions
-      ? await catalogService.mergeSuggestion(line.id, decisions)
-      : await catalogService.mergeSuggestion(line.id);
+    const { linked } = await catalogService.mergeSuggestion(line.id, decisions);
     return `"${songLabel(line.song)}" merged into the Catalog entry (${linked} ${linked === 1 ? 'song' : 'songs'}).`;
   });
   const handleMerge = (line: CatalogSuggestionLine) => {
+    setMergeNotice(null);
     if (line.catalog?.differences?.length) setToMerge(line);
     else merge(line);
   };
+  const closeMerge = () => {
+    setToMerge(null);
+    setMergeNotice(null);
+  };
   const handleMergeDecided = async (decisions: MergeDecisions) => {
     if (!toMerge) return;
-    await merge(toMerge, decisions);
-    setToMerge(null);
+    const decided = toMerge;
+    setMergeNotice(null);
+    await merge(decided, decisions);
+    // Closed once done — unless the group changed and the dialog was shown again (a new line).
+    setToMerge(current => (current === decided ? null : current));
   };
 
   // #213: the line's songs leave the queue for good; their owners aren't told.
@@ -229,8 +246,9 @@ export default function CatalogSuggestions() {
       )}
       <MergeSuggestionDialog
         line={toMerge}
+        notice={mergeNotice}
         busy={busy}
-        onCancel={() => setToMerge(null)}
+        onCancel={closeMerge}
         onMerge={handleMergeDecided}
       />
       <ConfirmDialog

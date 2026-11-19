@@ -9,6 +9,7 @@ const { DATE_PATTERN, MIN_DATE, isValidCalendarDate, maxAllowedDate } = require(
 const { isUuid } = require('../utils/uuid');
 const { sameTitle, sameArtist } = require('../utils/songIdentity');
 const { sumMinutes } = require('../utils/sessionMerge');
+const { COMPARED_FIELDS } = require('../utils/catalogDifferences');
 const { findOrCreateDaySession } = require('../services/daySession');
 // Story 19.8 — shared normalizers (reject-to-null; INTEGER columns can't 500 on a
 // decimal / non-numeric / out-of-INT4 input). normalizeLanguage moved here too.
@@ -108,38 +109,44 @@ const getSong = async (req, res, next) => {
   }
 };
 
+// The user's own Catalog copy and its published entry, for Refresh and Keep mine — or null
+// once the answer is sent: 401, a 404 for not-yours or unknown (scoped, 7.5), a 409
+// "not_from_catalog", or a 409 "source_unavailable" (entry deleted or unpublished).
+async function ownCatalogCopy(req, res, next) {
+  const userId = req.session.user;
+  if (!userId) {
+    next(createError(401, 'Unauthorized'));
+    return null;
+  }
+  const song = isUuid(req.params.uid) ? await Song.findOne({ where: { uid: req.params.uid, userUid: userId } }) : null;
+  if (!song) {
+    next(createError(404, 'Song not found'));
+    return null;
+  }
+  if (!song.sourceCatalogUid) {
+    res.status(409).json({ error: 'not_from_catalog', message: 'This song was not added from the Catalog' });
+    return null;
+  }
+  const catalog = await CatalogSong.findByPk(song.sourceCatalogUid);
+  if (!catalog || catalog.publishedAt == null) {
+    res.status(409).json({ error: 'source_unavailable', message: 'The source is no longer available in the Catalog' });
+    return null;
+  }
+  return { song, catalog };
+}
+
 // POST /api/songs/:uid/refresh-from-catalog (story 21.1) — pull the current Catalog
 // version into this copy: overwrite the INTRINSIC fields, PRESERVE personal + identity.
-const INTRINSIC_REFRESH_FIELDS = ['key', 'bpm', 'mode', 'timeSignature', 'durationSeconds', 'pitchStandard'];
 const refreshSongFromCatalog = async (req, res, next) => {
   try {
-    const userId = req.session.user;
-    if (!userId) {
-      return next(createError(401, 'Unauthorized'));
-    }
-    if (!isUuid(req.params.uid)) {
-      return next(createError(404, 'Song not found'));
-    }
-    // Scoped (7.5): not-yours and unknown both 404.
-    const song = await Song.findOne({ where: { uid: req.params.uid, userUid: userId } });
-    if (!song) {
-      return next(createError(404, 'Song not found'));
-    }
-    if (!song.sourceCatalogUid) {
-      return res.status(409).json({ error: 'not_from_catalog', message: 'This song was not added from the Catalog' });
-    }
-    const catalog = await CatalogSong.findByPk(song.sourceCatalogUid);
-    if (!catalog || catalog.publishedAt == null) {
-      // Source deleted or unpublished → cannot refresh; the copy is left untouched.
-      return res.status(409).json({ error: 'source_unavailable', message: 'The source is no longer available in the Catalog' });
-    }
-    // Overwrite ONLY the intrinsic fields (identity title/artist/album and all personal
-    // fields are left untouched). JSON fields are deep-cloned so the copy never shares a
-    // reference with the shared Catalog entry (mirror buildSongFromCatalog).
+    const copy = await ownCatalogCopy(req, res, next);
+    if (!copy) return; // the copy is left untouched
+    const { song, catalog } = copy;
+    // Overwrite ONLY the compared fields — the ones Merge and the banner compare (identity
+    // title/artist/album and all personal fields are left untouched). Cloned so the copy never
+    // shares a reference with the shared Catalog entry (mirror buildSongFromCatalog).
     const updates = { sourceCatalogSyncedAt: catalog.updatedAt };
-    for (const f of INTRINSIC_REFRESH_FIELDS) updates[f] = catalog[f] ?? null;
-    updates.language = structuredClone(catalog.language ?? null);
-    updates.genre = structuredClone(catalog.genre ?? null);
+    for (const { field } of COMPARED_FIELDS) updates[field] = structuredClone(catalog[field] ?? null);
     // Only the Catalog's own (marked) links are replaced: the user's links stay (#110).
     updates.streamingLinks = refreshedLinks(song.streamingLinks, catalog.streamingLinks);
 
@@ -156,26 +163,9 @@ const refreshSongFromCatalog = async (req, res, next) => {
 // until the entry changes again. No value is touched.
 const keepSongValues = async (req, res, next) => {
   try {
-    const userId = req.session.user;
-    if (!userId) {
-      return next(createError(401, 'Unauthorized'));
-    }
-    if (!isUuid(req.params.uid)) {
-      return next(createError(404, 'Song not found'));
-    }
-    // Scoped like refresh: not-yours and unknown both 404.
-    const song = await Song.findOne({ where: { uid: req.params.uid, userUid: userId } });
-    if (!song) {
-      return next(createError(404, 'Song not found'));
-    }
-    if (!song.sourceCatalogUid) {
-      return res.status(409).json({ error: 'not_from_catalog', message: 'This song was not added from the Catalog' });
-    }
-    const catalog = await CatalogSong.findByPk(song.sourceCatalogUid);
-    if (!catalog || catalog.publishedAt == null) {
-      return res.status(409).json({ error: 'source_unavailable', message: 'The source is no longer available in the Catalog' });
-    }
-    const updated = await song.update({ sourceCatalogSyncedAt: catalog.updatedAt });
+    const copy = await ownCatalogCopy(req, res, next);
+    if (!copy) return;
+    const updated = await copy.song.update({ sourceCatalogSyncedAt: copy.catalog.updatedAt });
     res.json(updated);
   } catch (error) {
     logger.error('Error keeping song values:', error);

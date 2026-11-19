@@ -18,7 +18,9 @@ const { isUuid } = require('../utils/uuid');
 // #236: a group's compared fields, as JSON by field name, and the entry's, as catalog_<column>.
 const MEMBER_JSON = `json_build_object(${COMPARED_FIELDS.map(f => `'${f.field}', ${f.column}`).join(', ')})`;
 const CATALOG_COLUMNS = COMPARED_FIELDS.map(f => `c.${f.column} AS catalog_${f.column}`).join(', ');
-const entryValues = (r) => Object.fromEntries(COMPARED_FIELDS.map(f => [f.field, r[`catalog_${f.column}`]]));
+// A row's compared values by field name: the song's own columns, or the entry's (`catalog_`).
+const valuesOf = (r, prefix = '') => Object.fromEntries(COMPARED_FIELDS.map(f => [f.field, r[`${prefix}${f.column}`]]));
+const entryValues = (r) => valuesOf(r, 'catalog_');
 
 const SUGGESTIONS_SQL = `
   WITH suggested AS (
@@ -157,10 +159,34 @@ const rejectSuggestion = async (req, res, next) => {
   }
 };
 
+// #237: the curator's decisions, checked against the group's differences as they are NOW.
+// Returns { accepted } (field → value to write), { malformed } (a 400), or { changed } when
+// they no longer match the group — a suggester unchecked, or changed a value, while the
+// dialog was open. Then nothing is written and the dialog is shown again with the current
+// differences: a decision is never applied to values the curator didn't see, nor dropped.
+function checkDecisions(differences, decisions) {
+  if (!decisions || typeof decisions !== 'object') return { malformed: true };
+  for (const decision of Object.values(decisions)) {
+    if (decision !== 'reject' && !(decision && typeof decision === 'object' && 'accept' in decision)) return { malformed: true };
+  }
+  const differing = differences.map(d => d.field);
+  if (Object.keys(decisions).some(field => !differing.includes(field))) return { changed: true };
+  const accepted = {};
+  for (const difference of differences) {
+    const decision = decisions[difference.field];
+    if (decision === undefined) return { changed: true };
+    if (decision === 'reject') continue;
+    const value = proposedValue(difference, decision.accept);
+    if (value === undefined) return { changed: true };
+    accepted[difference.field] = value;
+  }
+  return { accepted };
+}
+
 // POST /api/catalog/suggestions/:id/merge (curator only). #214 / #236: the song is already
 // published in the Catalog — tie the group's songs to that entry instead of creating a
-// duplicate. Values to review first (#237's dialog decides them): a 409 "differences".
-const memberValues = (r) => Object.fromEntries(COMPARED_FIELDS.map(f => [f.field, r[f.column]]));
+// duplicate. Values to review first (#237's dialog decides them): a 409 "differences" with
+// the current differences.
 const mergeSuggestion = async (req, res, next) => {
   if (!isUuid(req.params.id)) return next(createError(404, NOT_WAITING));
   try {
@@ -169,23 +195,19 @@ const mergeSuggestion = async (req, res, next) => {
     if (group.length === 0) return next(createError(404, NOT_WAITING));
     const [first] = group;
     if (!first.catalog_uid || !first.published) {
-      return next(createError(409, 'No published Catalog entry to merge into'));
+      return res.status(409).json({ error: 'not_published', message: 'The Catalog entry is no longer published' });
     }
-    const differences = groupDifferences(group.map(memberValues), entryValues(first));
+    const differences = groupDifferences(group.map(r => valuesOf(r)), entryValues(first));
     const decisions = req.body && req.body.decisions;
-    if (differences.length > 0 && !decisions) {
-      return res.status(409).json({ error: 'differences', message: 'Some values differ from the Catalog entry', differences });
-    }
-    // #237: one decision per field that differs NOW — 'reject', or a value a suggester proposed.
-    const accepted = {};
-    for (const difference of differences) {
-      const decision = decisions[difference.field];
-      if (decision === 'reject') continue;
-      const value = decision ? proposedValue(difference, decision.accept) : undefined;
-      if (value === undefined) {
-        return next(createError(400, `Decide ${difference.field}: reject it, or accept a suggested value`));
-      }
-      accepted[difference.field] = value;
+    const toReview = () => res.status(409).json({ error: 'differences', message: 'Some values differ from the Catalog entry', differences });
+    let accepted = {};
+    if (decisions !== undefined) {
+      const checked = checkDecisions(differences, decisions);
+      if (checked.malformed) return next(createError(400, "Each decision is 'reject' or { accept: <a suggested value> }"));
+      if (checked.changed) return toReview();
+      accepted = checked.accepted;
+    } else if (differences.length > 0) {
+      return toReview();
     }
     // Both or neither: the entry is never corrected without the songs tied, nor the reverse.
     // Correcting it moves its version, so earlier holders see the banner — it did change. The

@@ -168,6 +168,13 @@ describe('differences with the published entry (#236)', () => {
     expect(catalog.differences).toEqual([]);
   });
 
+  // #234 review: list items compare as stored, like the stamping SQL (both sides are trimmed on
+  // save) — the listing never says "same" where the stamping says "differs".
+  test('list items compare as stored, like the stamping', async () => {
+    const catalog = await list(row({ ...entry(), members: [member({ genre: [' Rock'] })] }));
+    expect(catalog.differences.map(d => d.field)).toEqual(['genre']);
+  });
+
   test('a field empty in the entry but filled in a suggestion is a difference', async () => {
     const catalog = await list(row({
       ...entry({ catalog_key: null, catalog_genre: null }),
@@ -275,14 +282,16 @@ describe('mergeSuggestion (#214, #236)', () => {
     expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
-  test('no published entry to merge into (none, or only a draft) is a 409', async () => {
+  // Spec story 20: the curator is told the entry is no longer published (not "no longer waiting").
+  test('no published entry to merge into (none, or only a draft) is a 409 "not_published"', async () => {
     sequelize.query.mockResolvedValueOnce([groupRow({ catalog_uid: null, published: false })]);
-    let { next } = await call();
-    expect(next.mock.calls[0][0].status).toBe(409);
+    let { res } = await call();
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].error).toBe('not_published');
     sequelize.query.mockReset();
     sequelize.query.mockResolvedValueOnce([groupRow({ catalog_uid: 'draft-1', published: false })]);
-    ({ next } = await call());
-    expect(next.mock.calls[0][0].status).toBe(409);
+    ({ res } = await call());
+    expect(res.json.mock.calls[0][0].error).toBe('not_published');
     expect(sequelize.query).toHaveBeenCalledTimes(1);
   });
 
@@ -295,17 +304,39 @@ describe('mergeSuggestion (#214, #236)', () => {
     return { res, next };
   };
 
-  test('a differing field left undecided is a 400, nothing written', async () => {
-    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120, key: 'A' })]);
-    const { next } = await decide({ bpm: 'reject' });
-    expect(next.mock.calls[0][0].status).toBe(400);
+  // #234 review (Q1 b): decisions that no longer match the group as it is NOW (a suggester
+  // unchecked, or changed a value, while the dialog was open) are refused with the group's
+  // current differences, so the dialog is shown again. Nothing is written, nothing ignored.
+  const changed = (res) => {
+    expect(res.status).toHaveBeenCalledWith(409);
+    const body = res.json.mock.calls[0][0];
+    expect(body.error).toBe('differences');
     expect(CatalogSong.update).not.toHaveBeenCalled();
     expect(sequelize.query).toHaveBeenCalledTimes(1);
+    return body.differences;
+  };
+
+  test('a differing field left undecided: the group changed, a 409 with its differences', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120, key: 'A' })]);
+    const { res } = await decide({ bpm: 'reject' });
+    expect(changed(res).map(d => d.field)).toEqual(['key', 'bpm']);
   });
 
-  test('an accepted value no suggester proposed is a 400, nothing written', async () => {
+  test('an accepted value no suggester proposes (any more): a 409 with the differences', async () => {
     sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120 })]);
-    const { next } = await decide({ bpm: { accept: 999 } });
+    const { res } = await decide({ bpm: { accept: 999 } });
+    expect(changed(res)).toEqual([{ field: 'bpm', catalog: 87, suggested: [{ value: 87, users: 1 }, { value: 120, users: 1 }] }]);
+  });
+
+  test('a decision for a field that no longer differs is not dropped silently: a 409', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow()]);
+    const { res } = await decide({ bpm: { accept: 120 } });
+    expect(changed(res)).toEqual([]);
+  });
+
+  test('a malformed decision is a 400, nothing written', async () => {
+    sequelize.query.mockResolvedValueOnce([groupRow(), groupRow({ bpm: 120 })]);
+    const { next } = await decide({ bpm: 'maybe' });
     expect(next.mock.calls[0][0].status).toBe(400);
     expect(CatalogSong.update).not.toHaveBeenCalled();
   });

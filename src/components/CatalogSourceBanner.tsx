@@ -27,7 +27,8 @@ export default function CatalogSourceBanner({
   // to added from it — songs added from the Catalog are never `suggested`.
   const [viaSuggestion, setViaSuggestion] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  // Which action is running, if any: one at a time (the buttons are disabled meanwhile).
+  const [busy, setBusy] = useState<'refresh' | 'keep' | null>(null);
   const [feedback, setFeedback] = useState<{ message: string; isError: boolean } | null>(null);
   // A refresh POST can outlive this banner: the parent keys us by songUid, so switching songs
   // unmounts this instance while the request is still in flight. Guard the post-await setState /
@@ -56,27 +57,31 @@ export default function CatalogSourceBanner({
   // (e.g. an error after the source vanished).
   if (!source && !feedback) return null;
 
-  // #235: keep the user's own values. Nothing in the fiche changes (no re-seed): the song is
-  // only stamped as up to date with the entry, so the banner goes until the entry changes.
-  const handleKeepMine = async () => {
-    if (refreshing || !source) return;
-    setRefreshing(true);
+  // One action at a time; nothing is set once the banner unmounted mid-request.
+  const run = async (action: 'refresh' | 'keep', work: () => Promise<void>) => {
+    if (busy || !source) return;
+    setBusy(action);
     try {
-      await songService.keepSongValues(songUid);
-      if (!mountedRef.current) return;
-      setSource({ ...source, drift: false });
-      setFeedback({ message: 'Kept your values.', isError: false });
-    } catch {
-      if (!mountedRef.current) return;
-      setFeedback({ message: 'Could not keep your values. Try again.', isError: true });
+      await work();
     } finally {
-      if (mountedRef.current) setRefreshing(false);
+      if (mountedRef.current) setBusy(null);
     }
   };
 
-  const handleRefresh = async () => {
-    if (refreshing || !source) return;
-    setRefreshing(true);
+  // #235: keep the user's own values. No value on the Song page changes (no re-seed): the song
+  // is only stamped as up to date with the entry, so the banner goes until the entry changes.
+  const handleKeepMine = () => run('keep', async () => {
+    try {
+      await songService.keepSongValues(songUid);
+      if (!mountedRef.current) return;
+      setSource({ ...source!, drift: false });
+      setFeedback({ message: 'Kept your values.', isError: false });
+    } catch {
+      if (mountedRef.current) setFeedback({ message: 'Could not keep your values. Try again.', isError: true });
+    }
+  });
+
+  const handleRefresh = () => run('refresh', async () => {
     try {
       // Persist any pending fiche edits first, so the server refresh reads the current row and
       // preserves them. A failed save cancels the refresh rather than dropping the edits.
@@ -91,7 +96,7 @@ export default function CatalogSourceBanner({
       }
       const updated = await songService.refreshSongFromCatalog(songUid);
       if (!mountedRef.current) return; // banner unmounted mid-request → don't touch the next song
-      setSource(updated.sourceCatalog ?? { ...source, drift: false }); // drift cleared
+      setSource(updated.sourceCatalog ?? { ...source!, drift: false }); // drift cleared
       setFeedback({ message: 'Updated to the Catalog version.', isError: false });
       setConfirmOpen(false);
       onRefreshed?.(updated);
@@ -111,10 +116,8 @@ export default function CatalogSourceBanner({
         setFeedback({ message: 'Could not refresh from the Catalog.', isError: true });
       }
       setConfirmOpen(false);
-    } finally {
-      if (mountedRef.current) setRefreshing(false);
     }
-  };
+  });
 
   return (
     <div className="mb-4 space-y-2">
@@ -142,17 +145,17 @@ export default function CatalogSourceBanner({
                 type="button"
                 className="btn-secondary btn-sm min-h-[44px]"
                 onClick={() => setConfirmOpen(true)}
-                disabled={refreshing}
+                disabled={busy !== null}
               >
-                {refreshing ? 'Refreshing…' : 'Refresh'}
+                {busy === 'refresh' ? 'Refreshing…' : 'Refresh'}
               </button>
               <button
                 type="button"
                 className="btn-secondary btn-sm min-h-[44px]"
                 onClick={handleKeepMine}
-                disabled={refreshing}
+                disabled={busy !== null}
               >
-                Keep mine
+                {busy === 'keep' ? 'Keeping…' : 'Keep mine'}
               </button>
             </div>
           )}
@@ -171,10 +174,10 @@ export default function CatalogSourceBanner({
         isOpen={confirmOpen}
         title="Refresh from the Catalog"
         message="Update key, BPM, etc. to the Catalog version? Your instrument, tuning, notes and your own links are kept."
-        confirmText={refreshing ? 'Refreshing…' : 'Refresh'}
+        confirmText={busy === 'refresh' ? 'Refreshing…' : 'Refresh'}
         cancelText="Cancel"
         onConfirm={handleRefresh}
-        onCancel={() => { if (!refreshing) setConfirmOpen(false); }}
+        onCancel={() => { if (!busy) setConfirmOpen(false); }}
       />
     </div>
   );

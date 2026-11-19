@@ -18,22 +18,30 @@ const COMPARED_FIELDS = [
   { field: 'pitchStandard', column: 'pitch_standard', kind: 'number' },
 ];
 
-// A value as compared: null for nothing; a sorted list for a list field (an older row may hold a
-// single text); the value itself otherwise.
-function canonical(kind, value) {
-  if (value == null) return null;
-  if (kind === 'list') {
-    const items = (Array.isArray(value) ? value : [value])
-      .map(item => String(item).trim())
-      .filter(Boolean);
-    return items.length ? [...new Set(items)].sort() : null;
-  }
-  if (kind === 'text') {
-    const text = String(value).trim();
-    return text || null;
-  }
-  return value;
-}
+// Each kind of value, compared the same way in JS (the listing) and in SQL (the stamping):
+// - canonical: null for nothing; for a list, its distinct items sorted (an older row may hold a
+//   single text). List items compare as stored — both sides are normalised on save, and the
+//   SQL can't trim inside a jsonb list.
+// - sameSql: the SQL equality of two columns.
+const asList = (col) => `(CASE WHEN ${col} IS NULL THEN '[]'::jsonb WHEN jsonb_typeof(${col}) = 'array' THEN ${col} ELSE jsonb_build_array(${col}) END)`;
+const KINDS = {
+  text: {
+    canonical: (value) => String(value).trim() || null,
+    sameSql: (a, b) => `NULLIF(btrim(${a}), '') IS NOT DISTINCT FROM NULLIF(btrim(${b}), '')`,
+  },
+  list: {
+    canonical: (value) => {
+      const items = (Array.isArray(value) ? value : [value]).map(String);
+      return items.length ? [...new Set(items)].sort() : null;
+    },
+    sameSql: (a, b) => `(${asList(a)} @> ${asList(b)} AND ${asList(b)} @> ${asList(a)})`,
+  },
+  number: {
+    canonical: (value) => value,
+    sameSql: (a, b) => `${a} IS NOT DISTINCT FROM ${b}`,
+  },
+};
+const canonical = (kind, value) => (value == null ? null : KINDS[kind].canonical(value));
 
 const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -75,15 +83,9 @@ function proposedValue(difference, value) {
 // equal to the entry's? Used when tying songs to an entry: only an equal song is stamped up to
 // date (#236), any other shows its owner the "different values" banner. Here an empty value is
 // a value — a song with no BPM differs from an entry that has one, and Refresh would fill it.
-// A list held as a single text (older rows) is read as a one-item list; list items are compared
-// as stored (both sides are normalised on save).
-const asList = (col) => `(CASE WHEN ${col} IS NULL THEN '[]'::jsonb WHEN jsonb_typeof(${col}) = 'array' THEN ${col} ELSE jsonb_build_array(${col}) END)`;
 function sameValuesSql(s, c) {
-  return COMPARED_FIELDS.map(({ column, kind }) => {
-    if (kind === 'text') return `NULLIF(btrim(${s}.${column}), '') IS NOT DISTINCT FROM NULLIF(btrim(${c}.${column}), '')`;
-    if (kind === 'list') return `(${asList(`${s}.${column}`)} @> ${asList(`${c}.${column}`)} AND ${asList(`${c}.${column}`)} @> ${asList(`${s}.${column}`)})`;
-    return `${s}.${column} IS NOT DISTINCT FROM ${c}.${column}`;
-  }).join('\n       AND ');
+  return COMPARED_FIELDS.map(({ column, kind }) => KINDS[kind].sameSql(`${s}.${column}`, `${c}.${column}`))
+    .join('\n       AND ');
 }
 
 module.exports = { COMPARED_FIELDS, groupDifferences, proposedValue, sameValuesSql };

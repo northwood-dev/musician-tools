@@ -175,7 +175,7 @@ describe('Merge (#214, #236)', () => {
     const button = await mergeButton();
     expect(button).toHaveTextContent('Merge');
     await act(async () => { fireEvent.click(button); });
-    expect(cat.mergeSuggestion).toHaveBeenCalledWith('id-Wonderwall');
+    expect(cat.mergeSuggestion).toHaveBeenCalledWith('id-Wonderwall', undefined); // no decisions to send
     expect(await screen.findByText('"Oasis — Wonderwall" merged into the Catalog entry (2 songs).')).toBeInTheDocument();
     expect(await screen.findByText('No suggestions waiting.')).toBeInTheDocument();
     await dialogFree();
@@ -244,6 +244,13 @@ describe('Merge (#214, #236)', () => {
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     });
 
+    // #234 review (Q2): a suggester who left a value empty is tied with the banner.
+    test('says that suggesters who left a value empty will be offered the Catalog value', async () => {
+      renderPage();
+      const dialog = await openDialog();
+      expect(within(dialog).getByText(/left a value empty will be offered the Catalog's value/)).toBeInTheDocument();
+    });
+
     test('Edit the Catalog entry opens the entry form', async () => {
       renderPage();
       const dialog = await openDialog();
@@ -259,17 +266,65 @@ describe('Merge (#214, #236)', () => {
     });
   });
 
-  test('values that came to differ meanwhile say so and reload', async () => {
+  // #234 review (Q1 b): the group changed under the curator — the server refuses with the
+  // differences as they are now, and the dialog shows them, to decide again.
+  const CHANGED = 'The suggestions changed: review them again.';
+  const nowDiffering = [{ field: 'key' as const, catalog: 'F#', suggested: [{ value: 'A', users: 1 }] }];
+
+  test('values that came to differ meanwhile open the dialog with them', async () => {
     const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
-    cat.mergeSuggestion.mockImplementation(async () => {
-      waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [{ field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] }] } })];
-      throw new SuggestionDifferencesError();
-    });
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionDifferencesError(nowDiffering));
     renderPage();
     const button = await mergeButton();
     await act(async () => { fireEvent.click(button); });
-    expect(await screen.findByText('Some values now differ from the Catalog entry: review them first.')).toBeInTheDocument();
-    expect(await screen.findByText('Differs from the Catalog')).toBeInTheDocument();
+    const dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    expect(within(dialog).getByText(CHANGED)).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'Key' })).toBeInTheDocument();
+  });
+
+  test('a group that changed while the dialog was open: the dialog shows it again, choices cleared', async () => {
+    const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
+    waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ] } })];
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionDifferencesError([
+      ...nowDiffering, { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ]));
+    renderPage();
+    fireEvent.click(await mergeButton());
+    let dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Accept 120 (1 user)' }));
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' })); });
+    dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    expect(await within(dialog).findByText(CHANGED)).toBeInTheDocument();
+    expect(within(dialog).getByRole('group', { name: 'Key' })).toBeInTheDocument();
+    expect(within(dialog).getByRole('radio', { name: 'Accept 120 (1 user)' })).not.toBeChecked();
+    expect(within(dialog).getByRole('button', { name: 'Merge' })).toBeDisabled();
+  });
+
+  test('a group that no longer differs at all: the dialog closes and says so', async () => {
+    const { SuggestionDifferencesError } = jest.requireActual('../services/catalogService');
+    waiting = [line({ catalog: { uid: 'cat-1', published: true, differences: [
+      { field: 'bpm', catalog: 94, suggested: [{ value: 120, users: 1 }] },
+    ] } })];
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionDifferencesError([]));
+    renderPage();
+    fireEvent.click(await mergeButton());
+    const dialog = await screen.findByRole('dialog', { name: 'Merge into the Catalog entry' });
+    fireEvent.click(within(dialog).getByRole('radio', { name: 'Accept 120 (1 user)' }));
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Merge' })); });
+    await dialogFree();
+    expect(await screen.findByText(CHANGED)).toBeInTheDocument();
+  });
+
+  // Spec story 20.
+  test('an entry no longer published says so', async () => {
+    const { SuggestionNotPublishedError } = jest.requireActual('../services/catalogService');
+    cat.mergeSuggestion.mockRejectedValue(new SuggestionNotPublishedError());
+    renderPage();
+    const button = await mergeButton();
+    await act(async () => { fireEvent.click(button); });
+    expect(await screen.findByText('The Catalog entry is no longer published.')).toBeInTheDocument();
   });
 
   test('a suggestion no longer waiting says so and reloads', async () => {
