@@ -29,6 +29,8 @@ interface SongFormInstrumentsProps {
   // Additional data
   myInstruments?: Array<{ uid: string; name: string; type?: string | null }>;
   songPlays?: SongPlay[];
+  /** #242: this song's plays didn't load — "?" (unknown), not "-" (never played). */
+  playsUnknown?: boolean;
   formatLastPlayed?: (dateString: string | undefined) => string;
   mode: 'add' | 'edit';
   loading: boolean;
@@ -75,6 +77,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
     onMarkAsPlayedNow,
     myInstruments,
     songPlays,
+    playsUnknown = false,
     formatLastPlayed,
     mode,
     loading,
@@ -115,7 +118,7 @@ export default function SongFormInstruments(props: SongFormInstrumentsProps) {
             aside={<>
             {formatLastPlayed && (
               <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                Last played: <span className="font-medium">{getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
+                Last played: <span className="font-medium">{playsUnknown ? '?' : getLastPlayedForInstrument(instrumentType, songPlays, formatLastPlayed)}</span>
               </span>
             )}
             {onMarkAsPlayedNow && mode === 'edit' && (

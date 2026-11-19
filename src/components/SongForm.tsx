@@ -41,6 +41,8 @@ type SongFormProps = {
   onDelete?: () => void;
   onMarkAsPlayedNow?: (instrumentType: string) => void;
   songPlays?: SongPlay[];
+  /** #242: this song's plays didn't load. */
+  playsUnknown?: boolean;
   formatLastPlayed?: (dateString: string | undefined) => string;
   myInstruments?: Array<{ uid: string; name: string; type?: string | null }>;
   playlistSlot?: React.ReactNode;
@@ -63,7 +65,7 @@ const getAvailableTechniques = (instrumentType: string) => {
 };
 
 export function SongForm(props: SongFormProps) {
-  const { mode, form, loading, onChange, onSetDurationSeconds, onChangeInstruments, onSetTechniques, onToggleGenre, onToggleLanguage, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSetCatalogSuggestion, onSubmit, onDelete, onMarkAsPlayedNow, songPlays, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata, duplicate = null, onEditDuplicate } = props;
+  const { mode, form, loading, onChange, onSetDurationSeconds, onChangeInstruments, onSetTechniques, onToggleGenre, onToggleLanguage, onSetInstrumentDifficulty, onSetMyInstrumentUid, onSetInstrumentTuning, onToggleTechnique, onSetInstrumentLinksForInstrument, onSetStreamingLinks, onSetCatalogSuggestion, onSubmit, onDelete, onMarkAsPlayedNow, songPlays, playsUnknown, formatLastPlayed, myInstruments, playlistSlot, suggestedAlbums = [], suggestedArtists = [], metadataLoading = false, metadataSource = null, onAutoFillMetadata, duplicate = null, onEditDuplicate } = props;
   // Passes only the field so the memo depends on form.instrument alone, not on the whole form.
   const currentInstruments = useMemo(() => instrumentsOf({ instrument: form.instrument }), [form.instrument]);
   const currentTechniques = useMemo(() => Array.isArray(form.technique) ? form.technique : [], [form.technique]);
@@ -521,6 +523,7 @@ export function SongForm(props: SongFormProps) {
           onMarkAsPlayedNow={onMarkAsPlayedNow}
           myInstruments={myInstruments}
           songPlays={songPlays}
+          playsUnknown={playsUnknown}
           formatLastPlayed={formatLastPlayed}
           mode={mode}
           loading={loading}

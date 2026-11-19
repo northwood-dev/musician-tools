@@ -175,6 +175,23 @@ describe('Songs — plays that did not load (#242)', () => {
     await waitFor(() => expect(rowTitlesInOrder()).toEqual(['Bravo', 'Alpha']));
   });
 
+  test('the song page says "?" for an instrument whose plays are unknown, not "-"', async () => {
+    renderSongs('/songs/song-a');
+    await screen.findByDisplayValue('Alpha');
+    await screen.findByText(PLAYS_FAILED);
+    expect(screen.getByText(/Last played:/)).toHaveTextContent('Last played: ?');
+  });
+
+  test('Mark as played on the song page reloads its plays: no more "?"', async () => {
+    renderSongs('/songs/song-a');
+    await screen.findByDisplayValue('Alpha');
+    await screen.findByText(PLAYS_FAILED);
+    getPlays.mockImplementation(plays);
+    fireEvent.click(screen.getByRole('button', { name: 'Mark as played' }));
+    await waitFor(() => expect(screen.getByText(/Last played:/)).toHaveTextContent('Last played: Mar 1, 2026'));
+    expect(screen.queryByText(PLAYS_FAILED)).toBeNull();
+  });
+
   test('Retry reloads the plays: the date comes back and the notice goes', async () => {
     renderSongs();
     await screen.findByText(PLAYS_FAILED);

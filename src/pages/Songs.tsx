@@ -1319,6 +1319,8 @@ function Songs() {
       // Keep the list-wide plays map in sync too, otherwise the "last played"
       // sort reads stale data after a mark from the edit panel
       setSongPlays(prev => new Map(prev).set(editingUid, plays));
+      // #242: its whole history just loaded — no longer unknown.
+      setUnknownPlays(prev => { const next = new Set(prev); next.delete(editingUid); return next; });
       const now = new Date().toISOString();
       await songService.updateSong(editingUid, { lastPlayed: now });
       // Update the song in the list
@@ -2223,6 +2225,7 @@ function Songs() {
             onDelete={editingUid ? () => handleDelete(editingUid) : undefined}
             onMarkAsPlayedNow={editingUid ? handleMarkAsPlayedNow : undefined}
             songPlays={editingUid ? editingSongPlays : undefined}
+            playsUnknown={!!editingUid && unknownPlays.has(editingUid)}
             formatLastPlayed={formatLastPlayed}
             myInstruments={myInstruments.map(i => ({
               uid: i.uid,
