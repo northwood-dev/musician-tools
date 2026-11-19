@@ -243,7 +243,7 @@ test('#5: the day-detail lists one block per instrument, alphabetical', async ()
   expect(text.indexOf('Bass')).toBeLessThan(text.indexOf('Guitar'));
 });
 
-test('Story 5.5: the day-detail shows "Artist - Title" for a song entry', async () => {
+test('Story 5.5: the day-detail shows "Artist — Title" for a song entry', async () => {
   const SONG_UID = 'aaaaaaa1-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   mockedSongService.getAllSongs.mockResolvedValue([
     { uid: SONG_UID, title: 'Sweet Child', artist: "Guns N' Roses" } as never,
@@ -265,7 +265,7 @@ test('Story 5.5: the day-detail shows "Artist - Title" for a song entry', async 
   // The artist is resolved from the live songlist (loaded on mount), so wait for it
   await waitFor(() => {
     const entry = within(panel).getByText('Sweet Child').closest('li')!;
-    expect(entry.textContent).toMatch(/Guns N' Roses - Sweet Child/);
+    expect(entry.textContent).toMatch(/Guns N' Roses — Sweet Child/);
   });
   const entry = within(panel).getByText('Sweet Child').closest('li')!;
   expect(entry.textContent).not.toMatch(/Sweet Child — Guns N' Roses/);
@@ -524,6 +524,24 @@ test('a play-only day lights up with a played label and lists its plays (FR22/AC
   // Not an empty day — and logging a real session remains offered
   expect(screen.queryByText(`No practice on ${YEAR}-02-15.`)).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Log a session for this day' })).toBeInTheDocument();
+});
+
+// #233: a play names its song artist first, like everywhere else.
+test('a day play shows the artist before the title', async () => {
+  mockedService.getHeatmap.mockResolvedValue([
+    { date: `${YEAR}-02-15`, totalMinutes: 0, sessionCount: 0, playCount: 2 },
+  ]);
+  mockedService.getDayPlays.mockResolvedValue([
+    { uid: 'p1', songUid: 'song-1', title: 'Sweet Child', artist: "Guns N' Roses", instrumentType: 'Guitar', playedAt: `${YEAR}-02-15T09:00:00.000Z` },
+    { uid: 'p2', songUid: 'song-2', title: 'Money', artist: null, instrumentType: null, playedAt: `${YEAR}-02-15T20:00:00.000Z` },
+  ]);
+
+  renderPage();
+  fireEvent.click(await screen.findByLabelText(`${YEAR}-02-15 — played (2 plays)`));
+  const plays = await screen.findByRole('list', { name: 'Day plays' });
+  const [first, second] = within(plays).getAllByRole('listitem');
+  expect(first.textContent).toMatch(/^Guns N' Roses — Sweet Child/);
+  expect(second.textContent).toMatch(/^Money/);
 });
 
 test('a mixed day shows sessions AND plays, with both in the cell label (FR22/AC2)', async () => {

@@ -573,7 +573,7 @@ test('#16: the history shows the live name of a renamed topic, linked to its row
   expect(within(history).queryByText('Penta')).not.toBeInTheDocument();
 });
 
-test('the history shows "Artist - Title", resolved from the songlist', async () => {
+test('the history shows "Artist — Title", resolved from the songlist', async () => {
   mockedSongService.getAllSongs.mockResolvedValue([
     { uid: SONG_UID, title: 'Sweet Child', artist: "Guns N' Roses" } as never,
   ]);
@@ -593,16 +593,16 @@ test('the history shows "Artist - Title", resolved from the songlist', async () 
   render(<MemoryRouter future={ROUTER_FUTURE}><MySessionsPage /></MemoryRouter>);
 
   const history = await screen.findByRole('list', { name: 'Session history' });
-  // Story 5.5: the song entry reads "Artist - Title" — artist first, hyphen separator
+  // Story 5.5: the song entry reads "Artist — Title" — artist first, hyphen separator
   const songEntry = within(history).getByText('Sweet Child').closest('li')!;
-  expect(songEntry.textContent).toMatch(/Guns N' Roses - Sweet Child/);
+  expect(songEntry.textContent).toMatch(/Guns N' Roses — Sweet Child/);
   expect(songEntry.textContent).not.toMatch(/Sweet Child — Guns N' Roses/);
   // ...but the topic entry stays artist-less (label stands alone)
   const topicEntry = within(history).getByText('Pentatonic scale').closest('li')!;
   expect(topicEntry.textContent).not.toMatch(/Guns N' Roses/);
 });
 
-test('the picker shows song options as "Artist - Title"', async () => {
+test('the picker shows song options as "Artist — Title"', async () => {
   mockedSongService.getAllSongs.mockResolvedValue([
     { uid: SONG_UID, title: 'Sweet Child', artist: "Guns N' Roses" } as never,
   ]);
@@ -612,10 +612,10 @@ test('the picker shows song options as "Artist - Title"', async () => {
   fireEvent.focus(await screen.findByLabelText('Entry 1'));
   const listbox = await screen.findByRole('listbox', { name: 'Entry 1 suggestions' });
   const songsGroup = within(listbox).getByRole('group', { name: 'Songs' });
-  expect(within(songsGroup).getByRole('option', { name: "Guns N' Roses - Sweet Child" })).toBeInTheDocument();
+  expect(within(songsGroup).getByRole('option', { name: "Guns N' Roses — Sweet Child" })).toBeInTheDocument();
 });
 
-test('the combobox input shows the SELECTED song as "Artist - Title" at rest (AC1)', async () => {
+test('the combobox input shows the SELECTED song as "Artist — Title" at rest (AC1)', async () => {
   mockedSongService.getAllSongs.mockResolvedValue([
     { uid: SONG_UID, title: 'Sweet Child', artist: "Guns N' Roses" } as never,
   ]);
@@ -625,11 +625,11 @@ test('the combobox input shows the SELECTED song as "Artist - Title" at rest (AC
   const input = await screen.findByLabelText('Entry 1');
   fireEvent.focus(input);
   const listbox = await screen.findByRole('listbox', { name: 'Entry 1 suggestions' });
-  fireEvent.mouseDown(within(listbox).getByRole('option', { name: "Guns N' Roses - Sweet Child" }));
+  fireEvent.mouseDown(within(listbox).getByRole('option', { name: "Guns N' Roses — Sweet Child" }));
 
   // At rest (not searching) the field reflects the selected ref via labelForRef
-  // → formatSongLabel → "Artist - Title"
-  expect(input).toHaveValue("Guns N' Roses - Sweet Child");
+  // → formatSongLabel → "Artist — Title"
+  expect(input).toHaveValue("Guns N' Roses — Sweet Child");
 });
 
 test('shows the empty history state', async () => {
@@ -1486,8 +1486,8 @@ describe('#84: the entry picker finds a song or topic as the Songlist does', () 
 
     const listbox = await searchEntry('acdc');
 
-    expect(await within(listbox).findByRole('option', { name: 'AC/DC - Back in Black' })).toBeInTheDocument();
-    expect(within(listbox).queryByRole('option', { name: 'Oasis - Wonderwall' })).not.toBeInTheDocument();
+    expect(await within(listbox).findByRole('option', { name: 'AC/DC — Back in Black' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('option', { name: 'Oasis — Wonderwall' })).not.toBeInTheDocument();
   });
 
   test('an artist alias typed in full ("rhcp") finds its artist', async () => {
@@ -1499,8 +1499,8 @@ describe('#84: the entry picker finds a song or topic as the Songlist does', () 
 
     const listbox = await searchEntry('rhcp');
 
-    expect(await within(listbox).findByRole('option', { name: 'Red Hot Chili Peppers - Otherside' })).toBeInTheDocument();
-    expect(within(listbox).queryByRole('option', { name: 'Oasis - Wonderwall' })).not.toBeInTheDocument();
+    expect(await within(listbox).findByRole('option', { name: 'Red Hot Chili Peppers — Otherside' })).toBeInTheDocument();
+    expect(within(listbox).queryByRole('option', { name: 'Oasis — Wonderwall' })).not.toBeInTheDocument();
   });
 
   test('when the aliases fail to load, search still works and no error shows', async () => {
@@ -1509,7 +1509,7 @@ describe('#84: the entry picker finds a song or topic as the Songlist does', () 
 
     const listbox = await searchEntry('acdc');
 
-    expect(await within(listbox).findByRole('option', { name: 'AC/DC - Back in Black' })).toBeInTheDocument();
+    expect(await within(listbox).findByRole('option', { name: 'AC/DC — Back in Black' })).toBeInTheDocument();
     // the page's load regions are always there (#153): none may say anything
     expect(screen.queryAllByRole('alert').filter(el => el.textContent)).toEqual([]);
     expect(screen.queryByText(/error|failed|couldn/i)).not.toBeInTheDocument();
@@ -1546,7 +1546,7 @@ describe('#84: the entry picker finds a song or topic as the Songlist does', () 
 
     const songsListbox = await searchEntry('acdc');
     const recentSongs = await within(songsListbox).findByRole('group', { name: 'Recent' });
-    expect(within(recentSongs).getAllByRole('option').map(o => o.textContent)).toEqual(['AC/DC - Back in Black']);
+    expect(within(recentSongs).getAllByRole('option').map(o => o.textContent)).toEqual(['AC/DC — Back in Black']);
 
     fireEvent.change(screen.getByLabelText('Entry 1'), { target: { value: 'rock and roll' } });
     const recentTopics = within(screen.getByRole('listbox', { name: 'Entry 1 suggestions' })).getByRole('group', { name: 'Recent' });

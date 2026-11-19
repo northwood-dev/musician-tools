@@ -18,6 +18,7 @@ import { LiveNotice } from '../components/LiveNotice';
 import { LoadFailed } from '../components/LoadFailed';
 import { Toast } from '../components/Toast';
 import { Page } from '../components/Page';
+import { songLabel } from '../utils/songLabel';
 
 type EntryDraft = {
   key: number;
@@ -33,9 +34,6 @@ type EntryDraft = {
 function foldForSearch(value: string): string {
   return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
-
-const formatSongLabel = (song: Song): string =>
-  song.artist ? `${song.artist} - ${song.title}` : song.title;
 
 // FR12 picker as a single combobox (search + selection merged): type to filter,
 // pick from the grouped suggestions below. Replaces the former search-input +
@@ -77,7 +75,7 @@ function EntryRefPicker({
   const labelForRef = (ref: string): string => {
     if (ref.startsWith('song:')) {
       const song = songs.find(s => `song:${s.uid}` === ref);
-      return song ? formatSongLabel(song) : (orphanLabel ?? '');
+      return song ? songLabel(song) : (orphanLabel ?? '');
     }
     if (ref.startsWith('topic:')) {
       const topic = topics.find(t => `topic:${t.uid}` === ref);
@@ -118,7 +116,7 @@ function EntryRefPicker({
   let counter = 0;
   const groups = [
     { label: 'Recent', options: recentRefs.filter(matchesRecent).map(r => ({ value: r.ref, label: r.label })) },
-    { label: 'Songs', options: songs.filter(matchesSong).map(s => ({ value: `song:${s.uid}`, label: formatSongLabel(s) })) },
+    { label: 'Songs', options: songs.filter(matchesSong).map(s => ({ value: `song:${s.uid}`, label: songLabel(s) })) },
     { label: 'Topics', options: topics.filter(t => matchesTopicName(t.name)).map(t => ({ value: `topic:${t.uid}`, label: t.name })) },
     { label: 'Create', options: showCreate ? [{ value: `create:${rawCreateText}`, label: `Create topic "${rawCreateText}"` }] : [] },
   ]
@@ -402,7 +400,7 @@ function MySessionsPage() {
   const recentRefs = useMemo(() => {
     if (!sessions) return [];
     const labelByRef = new Map<string, string>();
-    songs.forEach(song => labelByRef.set(`song:${song.uid}`, formatSongLabel(song)));
+    songs.forEach(song => labelByRef.set(`song:${song.uid}`, songLabel(song)));
     topics.forEach(topic => labelByRef.set(`topic:${topic.uid}`, topic.name));
     // "Recently logged" = creation order, NOT the date-sorted display list: a
     // retroactive session logged a minute ago sits low in the date sort but

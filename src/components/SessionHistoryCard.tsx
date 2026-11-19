@@ -19,7 +19,7 @@ export function SessionEntryLine({ item, liveNames }: { item: SessionItem; liveN
   const { to, artist, name, isOrphan } = resolveEntry(item, liveNames);
   const label = (
     <>
-      {artist ? <span>{artist} - </span> : null}
+      {artist ? <span>{artist} — </span> : null}
       <span className={isOrphan ? 'font-medium text-gray-400 dark:text-gray-500' : 'font-medium'}>{name}</span>
     </>
   );

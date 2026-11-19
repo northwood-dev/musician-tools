@@ -11,17 +11,13 @@ import { CloseButton } from '../components/CloseButton';
 import { Page } from '../components/Page';
 import { EmptyState } from '../components/EmptyState';
 import { ListSkeleton } from '../components/ListSkeleton';
+import { songLabel } from '../utils/songLabel';
 
 const initialPlaylist: CreatePlaylistDTO = {
   name: '',
   description: '',
   songUids: [],
 };
-
-// Guarded "Artist - Title" label (drop the dash when the artist is empty), aligned on
-// the canonical formatSongLabel pattern so an artist-less song never shows "- Title".
-const formatSongLabel = (song: Song): string =>
-  song.artist ? `${song.artist} - ${song.title}` : song.title;
 
 function MyPlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -150,7 +146,7 @@ function MyPlaylistsPage() {
 
   const getSongTitle = (uid: string): string => {
     const song = songs.find(s => s.uid === uid);
-    return song ? formatSongLabel(song) : uid;
+    return song ? songLabel(song) : uid;
   };
 
   return (
@@ -311,8 +307,8 @@ function MyPlaylistsPage() {
                   ) : (
                     <div className="space-y-2 p-3">
                       {songs.filter(songSearchMatcher(songSearch, artistAliases)).sort((a, b) => {
-                        const aDisplay = formatSongLabel(a).toLowerCase();
-                        const bDisplay = formatSongLabel(b).toLowerCase();
+                        const aDisplay = songLabel(a).toLowerCase();
+                        const bDisplay = songLabel(b).toLowerCase();
                         return aDisplay.localeCompare(bDisplay);
                       }).map(song => (
                         <label key={song.uid} className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
@@ -323,7 +319,7 @@ function MyPlaylistsPage() {
                             disabled={loading}
                             className="h-4 w-4 rounded border border-gray-300 dark:border-gray-600 accent-brand-500 dark:accent-brand-400"
                           />
-                          <span className="text-sm dark:text-gray-100">{formatSongLabel(song)}</span>
+                          <span className="text-sm dark:text-gray-100">{songLabel(song)}</span>
                         </label>
                       ))}
                     </div>

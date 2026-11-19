@@ -488,6 +488,7 @@ function MyHeatmapPage() {
               <ul aria-label="Day plays" className="space-y-1">
                 {visiblePlays.map(play => (
                   <li key={play.uid} className="text-sm text-gray-700 dark:text-gray-300 pl-3 border-l-2 border-gray-200 dark:border-gray-700 break-words">
+                    {play.artist ? <span>{play.artist} — </span> : null}
                     <span className="font-medium">{play.title}</span>
                     {play.instrumentType ? <span className="text-gray-500 dark:text-gray-400"> — {play.instrumentType}</span> : null}
                     <span className="text-gray-500 dark:text-gray-400 italic"> · Played</span>

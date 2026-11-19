@@ -83,6 +83,7 @@ export type DayPlay = {
   uid: string;
   songUid: string;
   title: string;
+  artist?: string | null; // #233: shown before the title
   instrumentType?: string | null;
   playedAt: string;
 };

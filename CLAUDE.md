@@ -23,6 +23,8 @@ Rules:
 Wherever a song shows both, the **artist comes before the title** (#229):
 - Lists, tables, cards: the `<SongName>` brick — artist above, title below and emphasized.
 - Sentences (messages, confirmations, tooltips): `songLabel()` → `The Breeders — Cannonball`.
+- Compact one-line rows in a mixed list (playlist songs, session entries, day plays, picker
+  options): `Artist — Title` on one line, not the two-line brick.
 - Forms: the Artist field before the Title field.
 - Tables with separate columns: `Artist` before `Title`; the default sort doesn't change.
 
