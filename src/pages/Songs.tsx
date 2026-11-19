@@ -30,6 +30,7 @@ import { instrumentsOf } from '../utils/songInstruments';
 import { listOf } from '../utils/listOf';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { Notice } from '../components/Notice';
+import { LiveNotice } from '../components/LiveNotice';
 import { Page, PageTitle } from '../components/Page';
 import { RemovableChip } from '../components/Chip';
 import { withSongIfAbsent } from '../hooks/useSonglistMatcher';
@@ -264,6 +265,8 @@ function Songs() {
     return saved === 'false' ? false : true;
   });
   const [songPlays, setSongPlays] = useState<Map<string, SongPlay[]>>(new Map());
+  // #242: the songs whose plays didn't load — unknown, not "never played" (shown "?").
+  const [unknownPlays, setUnknownPlays] = useState<Set<string>>(new Set());
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistsLoadStatus, setPlaylistsLoadStatus] = useState<PlaylistsLoadStatus>('loading');
   // The one way the page loads its playlists: on mount, back on the list, after a bulk add, and
@@ -549,6 +552,30 @@ function Songs() {
 
   const artistAliases = useArtistAliases();
 
+  // Each song's plays, one request per song (#244 would make it one): the ones that fail are
+  // returned in `failed` — their plays are unknown, never taken for "never played" (#242).
+  const fetchPlays = async (uids: string[]) => {
+    const plays = new Map<string, SongPlay[]>();
+    const failed = new Set<string>();
+    await Promise.all(uids.map(async (uid) => {
+      try {
+        plays.set(uid, await songPlayService.getPlays(uid));
+      } catch (err) {
+        console.error(`Failed to load plays for ${uid}:`, err);
+        plays.set(uid, []);
+        failed.add(uid);
+      }
+    }));
+    return { plays, failed };
+  };
+
+  // #242: Retry asks again only for the plays that didn't load.
+  const retryPlays = async () => {
+    const { plays, failed } = await fetchPlays([...unknownPlays]);
+    setSongPlays(prev => new Map([...prev, ...plays]));
+    setUnknownPlays(failed);
+  };
+
   // #224: the one way the songs load — on opening the list, on coming back to it, and on Retry.
   // A reload never takes back a list already loaded (same rule as the playlists): the skeleton
   // and the failed-load block only stand for a page that has no list yet, and a failed reload
@@ -566,19 +593,11 @@ function Songs() {
       setSongs(data);
       setSongsLoaded(true);
       setLoadFailed(false);
-      const playsMap = new Map<string, SongPlay[]>();
-      await Promise.all(
-        data.map(async (song) => {
-          try {
-            const plays = await songPlayService.getPlays(song.uid);
-            playsMap.set(song.uid, plays);
-          } catch (err) {
-            console.error(`Failed to load plays for ${song.uid}:`, err);
-            playsMap.set(song.uid, []);
-          }
-        })
-      );
-      if (latest()) setSongPlays(playsMap);
+      const { plays: playsMap, failed } = await fetchPlays(data.map(song => song.uid));
+      if (latest()) {
+        setSongPlays(playsMap);
+        setUnknownPlays(failed);
+      }
     } catch (err) {
       if (!latest()) return;
       console.error(err);
@@ -588,16 +607,22 @@ function Songs() {
     }
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const list = await instrumentService.getAll();
-        setMyInstruments(list);
-      } catch (err) {
-        console.error(err);
-      }
-    })();
+  // #242: the user's instruments (the My instrument filter and pickers); a failure is said in
+  // the page's notice, not taken for "no instruments".
+  const [instrumentsFailed, setInstrumentsFailed] = useState(false);
+  const loadMyInstruments = useCallback(async () => {
+    try {
+      setMyInstruments(await instrumentService.getAll());
+      setInstrumentsFailed(false);
+    } catch (err) {
+      console.error(err);
+      setInstrumentsFailed(true);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadMyInstruments();
+  }, [loadMyInstruments]);
 
   useEffect(() => {
     try {
@@ -1823,12 +1848,39 @@ function Songs() {
     return plays[0].playedAt;
   };
 
+  // #242: what didn't load besides the songs, said once for the page (list and song form),
+  // with a Retry that asks again only for that.
+  const playsMissing = unknownPlays.size > 0;
+  const partlyLoaded = playsMissing && instrumentsFailed ? "Couldn't load when your songs were last played, nor your instruments."
+    : playsMissing ? "Couldn't load when your songs were last played."
+      : instrumentsFailed ? "Couldn't load your instruments."
+        : null;
+  const retryPartialLoad = () => {
+    if (playsMissing) void retryPlays();
+    if (instrumentsFailed) void loadMyInstruments();
+  };
+  const partialLoadNotice = (className = '') => (
+    <LiveNotice
+      tone="warning"
+      label="Partly loaded"
+      className={className}
+      action={partlyLoaded && (
+        <button type="button" className="btn-secondary btn-sm min-h-[44px]" onClick={retryPartialLoad}>Retry</button>
+      )}
+    >
+      {partlyLoaded}
+    </LiveNotice>
+  );
+
   const sortByColumnFunc = (items: Song[]) => {
     if (!sortColumn) return items;
 
     return [...items].sort((a, b) => {
       // Special handling for lastPlayed to use instrument-filtered times from songPlays
       if (sortColumn === 'lastPlayed') {
+        // #242: unknown plays go last, whichever the direction.
+        const aUnknown = unknownPlays.has(a.uid);
+        if (aUnknown !== unknownPlays.has(b.uid)) return aUnknown ? 1 : -1;
         const aLastPlayed = getLastPlayedForSong(a.uid);
         const bLastPlayed = getLastPlayedForSong(b.uid);
         const aTime = aLastPlayed ? new Date(aLastPlayed).getTime() : 0;
@@ -2095,6 +2147,8 @@ function Songs() {
           // #192: from an empty search — the title is prefilled, nothing created until a change.
           onAddNewWithTitle={title => navigate('/songs/new', { state: { prefillTitle: title } })}
           getLastPlayedForSong={getLastPlayedForSong}
+          unknownPlays={unknownPlays}
+          partialLoadNotice={partialLoadNotice()}
           formatLastPlayed={formatLastPlayed}
           SortHeader={SortHeader}
         />
@@ -2136,6 +2190,8 @@ function Songs() {
             )}
           </StickyActionBar>
           <div className="card-base glass-effect p-6">
+          {/* #242: the song's Last played and My instrument pickers depend on them too. */}
+          {partialLoadNotice('mb-4')}
           {editingUid && cameFromDuplicate && (
             <Notice tone="info" announce="none" className="mb-4">
               If you couldn't find this song in your songlist, remember to reset your filters.
